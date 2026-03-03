@@ -1,0 +1,27 @@
+name: expenseapp
+description: "A new Flutter project."
+publish_to: 'none'
+
+environment:
+  sdk: ^3.11.0
+
+
+dependencies:
+  flutter:
+    sdk: flutter
+  path_provider: ^2.1.2
+  
+  google_fonts: ^6.2.1
+  # mongo_dart: ^0.10.0
+
+  intl: ^0.19.0
+  
+  flutter_svg: ^2.0.9
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
