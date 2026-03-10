@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMC - Expense App (Student Edition)</title>
+    <style>
+        :root {
+            --primary: #2e7d32; /* Green for financial health */
+            --secondary: #1976d2; /* Blue for tech/trust */
+            --bg: #f8f9fa;
+            --text: #2c3e50;
+        }
+        body { font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); padding: 20px; }
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { margin-bottom: 5px; color: var(--primary); }
+        
+        .bmc-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            grid-template-rows: repeat(2, 350px);
+            gap: 15px;
+            max-width: 1300px;
+            margin: auto;
+        }
+        
+        .box {
+            background: #ffffff;
+            border: 1px solid #dee2e6;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            transition: transform 0.2s;
+        }
+        .box:hover { transform: translateY(-5px); border-color: var(--primary); }
+        
+        h3 { 
+            font-size: 0.9rem; 
+            text-transform: uppercase; 
+            letter-spacing: 1px; 
+            color: var(--secondary); 
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        ul { padding-left: 20px; font-size: 0.85rem; line-height: 1.6; }
+        li { margin-bottom: 8px; }
+
+        /* Span adjustments for classic BMC layout */
+        .kp { grid-row: 1 / 3; }
+        .ka { grid-row: 1 / 2; }
+        .kr { grid-row: 2 / 3; }
+        .vp { grid-row: 1 / 3; }
+        .cr { grid-row: 1 / 2; }
+        .ch { grid-row: 2 / 3; }
+        .cs { grid-row: 1 / 3; }
+
+        .bottom-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            max-width: 1300px;
+            margin: 15px auto;
+        }
+        .cost, .revenue { height: 180px; }
+        
+        .tag {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        @media (max-width: 1000px) {
+            .bmc-grid { grid-template-columns: 1fr; grid-template-rows: auto; }
+            .bottom-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>Business Model Canvas</h1>
+    <p>Aplikasi Pengelola Keuangan: <strong>SmartSpend AI</strong></p>
+</div>
+
+<div class="bmc-grid">
+    <div class="box kp">
+        <h3>🤝 Key Partners</h3>
+        <ul>
+            <li><strong>Supabase:</strong> Manajemen user & Auth</li>
+            <li><strong>NeonDB:</strong> Serverless PostgreSQL database</li>
+            <li><strong>Penyedia API OCR:</strong> Untuk ekstraksi data dari foto struk</li>
+            <li><strong>Komunitas Kampus:</strong> Partner promosi ke mahasiswa</li>
+        </ul>
+    </div>
+
+    <div class="box ka">
+        <h3>⚡ Key Activities</h3>
+        <ul>
+            <li>Pengembangan fitur OCR struk</li>
+            <li>Optimasi sistem export PDF</li>
+            <li>Maintenance sinkronisasi database</li>
+        </ul>
+    </div>
+
+    <div class="box vp">
+        <h3>💡 Value Propositions</h3>
+        <div class="tag">MAIN USP</div>
+        <ul>
+            <li><strong>Input Instan:</strong> Catat pengeluaran hanya dengan foto struk (AI OCR)</li>
+            <li><strong>Reporting Pro:</strong> Export laporan PDF rapi untuk evaluasi bulanan</li>
+            <li><strong>Financial Literacy:</strong> Membantu mahasiswa/umum mengatur budget agar tidak "kritis" di akhir bulan</li>
+        </ul>
+    </div>
+
+    <div class="box cr">
+        <h3>❤️ Customer Relationships</h3>
+        <ul>
+            <li><strong>Freemium Model:</strong> Coba gratis, bayar untuk fitur pro</li>
+            <li><strong>Support:</strong> Bantuan teknis via in-app chat</li>
+            <li><strong>Feedback Loop:</strong> Update fitur berdasarkan request user</li>
+        </ul>
+    </div>
+
+    <div class="box cs">
+        <h3>👥 Customer Segments</h3>
+        <ul>
+            <li><strong>Mahasiswa:</strong> Yang ingin mengontrol uang saku & biaya kos</li>
+            <li><strong>Penduduk Umum:</strong> Orang tua/pekerja yang ingin lebih hemat</li>
+            <li><strong>Freelancer:</strong> Yang butuh laporan pengeluaran sederhana (PDF)</li>
+        </ul>
+    </div>
+
+    <div class="box kr">
+        <h3>🛠️ Key Resources</h3>
+        <ul>
+            <li>Source Code Flutter</li>
+            <li>Cloud Infrastructure (Supabase/Neon)</li>
+            <li>Waktu & Keahlian Tim Developer</li>
+        </ul>
+    </div>
+
+    <div class="box ch">
+        <h3>📱 Channels</h3>
+        <ul>
+            <li>Play Store & App Store</li>
+            <li>Social Media (TikTok/IG) untuk edukasi finansial</li>
+            <li>Word of Mouth (Rekomendasi teman)</li>
+        </ul>
+    </div>
+</div>
+
+<div class="bottom-row">
+    <div class="box cost">
+        <h3>💰z Cost Structure</h3>
+        <ul>
+            <li><strong>Biaya Waktu:</strong> Pengembangan & riset tim</li>
+            <li><strong>Operational:</strong> Langganan API OCR (per scan)</li>
+            <li><strong>Scalability:</strong> Upgrade plan Supabase/Neon jika user melonjak</li>
+        </ul>
+    </div>
+
+    <div class="box revenue">
+        <h3>💵 Revenue Streams</h3>
+        <ul>
+            <li><strong>Premium Subscription:</strong> Akses unlimited PDF Export</li>
+            <li><strong>One-time Purchase:</strong> Buka fitur OCR selamanya</li>
+            <li><strong>Ad-supported:</strong> Iklan banner minimalis di versi gratis</li>
+        </ul>
+    </div>
+</div>
+
+</body>
+</html>
