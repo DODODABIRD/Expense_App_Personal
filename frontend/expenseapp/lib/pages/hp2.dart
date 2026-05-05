@@ -199,54 +199,60 @@ class CardList extends StatelessWidget {
       symbol: 'Rp',
       decimalDigits: 0,
     );
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 25),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: _getBackgroundColor(),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black, width: 3),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, blurRadius: 0, offset: Offset(8, 8)),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 70,
-            height: 70,
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              border: Border.all(color: Colors.black, width: 2),
+    return GestureDetector(
+      // onDoubleTap: await Navigator.push(
+      //   context,
+      //   MaterialPageRoute(builder: (context)=> const ExpenseAddPage())
+      // ),
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 25),
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: _getBackgroundColor(),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.black, width: 3),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, blurRadius: 0, offset: Offset(8, 8)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 70,
+              height: 70,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+                border: Border.all(color: Colors.black, width: 2),
+              ),
+              child: Icon(_getCategoryIcon(), color: Colors.black, size: 35),
             ),
-            child: Icon(_getCategoryIcon(), color: Colors.black, size: 35),
-          ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  expense.name,
-                  style: GoogleFonts.itim(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    expense.name,
+                    style: GoogleFonts.itim(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
                   ),
-                ),
-                Text(
-                  formatter.format(amountValue).replaceAll(',', '.'),
-                  style: GoogleFonts.itim(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
+                  Text(
+                    formatter.format(amountValue).replaceAll(',', '.'),
+                    style: GoogleFonts.itim(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
-                Text(expense.date, style: GoogleFonts.itim(fontSize: 16)),
-              ],
+                  Text(expense.date, style: GoogleFonts.itim(fontSize: 16)),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
