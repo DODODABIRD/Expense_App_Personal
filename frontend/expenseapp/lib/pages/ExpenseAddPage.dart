@@ -1,9 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:path_provider/path_provider.dart';
-import 'package:mongo_dart/mongo_dart.dart' as mongo;
+import '../services/databaseHelper.dart';
 
 class ExpenseAddPage extends StatefulWidget {
   const ExpenseAddPage({super.key});
@@ -19,26 +16,6 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
   String _selectedType = 'expected';
   DateTime _selectedDate = DateTime.now();
 
-  Future<void> _saveToMongo(Map<String, dynamic> expenseData) async {
-    final db = await mongo.Db.create(
-      "mongodb+srv://orlando:34313431@do2d.ypoboeu.mongodb.net/expense",
-    );
-
-    try {
-      await db.open();
-      var collection = db.collection('user0');
-
-      // Insert the map directly
-      await collection.insertOne(expenseData);
-      print("Cloud Sync: Success");
-    } catch (e) {
-      print("Cloud Sync Error: $e");
-      // We rethrow to handle it in the main save function
-      rethrow;
-    } finally {
-      await db.close();
-    }
-  }
 
   final Map<String, IconData> _categoryIcons = {
     'makanan': Icons.fastfood,
@@ -67,10 +44,6 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
   };
 
   // Mendapatkan path file lokal
-  Future<File> get _localFile async {
-    final directory = await getApplicationDocumentsDirectory();
-    return File('${directory.path}/expenses.json');
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -283,52 +256,27 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
     );
 
     try {
-    // 1. Prepare Data
-    final newEntry = {
-      "name": _nameController.text,
-      "amount": _amountController.text,
-      "date": "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}",
-      "category": _selectedCategory,
-      "type": _selectedType,
-      "createdAt": DateTime.now().toIso8601String(),
-    };
-
-    // 2. Save Locally FIRST
-    // We do this first so the map is "clean" (no ObjectId yet)
-    final file = await _localFile;
-    List<dynamic> jsonData = [];
-    if (await file.exists()) {
-      final String content = await file.readAsString();
-      jsonData = json.decode(content);
-    }
-    jsonData.add(newEntry);
-    await file.writeAsString(json.encode(jsonData));
-
-    // 3. Save to MongoDB Atlas using a CLONE of the map
-    // Using Map.from() ensures MongoDB's _id doesn't mess up our local newEntry
-    await _saveToMongo(Map.from(newEntry));
-
-      // Close Loading
-      if (mounted) Navigator.pop(context);
-
+      await DatabaseHelp.insertData(_nameController.text, _amountController.text, "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}", _selectedCategory, _selectedType);
+      print("Berhasil");
+      if (mounted) Navigator.pop(context); // Untuk show loading
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Colors.green,
-          content: Text('Saved Locally & Synced to Cloud!'),
+          content: Text('Saved Locally NIGGA'),
         ),
       );
 
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      // Close Loading on Error
-      if (mounted) Navigator.pop(context);
-
+      print("ERror : $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          backgroundColor: Colors.red,
-          content: Text('Failed to sync. Check internet. Error: $e'),
+        const SnackBar(
+          backgroundColor: Color.fromARGB(255, 255, 24, 24),
+          content: Text('ISNT SAVED'),
         ),
       );
+      // Close Loading on Error
+      if (mounted) Navigator.pop(context);
     }
   }
 }

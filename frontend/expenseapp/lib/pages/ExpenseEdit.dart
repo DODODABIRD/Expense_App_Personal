@@ -1,18 +1,338 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:sqflite/sqflite.dart';
+import '../services/databaseHelper.dart';
 
-
-
-
-class ExpenseEdit extends StatefulWidget{
-  const ExpenseEdit({super.key});
+class ExpenseEdit extends StatefulWidget {
+  final int? expenseId;
+  const ExpenseEdit({super.key, required this.expenseId});
 
   @override
   State<ExpenseEdit> createState() => _ExpenseEditState();
-
 }
 
-class _ExpenseEditState extends State<ExpenseEdit>{
+class _ExpenseEditState extends State<ExpenseEdit> {
+  final _nameController = TextEditingController();
+  final _amountController = TextEditingController();
+  String _selectedCategory = 'makanan';
+  String _selectedType = 'expected';
+  DateTime _selectedDate = DateTime.now();
 
   
+@override
+  void initState() {
+    super.initState();
+    _loadExpenseData();
+  }
+
+  
+  Future<void> _loadExpenseData() async {
+    try {
+      final data = await getDataById(widget.expenseId!);
+      if (data != null) {
+        setState(() {
+          _nameController.text = data['name'] ?? '';
+          _amountController.text = data['amount'] ?? '';
+          _selectedCategory = data['category'] ?? 'makanan';
+          _selectedType = data['type'] ?? 'expected';
+        });
+      }
+    } catch (e) {
+      print("Error loading data: $e");
+    }
+  }
+  
+  static Future<Map<String, dynamic>?> getDataById(int id) async {
+  final Database db = await DatabaseHelp.initDB();
+  List<Map<String, dynamic>> result = await db.query(
+    'my_table',
+    where: 'id = ?',
+    whereArgs: [id],
+    limit: 1,
+  );
+
+  return result.isNotEmpty ? result.first : null;
+}
+
+  final Map<String, IconData> _categoryIcons = {
+    'makanan': Icons.fastfood,
+    'school supply': Icons.school,
+    'baju': Icons.checkroom,
+    'elektronik': Icons.devices,
+    'transportasi': Icons.directions_car,
+    'kesehatan': Icons.medical_services,
+    'hiburan': Icons.theater_comedy,
+  };
+
+  final List<String> _categories = [
+    'makanan',
+    'school supply',
+    'baju',
+    'elektronik',
+    'transportasi',
+    'kesehatan',
+    'hiburan',
+  ];
+
+  final Map<String, String> _types = {
+    'expected': 'Expected (Kuning)',
+    'unexpected': 'Unexpected (Merah)',
+    'others': 'Others (Biru)',
+  };
+
+  // Mendapatkan path file lokal
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 30),
+          onPressed: () => Navigator.pop(context),
+        ),
+
+        title: Text(
+          'Edit Expense',
+          style: GoogleFonts.itim(
+            color: Colors.black,
+            fontSize: 28,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: Icon(Icons.delete, color: Colors.black, size: 30),
+            onPressed: () {
+              DatabaseHelp.deleteTs(widget.expenseId);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  duration: Duration(milliseconds: 1000),
+                  backgroundColor: Colors.green,
+                  content: Text('Shit berhasil di delete'),
+                ),
+              );
+              Navigator.pop(context);
+            },
+
+           )
+        ],
+
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(25),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            
+            _buildLabel('Expense Name'),
+            _buildTextField(_nameController, _nameController.text),
+            const SizedBox(height: 20),
+
+            _buildLabel('Amount (Rp)'),
+            _buildTextField(_amountController, _amountController.text, isNumber: true),
+            const SizedBox(height: 20),
+
+            _buildLabel('Category'),
+            _buildDropdown(
+              value: _selectedCategory,
+              items: _categories,
+              onChanged: (val) => setState(() => _selectedCategory = val!),
+            ),
+            const SizedBox(height: 20),
+
+            _buildLabel('Expense Type'),
+            _buildDropdown(
+              value: _selectedType,
+              items: _types.keys.toList(),
+              displayMap: _types,
+              onChanged: (val) => setState(() => _selectedType = val!),
+            ),
+            const SizedBox(height: 20),
+
+            _buildLabel('Date'),
+            GestureDetector(
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: _selectedDate,
+                  firstDate: DateTime(2000),
+                  lastDate: DateTime(2100),
+                );
+                if (date != null) setState(() => _selectedDate = date);
+              },
+              child: Container(
+                padding: const EdgeInsets.all(15),
+                decoration: _neoBoxDecoration(Colors.white),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}",
+                      style: GoogleFonts.itim(fontSize: 18),
+                    ),
+                    const Icon(Icons.calendar_today, color: Colors.black),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 40),
+
+            // Save Button
+            GestureDetector(
+              onTap: _updateExpense,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 15),
+                decoration: _neoBoxDecoration(const Color(0xFF5DF9FF)),
+                child: Center(
+                  child: Text(
+                    'SAVE EXPENSE',
+                    style: GoogleFonts.itim(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLabel(String label) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8, left: 5),
+      child: Text(
+        label,
+        style: GoogleFonts.itim(fontSize: 20, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
+
+  Widget _buildTextField(
+    TextEditingController controller,
+    String hint, {
+    bool isNumber = false,
+  }) {
+    return Container(
+      decoration: _neoBoxDecoration(Colors.white),
+      child: TextField(
+        controller: controller,
+        keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+        style: GoogleFonts.itim(fontSize: 18),
+        decoration: InputDecoration(
+          hintText: hint,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.all(15),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdown({
+    required String value,
+    required List<String> items,
+    Map<String, String>? displayMap,
+    required Function(String?) onChanged,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 15),
+      decoration: _neoBoxDecoration(Colors.white),
+      // clipBehavior ensures the child doesn't bleed over the border radius
+      clipBehavior: Clip.antiAlias,
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          icon: const Icon(
+            Icons.arrow_drop_down,
+            color: Colors.black,
+            size: 30,
+          ),
+          // This ensures the pop-up menu also has rounded corners
+          borderRadius: BorderRadius.circular(15),
+          // This ensures the pop-up menu background is white
+          dropdownColor: Colors.white,
+          items: items.map((String item) {
+            IconData? iconData = _categoryIcons[item];
+
+            return DropdownMenuItem<String>(
+              value: item,
+              child: Row(
+                children: [
+                  if (iconData != Null) ...[
+                    Icon(iconData, color: Colors.black, size: 24),
+                    const SizedBox(width: 12),
+                  ],
+
+                  Text(
+                    displayMap != null ? displayMap[item]! : item,
+                    style: GoogleFonts.itim(fontSize: 18),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration _neoBoxDecoration(Color color) {
+    return BoxDecoration(
+      color: color,
+      borderRadius: BorderRadius.circular(15),
+      border: Border.all(color: Colors.black, width: 3),
+      boxShadow: const [
+        BoxShadow(color: Colors.black, offset: Offset(5, 5), blurRadius: 0),
+      ],
+    );
+  }
+
+  Future<void> _updateExpense() async {
+    if (_nameController.text.isEmpty || _amountController.text.isEmpty) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Please fill all fields!')));
+      return;
+    }
+
+    // Show loading
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await DatabaseHelp.updateTs(widget.expenseId, _nameController.text,_amountController.text, _selectedCategory, _selectedType);
+      print("Berhasil Di Update");
+      if (mounted) Navigator.pop(context); // Untuk show loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Colors.green,
+          content: Text('Saved Locally NIGGA'),
+        ),
+      );
+
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      print("ERror : $e");
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: Color.fromARGB(255, 255, 24, 24),
+          content: Text('ISNT SAVED'),
+        ),
+      );
+      // Close Loading on Error
+      if (mounted) Navigator.pop(context);
+    }
+  }
 }

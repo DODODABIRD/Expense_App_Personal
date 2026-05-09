@@ -1,11 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'dart:convert';
-import 'dart:io';
-import 'package:flutter/services.dart';
-import 'package:path_provider/path_provider.dart';
 import 'ExpenseAddPage.dart';
 import 'package:intl/intl.dart';
+import '../services/databaseHelper.dart';
+import 'ExpenseEdit.dart';
+
+
+
+// FIXME
+
+
+/*
+Database Logic
+
+If Database Doesnt Exist
+  Create Database
+  Initialize Database
+
+If Database Empty:
+  Display "List Is Empty, create new Expense"
+Else
+  For Item in Database:
+    var item = databaseItem[index]
+    make cardlist of Ite
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class HomePage2 extends StatelessWidget {
   const HomePage2({super.key});
@@ -44,13 +76,15 @@ class HomePage2 extends StatelessWidget {
 }
 
 class ExpenseModel {
+  final int? id;
   final String name;
   final String amount;
   final String date;
   final String category;
   final String type;
-
   ExpenseModel({
+
+    this.id,
     required this.name,
     required this.amount,
     required this.date,
@@ -58,8 +92,9 @@ class ExpenseModel {
     required this.type,
   });
 
-  factory ExpenseModel.fromMap(Map<String, dynamic> map) {
+  factory ExpenseModel.fromMap(Map<String, dynamic> map) { // Convert dari objek database ke objek flutter
     return ExpenseModel(
+      id: map['id'],
       name: map['name'] ?? 'Unknown',
       amount: map['amount']?.toString() ?? '0',
       date: map['date'] ?? '',
@@ -68,8 +103,9 @@ class ExpenseModel {
     );
   }
 
-  Map<String, dynamic> toMap() {
+  Map<String, dynamic> toMap() { // Convert Dari Objek Flutter ke objek DAtabase
     return {
+      'id' : id,
       'name': name,
       'amount': amount,
       'date': date,
@@ -94,32 +130,27 @@ class _ListWithCardsState extends State<ListWithCards> {
     _loadData();
   }
 
-  // Mendapatkan path file lokal
-  Future<File> get _localFile async {
-    final directory = await getApplicationDocumentsDirectory();
-    return File('${directory.path}/expenses.json');
-  }
-
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
-      final file = await _localFile;
-      String jsonString;
+      await DatabaseHelp.initDB();
+    } catch(e){
+      print("Nigga The Database Aint Initialized");
+    }
 
-      if (await file.exists()) {
-        // Jika file lokal ada, baca dari sana
-        jsonString = await file.readAsString();
-      } else {
-        // Jika belum ada, baca dari assets lalu simpan ke lokal untuk pertama kali
-        jsonString = await rootBundle.loadString('assets/json_data/data.json');
-        await file.writeAsString(jsonString);
-      }
 
-      final List<dynamic> jsonData = json.decode(jsonString);
+
+    try {
+      // 1. Panggil getData() langsung dari class karena sudah static
+      // Tidak perlu simpan hasil initDB() ke variabel baru
+      final List<Map<String, dynamic>> data = await DatabaseHelp.getData();
+
       setState(() {
-        _expenses = jsonData.map((item) => ExpenseModel.fromMap(item)).toList();
+        // 2. Konversi List<Map> menjadi List<ExpenseModel>
+        _expenses = data.map((item) => ExpenseModel.fromMap(item)).toList();
         _isLoading = false;
       });
+
     } catch (e) {
       print("Error loading data: $e");
       setState(() => _isLoading = false);
@@ -145,7 +176,9 @@ class _ListWithCardsState extends State<ListWithCards> {
         itemBuilder: (context, index) {
           // Kita balik urutannya agar data terbaru di atas
           final expense = _expenses[_expenses.length - 1 - index];
-          return CardList(expense: expense);
+          return CardList(expense: expense, 
+          onRefresh:  _loadData,
+          );
         },
       ),
     );
@@ -154,8 +187,9 @@ class _ListWithCardsState extends State<ListWithCards> {
 
 class CardList extends StatelessWidget {
   final ExpenseModel expense;
+  final VoidCallback onRefresh;
 
-  const CardList({super.key, required this.expense});
+  const CardList({super.key, required this.expense, required this.onRefresh});
 
   Color _getBackgroundColor() {
     switch (expense.type.toLowerCase()) {
@@ -190,20 +224,25 @@ class CardList extends StatelessWidget {
         return Icons.receipt_long;
     }
   }
+
   // BOX BUAT NGASIH LIAT BARANG2 NYA
   @override
   Widget build(BuildContext context) {
-    final double amountValue = double.tryParse(expense.amount.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0;
+    final double amountValue = double.tryParse(expense.amount.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; //Buat Format Hara ada titik titiknya
     final formatter = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp',
       decimalDigits: 0,
     );
     return GestureDetector(
-      // onDoubleTap: await Navigator.push(
-      //   context,
-      //   MaterialPageRoute(builder: (context)=> const ExpenseAddPage())
-      // ),
+      onDoubleTap: () async {
+        await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context)=> ExpenseEdit(expenseId:  expense.id)) // Gara gara const nya kontol
+        );
+
+        onRefresh();
+      },
       child: Container(
         margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 25),
         padding: const EdgeInsets.all(15),
