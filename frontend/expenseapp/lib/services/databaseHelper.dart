@@ -1,5 +1,6 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'mongoServices.dart';
 
 
 
@@ -35,15 +36,21 @@ class DatabaseHelp{
 
   static Future<int> insertData(String name, String amount, String date, String category, String type) async{
     final db = await initDB();
-    return await db.insert(
-      'my_table', 
-      {
+    final listShit = {
        'name' : name,
        'amount' : amount,
        'date' : date,
        'category' : category,
        'type' : type
-      },
+      };
+    final mongoData = Map<String, dynamic>.from(listShit);
+    try{
+      await Mongo.insertShit(mongoData);
+    }catch(e){
+      print('Nigga the upload aint sucess $e');
+    }
+    return await db.insert(
+      'my_table', listShit,
       conflictAlgorithm: ConflictAlgorithm.replace
     );
   }
