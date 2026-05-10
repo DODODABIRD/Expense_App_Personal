@@ -173,9 +173,9 @@ class _ListWithCardsState extends State<ListWithCards> {
       child: ListView.builder(
         padding: const EdgeInsets.only(bottom: 100),
         itemCount: _expenses.length,
-        itemBuilder: (context, index) {
+        itemBuilder: (context, dick) {
           // Kita balik urutannya agar data terbaru di atas
-          final expense = _expenses[_expenses.length - 1 - index];
+          final expense = _expenses[_expenses.length - 1 - dick];
           return CardList(expense: expense, 
           onRefresh:  _loadData,
           );

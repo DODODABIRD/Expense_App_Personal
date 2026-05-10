@@ -1,6 +1,7 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'mongoServices.dart';
+import 'NeonDBHelper.dart';
 
 
 
@@ -45,14 +46,22 @@ class DatabaseHelp{
       };
     final mongoData = Map<String, dynamic>.from(listShit);
     try{
-      await Mongo.insertShit(mongoData);
+      await Mongo.insertShit(mongoData,'user0');
     }catch(e){
       print('Nigga the upload aint sucess $e');
     }
-    return await db.insert(
+    final int insertId =  await db.insert(
       'my_table', listShit,
       conflictAlgorithm: ConflictAlgorithm.replace
     );
+
+    try{
+      sendExpenseToNeon(id:insertId, name: name, amount: amount, category: category, type: type, createdAt: date);
+    }catch(e){
+      print('the Upload aint working');
+    }
+
+    return insertId;
   }
 
 /* Update Logic
