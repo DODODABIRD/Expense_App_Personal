@@ -6,4 +6,6 @@ app.get('/', (req, res) => {
   res.send('API running');
 });
 
-export default app;
+export default function handler(req, res){
+  res.send("Expense API IS ALIVE");
+};
