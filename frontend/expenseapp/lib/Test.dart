@@ -43,13 +43,27 @@ Future<void> deleteUser(String id) async {
   print(response.body);
 }
 
-Future<void> createUser(String name) async {
+Future<void> createUser(
+  int localId,
+  String name,
+  String amount,
+  String category,
+  String type,
+  String date,
+) async {
   final url = Uri.parse('$baseUrl/users');
 
   final response = await http.post(
     url,
     headers: {'Content-Type': 'application/json'},
-    body: jsonEncode({"name": name}),
+    body: jsonEncode({
+      "localId": localId,
+      "name": name,
+      "amount": amount,
+      "category":category,
+      "type":type,
+      "date":date
+    }),
   );
 
   print(response.statusCode);
@@ -57,9 +71,9 @@ Future<void> createUser(String name) async {
 }
 
 void main() async {
-  for (int index = 0; index <=10; index++){
-    await createUser('Nigga $index');
+  for (int index = 0; index <= 10; index++) {
+    await createUser(index, 'Nigga $index', 'nigga', 'nigga', 'nigga', 'nigga');
   };
-  
+
   await getUsers();
 }

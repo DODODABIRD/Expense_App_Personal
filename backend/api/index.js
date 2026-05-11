@@ -21,14 +21,19 @@ async function connectDB() {
 // ✅ User Schema
 
 // TODO: Make the schema fit the expense schema
-const UserSchema = new mongoose.Schema(
+const ExpenseSchema = new mongoose.Schema(
   {
+    localId: { type: String, required: true},
     name: { type: String, required: true },
+    amount: {type: String, required: true},
+    category: {type: String, required: true},
+    type: {type: String, required: true},
+    date: {type: String, required: true}
   },
   { timestamps: true }
 );
 
-const User = mongoose.models.User || mongoose.model("nigga", UserSchema);
+const User = mongoose.models.User || mongoose.model("nigga", ExpenseSchema);
 
 
 app 
