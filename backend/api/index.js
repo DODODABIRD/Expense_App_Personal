@@ -23,7 +23,7 @@ async function connectDB() {
 // TODO: Make the schema fit the expense schema
 const ExpenseSchema = new mongoose.Schema(
   {
-    localId: { type: String, required: true},
+    localId: { type: String, unique: true,required: true},
     name: { type: String, required: true },
     amount: {type: String, required: true},
     category: {type: String, required: true},
@@ -95,5 +95,28 @@ app.delete("/api/users/:id", async (req, res) => {
   await User.findByIdAndDelete(req.params.id);
   res.json({ message: "Deleted" });
 });
+
+/**
+ * READ (one by localId)
+ * GET /api/users/local/:localId
+ */
+app.get("/api/users/local/:localId", async (req, res) => {
+  try {
+    await connectDB();
+
+    const user = await User.findOne({
+      localId: req.params.localId,
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: "Not found" });
+    }
+
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 module.exports = app;
