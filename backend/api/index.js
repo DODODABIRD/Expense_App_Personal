@@ -32,7 +32,7 @@ const User = mongoose.models.User || mongoose.model("User", UserSchema);
  * CREATE
  * POST /api/users
  */
-app.post("/users", async (req, res) => {
+app.post("/api/users", async (req, res) => {
   try {
     await connectDB();
     const user = await User.create(req.body);
@@ -46,7 +46,7 @@ app.post("/users", async (req, res) => {
  * READ (all)
  * GET /api/users
  */
-app.get("/users", async (req, res) => {
+app.get("/api/users", async (req, res) => {
   await connectDB();
   const users = await User.find();
   res.json(users);
@@ -56,7 +56,7 @@ app.get("/users", async (req, res) => {
  * READ (one)
  * GET /api/users/:id
  */
-app.get("/users/:id", async (req, res) => {
+app.get("/api/users/:id", async (req, res) => {
   await connectDB();
   const user = await User.findById(req.params.id);
   if (!user) return res.status(404).json({ message: "Not found" });
@@ -67,7 +67,7 @@ app.get("/users/:id", async (req, res) => {
  * UPDATE
  * PUT /api/users/:id
  */
-app.put("/users/:id", async (req, res) => {
+app.put("/api/users/:id", async (req, res) => {
   await connectDB();
   const user = await User.findByIdAndUpdate(
     req.params.id,
@@ -81,7 +81,7 @@ app.put("/users/:id", async (req, res) => {
  * DELETE
  * DELETE /api/users/:id
  */
-app.delete("/users/:id", async (req, res) => {
+app.delete("/api/users/:id", async (req, res) => {
   await connectDB();
   await User.findByIdAndDelete(req.params.id);
   res.json({ message: "Deleted" });
