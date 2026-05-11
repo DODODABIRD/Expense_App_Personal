@@ -19,6 +19,8 @@ async function connectDB() {
 }
 
 // ✅ User Schema
+
+// TODO: Make the schema fit the expense schema
 const UserSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
@@ -26,8 +28,10 @@ const UserSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const User = mongoose.models.User || mongoose.model("User", UserSchema);
+const User = mongoose.models.User || mongoose.model("nigga", UserSchema);
 
+
+app 
 /**
  * CREATE
  * POST /api/users
