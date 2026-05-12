@@ -63,18 +63,14 @@ function renderExpenses(expenses) {
     totalAmountDisplay.style.color = total >= 0 ? '#10b981' : '#ef4444';
 }
 
-function downloadCsv() {
+function downloadPdf() {
     if (!currentExpenses.length) {
         alert('No transactions to download');
         return;
     }
 
     let total = 0;
-    const rows = [
-        ['Date', 'Name', 'Category', 'Type', 'Amount']
-    ];
-
-    currentExpenses.forEach(expense => {
+    const rows = currentExpenses.map(expense => {
         const amount = parseFloat(expense.amount) || 0;
         if (expense.type === 'Expense') {
             total -= amount;
@@ -82,31 +78,39 @@ function downloadCsv() {
             total += amount;
         }
 
-        rows.push([
+        return [
             expense.date || '',
             expense.name || '',
             expense.category || '',
             expense.type || '',
-            formatCurrency(amount)
-        ]);
+            `${expense.type === 'Expense' ? '-' : '+'}${formatCurrency(Math.abs(amount))}`
+        ];
     });
 
-    rows.push([]);
-    rows.push(['', '', '', 'Total', formatCurrency(total)]);
+    const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
+    doc.setFontSize(18);
+    doc.text('Expense Transactions', 40, 40);
+    doc.setFontSize(11);
+    doc.text(`Generated: ${new Date().toLocaleDateString('id-ID')}`, 40, 60);
 
-    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `expenses_${new Date().toISOString().slice(0,10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    doc.autoTable({
+        startY: 80,
+        head: [[ 'Date', 'Name', 'Category', 'Type', 'Amount' ]],
+        body: rows,
+        foot: [[ '', '', '', 'Total', formatCurrency(total) ]],
+        styles: { fontSize: 10, cellPadding: 6 },
+        headStyles: { fillColor: [79, 70, 229], textColor: 255 },
+        footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [245, 245, 245] },
+        columnStyles: {
+            4: { halign: 'right' }
+        }
+    });
+
+    doc.save(`transactions_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
-downloadBtn.addEventListener('click', downloadCsv);
+downloadBtn.addEventListener('click', downloadPdf);
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();

@@ -1,7 +1,8 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
-import 'mongoServices.dart';
-import 'NeonDBHelper.dart';
+import 'ApiService.dart';
+// import 'mongoServices.dart';
+// import 'NeonDBHelper.dart';
 
 
 
@@ -44,22 +45,22 @@ class DatabaseHelp{
        'category' : category,
        'type' : type
       };
-    final mongoData = Map<String, dynamic>.from(listShit);
-    try{
-      await Mongo.insertShit(mongoData,'user0');
-    }catch(e){
-      print('Nigga the upload aint sucess $e');
-    }
+    
     final int insertId =  await db.insert(
       'my_table', listShit,
       conflictAlgorithm: ConflictAlgorithm.replace
     );
-
     try{
-      sendExpenseToNeon(id:insertId, name: name, amount: amount, category: category, type: type, createdAt: date);
+      Throw.createExpense(insertId, name, amount, category, type, date);
     }catch(e){
-      print('the Upload aint working');
+      print('No Connection Bitch');
     }
+
+    // try{
+    //   sendExpenseToNeon(id:insertId, name: name, amount: amount, category: category, type: type, createdAt: date);
+    // }catch(e){
+    //   print('the Upload aint working');
+    // }
 
     return insertId;
   }
@@ -87,6 +88,12 @@ class DatabaseHelp{
       'type':type,
     };
     db.update('my_table', _values, where: 'id = ?', whereArgs: [id]);
+
+    try{
+      Throw.updateUserByLocalId(id, name, amount, category, type);
+    }catch(e){
+      print('Nigga this shit aint updated');
+    }
   }
 
   static Future<List<Map<String, dynamic>>> getData() async {
@@ -101,6 +108,11 @@ class DatabaseHelp{
       print("Yo, that shit was a bussin move");
     }catch(e){
       print('Yo, that deletion shit wasnt a success');
+    }
+    try{
+      Throw.deleteUserByLocalId(id!);
+    }catch(e){
+      print('No connection dawg');
     }
   }
   
