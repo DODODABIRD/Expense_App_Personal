@@ -180,7 +180,101 @@ td {
 }
 
 @media (max-width: 640px) {
-    #expense-form {
+    .dashboard {
+        margin: 1rem auto;
+        padding: 0 0.5rem;
+    }
+
+    header {
         flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+        margin-bottom: 1rem;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .stat-card {
+        min-width: unset;
+        width: 100%;
+        padding: 1rem;
+    }
+
+    .stat-card .value {
+        font-size: 1.25rem;
+    }
+
+    section {
+        padding: 1rem;
+    }
+
+    h2 {
+        font-size: 1.125rem;
+        margin-bottom: 1rem;
+    }
+
+    .list-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .list-header > div {
+        display: flex;
+        gap: 0.5rem;
+        width: 100%;
+    }
+
+    .btn-secondary {
+        flex: 1;
+        padding: 0.75rem;
+        font-size: 0.875rem;
+    }
+
+    /* Mobile table as cards */
+    .table-responsive {
+        overflow-x: visible;
+    }
+
+    table {
+        display: none;
+    }
+
+    .mobile-cards {
+        display: block;
+    }
+
+    .mobile-cards .card {
+        background: var(--card-bg);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .mobile-cards .card-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 0.5rem;
+    }
+
+    .mobile-cards .card-row:last-child {
+        margin-bottom: 0;
+    }
+
+    .mobile-cards .label {
+        font-weight: 500;
+        color: var(--text-muted);
+    }
+
+    .mobile-cards .value {
+        font-weight: 600;
+    }
+
+    .mobile-cards .amount {
+        color: inherit;
     }
 }

@@ -1,5 +1,6 @@
 const form = document.getElementById('expense-form');
 const list = document.getElementById('expense-list');
+const mobileCards = document.getElementById('mobile-cards');
 const totalAmountDisplay = document.getElementById('total-amount');
 const refreshBtn = document.getElementById('refresh-btn');
 const downloadBtn = document.getElementById('download-btn');
@@ -27,6 +28,7 @@ async function fetchExpenses() {
 
 function renderExpenses(expenses) {
     list.innerHTML = '';
+    mobileCards.innerHTML = '';
     let total = 0;
 
     // Sort by date descending if possible
@@ -45,6 +47,7 @@ function renderExpenses(expenses) {
             total += amount;
         }
 
+        // Table row
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${date}</td>
@@ -56,6 +59,35 @@ function renderExpenses(expenses) {
             </td>
         `;
         list.appendChild(tr);
+
+        // Mobile card
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+            <div class="card-row">
+                <span class="label">Date:</span>
+                <span class="value">${date}</span>
+            </div>
+            <div class="card-row">
+                <span class="label">Name:</span>
+                <span class="value">${name}</span>
+            </div>
+            <div class="card-row">
+                <span class="label">Category:</span>
+                <span class="value">${category}</span>
+            </div>
+            <div class="card-row">
+                <span class="label">Type:</span>
+                <span class="value">${type}</span>
+            </div>
+            <div class="card-row">
+                <span class="label">Amount:</span>
+                <span class="value amount" style="color: ${type === 'Expense' ? '#ef4444' : '#10b981'}">
+                    ${type === 'Expense' ? '-' : '+'}${formatCurrency(Math.abs(amount))}
+                </span>
+            </div>
+        `;
+        mobileCards.appendChild(card);
     });
 
     currentExpenses = sortedExpenses;
