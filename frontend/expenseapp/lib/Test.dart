@@ -122,6 +122,9 @@ void main() async {
   //   await createUser(index, 'Nigga $index', 'nigga', 'nigga', 'nigga', 'nigga');
   // };
 
-  deleteUserByLocalId(1);
+  for (int index = 0; index<=10; index++){
+    deleteUserByLocalId(index);
+
+  }
   await getUsers();
 }
