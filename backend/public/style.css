@@ -175,8 +175,8 @@ td {
     font-size: 0.875rem;
 }
 
-.delete-btn:hover {
-    text-decoration: underline;
+.mobile-cards {
+    display: none;
 }
 
 @media (max-width: 640px) {
