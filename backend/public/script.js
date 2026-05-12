@@ -28,7 +28,6 @@ function renderExpenses(expenses) {
         const date = expense.date || 'N/A';
         const category = expense.category || 'General';
         const type = expense.type || 'Expense';
-        const id = expense._id;
 
         if (type === 'Expense') {
             total -= amount;
@@ -39,15 +38,11 @@ function renderExpenses(expenses) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
             <td>${date}</td>
-            <td>
-                <div><strong>${name}</strong></div>
-                <small style="color: #64748b">${category} • ${type}</small>
-            </td>
+            <td>${name}</td>
+            <td>${category}</td>
+            <td>${type}</td>
             <td class="amount" style="color: ${type === 'Expense' ? '#ef4444' : '#10b981'}">
                 ${type === 'Expense' ? '-' : '+'}$${Math.abs(amount).toFixed(2)}
-            </td>
-            <td>
-                <button class="delete-btn" onclick="deleteExpense('${id}')">Delete</button>
             </td>
         `;
         list.appendChild(tr);
@@ -57,27 +52,13 @@ function renderExpenses(expenses) {
     totalAmountDisplay.style.color = total >= 0 ? '#10b981' : '#ef4444';
 }
 
-async function deleteExpense(id) {
-    if (!confirm('Are you sure you want to delete this?')) return;
-
-    try {
-        const response = await fetch(`/api/users/${id}`, { method: 'DELETE' });
-        if (response.ok) {
-            fetchExpenses();
-        } else {
-            alert('Failed to delete');
-        }
-    } catch (error) {
-        console.error('Error deleting:', error);
-    }
-}
-
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const name = document.getElementById('name').value;
     const amount = document.getElementById('amount').value;
     const category = document.getElementById('category').value;
     const type = document.getElementById('type').value;
+    const date = document.getElementById('date').value;
     
     const payload = {
         localId: Date.now().toString(),
@@ -85,7 +66,7 @@ form.addEventListener('submit', async (e) => {
         amount: amount.toString(),
         category: category,
         type: type,
-        date: new Date().toISOString().split('T')[0]
+        date: date || new Date().toISOString().split('T')[0]
     };
 
     try {
