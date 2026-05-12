@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:sqflite/sqflite.dart';
 import '../services/databaseHelper.dart';
-import '../services/NeonDBHelper.dart';
+// import '../services/NeonDBHelper.dart';
 
 class ExpenseEdit extends StatefulWidget {
   final int? expenseId;
@@ -36,6 +36,7 @@ class _ExpenseEditState extends State<ExpenseEdit> {
           _amountController.text = data['amount'] ?? '';
           _selectedCategory = data['category'] ?? 'makanan';
           _selectedType = data['type'] ?? 'expected';
+          _selectedDate = data['date'] != null ? DateTime.parse(data['date']) : DateTime.now();
         });
       }
     } catch (e) {
@@ -313,7 +314,7 @@ class _ExpenseEditState extends State<ExpenseEdit> {
     );
 
     try {
-      await DatabaseHelp.updateTs(widget.expenseId, _nameController.text,_amountController.text, _selectedCategory, _selectedType);
+      await DatabaseHelp.updateTs(widget.expenseId, _nameController.text,_amountController.text, _selectedCategory, _selectedType, "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}");
       print("Berhasil Di Update");
       if (mounted) Navigator.pop(context); // Untuk show loading
       ScaffoldMessenger.of(context).showSnackBar(

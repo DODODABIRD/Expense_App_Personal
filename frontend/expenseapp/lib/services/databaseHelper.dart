@@ -79,6 +79,7 @@ class DatabaseHelp{
         String amount,
         String category,
         String type,
+        String date
     ) async{
     final db = await initDB();
     final Map<String,dynamic> _values = {
@@ -86,16 +87,18 @@ class DatabaseHelp{
       'amount':amount,
       'category':category,
       'type':type,
+      'date':date
     };
     db.update('my_table', _values, where: 'id = ?', whereArgs: [id]);
 
     try{
-      Throw.updateUserByLocalId(id, name, amount, category, type);
+      Throw.updateUserByLocalId(id, name, amount, category, type,date);
     }catch(e){
       print('Nigga this shit aint updated');
     }
   }
 
+  // TODO: Add conflict algorithm
   static Future<List<Map<String, dynamic>>> getData() async {
     final db = await initDB();
     return await db.query('my_table');

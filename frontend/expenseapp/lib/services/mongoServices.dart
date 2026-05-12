@@ -1,7 +1,7 @@
 //mongodb+srv://orlando:<db_password>@do2d.ypoboeu.mongodb.net/?appName=Do2d
 
 import 'package:mongo_dart/mongo_dart.dart';
-import 'package:path/path.dart';
+// import 'package:path/path.dart';
 
 class Mongo{
   static Future<void> insertShit(Map<String,dynamic> tshit, String userName) async{

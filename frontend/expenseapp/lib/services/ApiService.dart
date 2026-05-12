@@ -58,7 +58,7 @@ class Throw {
     return null;
   }
 
-  static Future<void> updateUserByLocalId(int? localId, String name, String amount, String category, String type) async {
+  static Future<void> updateUserByLocalId(int? localId, String name, String amount, String category, String type, String date) async {
     final mongoId = await getMongoIdFromLocalId(localId!);
 
     if (mongoId == null) return;
@@ -73,6 +73,7 @@ class Throw {
         "amount": amount,
         "category": category,
         "type": type,
+        "date":date,
       }),
     );
 
