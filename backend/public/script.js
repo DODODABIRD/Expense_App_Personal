@@ -110,47 +110,53 @@ function downloadPdf() {
     doc.save(`transactions_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
-downloadBtn.addEventListener('click', downloadPdf);
+if (downloadBtn) {
+    downloadBtn.addEventListener('click', downloadPdf);
+}
 
-form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const name = document.getElementById('name').value;
-    const amount = document.getElementById('amount').value;
-    const category = document.getElementById('category').value;
-    const type = document.getElementById('type').value;
-    const date = document.getElementById('date').value;
-    
-    const payload = {
-        localId: Date.now().toString(),
-        name: name,
-        amount: amount.toString(),
-        category: category,
-        type: type,
-        date: date || new Date().toISOString().split('T')[0]
-    };
+if (form) {
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const name = document.getElementById('name').value;
+        const amount = document.getElementById('amount').value;
+        const category = document.getElementById('category').value;
+        const type = document.getElementById('type').value;
+        const date = document.getElementById('date').value;
+        
+        const payload = {
+            localId: Date.now().toString(),
+            name: name,
+            amount: amount.toString(),
+            category: category,
+            type: type,
+            date: date || new Date().toISOString().split('T')[0]
+        };
 
-    try {
-        const response = await fetch('/api/users', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
+        try {
+            const response = await fetch('/api/users', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
 
-        if (response.ok) {
-            form.reset();
-            fetchExpenses();
-        } else {
-            const err = await response.json();
-            alert('Failed to add: ' + (err.error || 'Unknown error'));
+            if (response.ok) {
+                form.reset();
+                fetchExpenses();
+            } else {
+                const err = await response.json();
+                alert('Failed to add: ' + (err.error || 'Unknown error'));
+            }
+        } catch (error) {
+            console.error('Error adding:', error);
         }
-    } catch (error) {
-        console.error('Error adding:', error);
-    }
-});
+    });
+}
 
-refreshBtn.addEventListener('click', fetchExpenses);
+if (refreshBtn) {
+    refreshBtn.addEventListener('click', fetchExpenses);
+}
 
 // Initial fetch
 fetchExpenses();
