@@ -89,7 +89,7 @@ function downloadPdf() {
 
     const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
     doc.setFontSize(18);
-    doc.text('Expense Transactions', 40, 40);
+    doc.text('Pengeluaran Dodo', 40, 40);
     doc.setFontSize(11);
     doc.text(`Generated: ${new Date().toLocaleDateString('id-ID')}`, 40, 60);
 
@@ -107,7 +107,7 @@ function downloadPdf() {
         }
     });
 
-    doc.save(`transactions_${new Date().toISOString().slice(0,10)}.pdf`);
+    doc.save(`Pengeluaran_Dodo_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
 if (downloadBtn) {
