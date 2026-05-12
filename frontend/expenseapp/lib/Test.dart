@@ -119,7 +119,7 @@ Future<void> createUser(
 
 void main() async {
   for (int index = 0; index <= 10; index++) {
-    await createUser(index, 'Nigga $index', 'nigga', 'nigga', 'nigga', 'nigga');
+    await createUser(index, 'Nigga $index', '4', 'nigga', 'nigga', 'nigga');
   };
 
   // for (int index = 0; index<=10; index++){

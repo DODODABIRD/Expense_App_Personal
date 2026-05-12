@@ -27,7 +27,7 @@
                         <input type="text" id="name" placeholder="Name (e.g. Lunch)" required>
                     </div>
                     <div class="form-group">
-                        <input type="number" id="amount" placeholder="Amount (0.00)" required step="0.01">
+                        <input type="number" id="amount" placeholder="Amount (10000)" required step="100">
                     </div>
                     <div class="form-group">
                         <select id="category" required style="width: 100%; padding: 0.625rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
@@ -54,7 +54,10 @@
             <section class="expense-list-container">
                 <div class="list-header">
                     <h2>Recent Transactions</h2>
-                    <button id="refresh-btn" class="btn-secondary">Refresh</button>
+                    <div>
+                        <button id="download-btn" class="btn-secondary">Download CSV</button>
+                        <button id="refresh-btn" class="btn-secondary">Refresh</button>
+                    </div>
                 </div>
                 <div class="table-responsive">
                     <table id="expense-table">

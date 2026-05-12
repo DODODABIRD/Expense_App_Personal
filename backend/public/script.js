@@ -2,6 +2,16 @@ const form = document.getElementById('expense-form');
 const list = document.getElementById('expense-list');
 const totalAmountDisplay = document.getElementById('total-amount');
 const refreshBtn = document.getElementById('refresh-btn');
+const downloadBtn = document.getElementById('download-btn');
+let currentExpenses = [];
+
+function formatCurrency(value) {
+    return new Intl.NumberFormat('id-ID', {
+        style: 'currency',
+        currency: 'IDR',
+        maximumFractionDigits: 0
+    }).format(value);
+}
 
 async function fetchExpenses() {
     try {
@@ -42,15 +52,61 @@ function renderExpenses(expenses) {
             <td>${category}</td>
             <td>${type}</td>
             <td class="amount" style="color: ${type === 'Expense' ? '#ef4444' : '#10b981'}">
-                ${type === 'Expense' ? '-' : '+'}$${Math.abs(amount).toFixed(2)}
+                ${type === 'Expense' ? '-' : '+'}${formatCurrency(Math.abs(amount))}
             </td>
         `;
         list.appendChild(tr);
     });
 
-    totalAmountDisplay.textContent = `$${total.toFixed(2)}`;
+    currentExpenses = sortedExpenses;
+    totalAmountDisplay.textContent = formatCurrency(total);
     totalAmountDisplay.style.color = total >= 0 ? '#10b981' : '#ef4444';
 }
+
+function downloadCsv() {
+    if (!currentExpenses.length) {
+        alert('No transactions to download');
+        return;
+    }
+
+    let total = 0;
+    const rows = [
+        ['Date', 'Name', 'Category', 'Type', 'Amount']
+    ];
+
+    currentExpenses.forEach(expense => {
+        const amount = parseFloat(expense.amount) || 0;
+        if (expense.type === 'Expense') {
+            total -= amount;
+        } else {
+            total += amount;
+        }
+
+        rows.push([
+            expense.date || '',
+            expense.name || '',
+            expense.category || '',
+            expense.type || '',
+            formatCurrency(amount)
+        ]);
+    });
+
+    rows.push([]);
+    rows.push(['', '', '', 'Total', formatCurrency(total)]);
+
+    const csv = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `expenses_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+downloadBtn.addEventListener('click', downloadCsv);
 
 form.addEventListener('submit', async (e) => {
     e.preventDefault();
