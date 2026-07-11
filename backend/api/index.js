@@ -18,8 +18,13 @@ async function connectDB() {
   isConnected = true;
 }
 
-// ✅ User Schema
+// TODO: 
+// Bikin collection nya punya user id 
+// Collection nya cuma satu aja supaya bisa di scaling
 
+
+// User ID String, unique, foreign key
+//
 // TODO: Make the schema fit the expense schema
 const ExpenseSchema = new mongoose.Schema(
   {
