@@ -392,6 +392,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.17.4"
+  objectid:
+    dependency: "direct main"
+    description:
+      name: objectid
+      sha256: f6cea8360862c78b1984cc8f497e484aa7f491282f7f4e4bd2f722bc85f93237
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.3"
   objective_c:
     dependency: transitive
     description:

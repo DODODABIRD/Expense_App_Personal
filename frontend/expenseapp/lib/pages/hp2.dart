@@ -78,12 +78,12 @@ class HomePage2 extends StatelessWidget {
 class ExpenseModel {
   final int? id;
   final String name;
-  final String amount;
-  final String date;
+  final int amount;
+  final DateTime date;
   final String category;
   final String type;
-  ExpenseModel({
 
+  ExpenseModel({
     this.id,
     required this.name,
     required this.amount,
@@ -92,23 +92,27 @@ class ExpenseModel {
     required this.type,
   });
 
-  factory ExpenseModel.fromMap(Map<String, dynamic> map) { // Convert dari objek database ke objek flutter
+  factory ExpenseModel.fromMap(Map<String, dynamic> map) {
     return ExpenseModel(
-      id: map['id'],
+      id: map['id'] as int?,
       name: map['name'] ?? 'Unknown',
-      amount: map['amount']?.toString() ?? '0',
-      date: map['date'] ?? '',
+      amount: map['amount'] is int
+          ? map['amount'] as int
+          : int.tryParse(map['amount']?.toString() ?? '0') ?? 0,
+      date: map['date'] != null
+          ? DateTime.tryParse(map['date'].toString()) ?? DateTime.now()
+          : DateTime.now(),
       category: map['category'] ?? 'general',
       type: map['type'] ?? 'expected',
     );
   }
 
-  Map<String, dynamic> toMap() { // Convert Dari Objek Flutter ke objek DAtabase
+  Map<String, dynamic> toMap() {
     return {
-      'id' : id,
+      'id': id,
       'name': name,
       'amount': amount,
-      'date': date,
+      'date': date.toIso8601String().substring(0, 10),
       'category': category,
       'type': type,
     };
@@ -123,6 +127,7 @@ class ListWithCards extends StatefulWidget {
 class _ListWithCardsState extends State<ListWithCards> {
   List<ExpenseModel> _expenses = [];
   bool _isLoading = true;
+  ExpenseSort _sort = ExpenseSort.dateNewest;
 
   @override
   void initState() {
@@ -157,6 +162,25 @@ class _ListWithCardsState extends State<ListWithCards> {
     }
   }
 
+  List<ExpenseModel> get _sortedExpenses {
+    final result = [..._expenses];
+
+    result.sort((a, b) {
+      switch (_sort) {
+        case ExpenseSort.dateNewest:
+          return b.date.compareTo(a.date);
+        case ExpenseSort.dateOldest:
+          return a.date.compareTo(b.date);
+        case ExpenseSort.amountHighest:
+          return b.amount.compareTo(a.amount);
+        case ExpenseSort.amountLowest:
+          return a.amount.compareTo(b.amount);
+      }
+    });
+
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
 
@@ -168,19 +192,57 @@ class _ListWithCardsState extends State<ListWithCards> {
       return const Center(child: Text('Data Kosong'));
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: ListView.builder(
-        padding: const EdgeInsets.only(bottom: 100),
-        itemCount: _expenses.length,
-        itemBuilder: (context, dick) {
-          // Kita balik urutannya agar data terbaru di atas
-          final expense = _expenses[_expenses.length - 1 - dick];
-          return CardList(expense: expense, 
-          onRefresh:  _loadData,
-          );
-        },
-      ),
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
+          child: DropdownButtonFormField<ExpenseSort>(
+            value: _sort,
+            decoration: const InputDecoration(
+              labelText: 'Sort expenses',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: ExpenseSort.dateNewest,
+                child: Text('Newest date'),
+              ),
+              DropdownMenuItem(
+                value: ExpenseSort.dateOldest,
+                child: Text('Oldest date'),
+              ),
+              DropdownMenuItem(
+                value: ExpenseSort.amountHighest,
+                child: Text('Highest amount'),
+              ),
+              DropdownMenuItem(
+                value: ExpenseSort.amountLowest,
+                child: Text('Lowest amount'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                setState(() => _sort = value);
+              }
+            },
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: _loadData,
+            child: ListView.builder(
+              padding: const EdgeInsets.only(bottom: 100),
+              itemCount: _sortedExpenses.length,
+              itemBuilder: (context, index) {
+                return CardList(
+                  expense: _sortedExpenses[index],
+                  onRefresh: _loadData,
+                );
+              },
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -228,7 +290,7 @@ class CardList extends StatelessWidget {
   // BOX BUAT NGASIH LIAT BARANG2 NYA
   @override
   Widget build(BuildContext context) {
-    final double amountValue = double.tryParse(expense.amount.replaceAll(RegExp(r'[^0-9]'), '')) ?? 0; //Buat Format Hara ada titik titiknya
+    final amountValue = expense.amount;
     final formatter = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp',
@@ -286,7 +348,10 @@ class CardList extends StatelessWidget {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  Text(expense.date, style: GoogleFonts.itim(fontSize: 16)),
+                  Text(
+                    DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
+                    style: GoogleFonts.itim(fontSize: 16),
+                  ),
                 ],
               ),
             ),
@@ -343,4 +408,11 @@ class NeoAddButton extends StatelessWidget {
       ),
     );
   }
+}
+
+enum ExpenseSort {
+  dateNewest,
+  dateOldest,
+  amountHighest,
+  amountLowest,
 }

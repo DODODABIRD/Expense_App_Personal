@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'databaseHelper.dart';
 
 const String baseUrl = "https://expense-app-personal.vercel.app/api";
 
@@ -58,7 +59,14 @@ class Throw {
     return null;
   }
 
-  static Future<void> updateUserByLocalId(int? localId, String name, String amount, String category, String type, String date) async {
+  static Future<void> updateUserByLocalId(
+    int? localId,
+    String name,
+    int amount,        // ← Change from String to int
+    String category,
+    String type,
+    String date
+  ) async {
     final mongoId = await getMongoIdFromLocalId(localId!);
 
     if (mongoId == null) return;
@@ -73,7 +81,7 @@ class Throw {
         "amount": amount,
         "category": category,
         "type": type,
-        "date":date,
+        "date": date,
       }),
     );
 
@@ -97,28 +105,41 @@ class Throw {
   static Future<void> createExpense(
     int localId,
     String name,
-    String amount,
+    int amount,        // ← Change from String to int
     String category,
     String type,
     String date,
   ) async {
-    final url = Uri.parse('$baseUrl/users');
+    final url = Uri.parse('$baseUrl/expenses');
 
-    final response = await http.post(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        "localId": localId,
-        "name": name,
-        "amount": amount,
-        "category": category,
-        "type": type,
-        "date": date,
-      }),
-    );
+    try {
+      final response = await http.post(
+        url,
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          "localId": localId,
+          "name": name,
+          "amount": amount,
+          "category": category,
+          "type": type,
+          "date": date,
+        }),
+      );
 
-    print(response.statusCode);
-    print(response.body);
+      if (response.statusCode == 201 || response.statusCode == 200) {
+        final mongoResponse = jsonDecode(response.body);
+        final mongoId = mongoResponse['_id'];
+        
+        // ✅ Store mongoId back to SQLite
+        await DatabaseHelp.updateMongoId(localId, mongoId);
+      }
+
+      print(response.statusCode);
+      print(response.body);
+    } catch (e) {
+      print('Sync failed: $e');
+      // Expense stays local, marked as not synced
+    }
   }
 }
 

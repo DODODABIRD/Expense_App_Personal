@@ -314,9 +314,20 @@ class _ExpenseEditState extends State<ExpenseEdit> {
     );
 
     try {
-      await DatabaseHelp.updateTs(widget.expenseId, _nameController.text,_amountController.text, _selectedCategory, _selectedType, "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}");
+      final cleanAmount = int.tryParse(
+        _amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+      ) ?? 0;
+
+      await DatabaseHelp.updateTs(
+        widget.expenseId, 
+        _nameController.text, 
+        cleanAmount,  // ← Parse to int, not pass the controller
+        _selectedCategory, 
+        _selectedType, 
+        "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}"
+      );
       print("Berhasil Di Update");
-      if (mounted) Navigator.pop(context); // Untuk show loading
+      if (mounted) Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           backgroundColor: Colors.green,

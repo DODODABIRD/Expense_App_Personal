@@ -256,7 +256,11 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
     );
 
     try {
-      await DatabaseHelp.insertData(_nameController.text, _amountController.text, "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}", _selectedCategory, _selectedType);
+      final cleanAmount = int.tryParse(
+        _amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+      ) ?? 0;
+
+      await DatabaseHelp.insertData(_nameController.text, cleanAmount, "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}", _selectedCategory, _selectedType);
       print("Berhasil");
       if (mounted) Navigator.pop(context); // Untuk show loading
       ScaffoldMessenger.of(context).showSnackBar(

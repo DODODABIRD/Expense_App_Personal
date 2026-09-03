@@ -17,50 +17,58 @@ class DatabaseHelp{
     String path = join(await getDatabasesPath(), 'my_db.db'); // Basically, join itu menggabungkan dua string jadi satu. kayak naro di ujung gitu kayak print gitu
     _db = await openDatabase(
       path,
-      version: 1,
+      version: 3,  // ← Bump version
       onCreate: (db , version) async {
         await db.execute('''
               CREATE TABLE my_table (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                name TEXT,
-                amount TEXT,
-                date TEXT,
-                category TEXT,
-                type TEXT
+                mongoId TEXT,
+                name TEXT NOT NULL,
+                amount INTEGER NOT NULL,
+                date TEXT NOT NULL,
+                category TEXT NOT NULL,
+                type TEXT NOT NULL,
+                synced INTEGER DEFAULT 0
               )
           ''');
       },
-
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 3) {
+          await db.execute('ALTER TABLE my_table ADD COLUMN mongoId TEXT');
+          await db.execute('ALTER TABLE my_table ADD COLUMN synced INTEGER DEFAULT 0');
+        }
+      },
     );
 
     return _db!;
   }
 
-  static Future<int> insertData(String name, String amount, String date, String category, String type) async{
+  static Future<int> insertData(
+    String name,
+    int amount,
+    String date,
+    String category,
+    String type,
+  ) async {
     final db = await initDB();
-    final listShit = {
-       'name' : name,
-       'amount' : amount,
-       'date' : date,
-       'category' : category,
-       'type' : type
-      };
-    
-    final int insertId =  await db.insert(
-      'my_table', listShit,
-      conflictAlgorithm: ConflictAlgorithm.replace
+
+    final int insertId = await db.insert(
+      'my_table',
+      {
+        'name': name,
+        'amount': amount,
+        'date': date,
+        'category': category,
+        'type': type,
+      },
+      conflictAlgorithm: ConflictAlgorithm.replace,
     );
-    try{
+
+    try {
       Throw.createExpense(insertId, name, amount, category, type, date);
-    }catch(e){
+    } catch (e) {
       print('No Connection Bitch');
     }
-
-    // try{
-    //   sendExpenseToNeon(id:insertId, name: name, amount: amount, category: category, type: type, createdAt: date);
-    // }catch(e){
-    //   print('the Upload aint working');
-    // }
 
     return insertId;
   }
@@ -74,28 +82,45 @@ class DatabaseHelp{
 
 */
   static Future<void> updateTs(
-        int? id,
-        String name,
-        String amount,
-        String category,
-        String type,
-        String date
-    ) async{
+    int? id,
+    String name,
+    int amount,
+    String category,
+    String type,
+    String date,
+  ) async {
     final db = await initDB();
-    final Map<String,dynamic> _values = {
-      'name':name,
-      'amount':amount,
-      'category':category,
-      'type':type,
-      'date':date
-    };
-    db.update('my_table', _values, where: 'id = ?', whereArgs: [id]);
 
-    try{
-      Throw.updateUserByLocalId(id, name, amount, category, type,date);
-    }catch(e){
+    final Map<String, dynamic> values = {
+      'name': name,
+      'amount': amount,
+      'category': category,
+      'type': type,
+      'date': date,
+    };
+
+    await db.update(
+      'my_table',
+      values,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    try {
+      Throw.updateUserByLocalId(id, name, amount, category, type, date);
+    } catch (e) {
       print('Nigga this shit aint updated');
     }
+  }
+
+  static Future<void> updateMongoId(int localId, String mongoId) async {
+    final db = await initDB();
+    await db.update(
+      'my_table',
+      {'mongoId': mongoId, 'synced': 1},
+      where: 'id = ?',
+      whereArgs: [localId],
+    );
   }
 
   // TODO: Add conflict algorithm
