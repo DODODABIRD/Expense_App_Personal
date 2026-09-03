@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'ApiService.dart';
@@ -64,11 +65,7 @@ class DatabaseHelp{
       conflictAlgorithm: ConflictAlgorithm.replace,
     );
 
-    try {
-      Throw.createExpense(insertId, name, amount, category, type, date);
-    } catch (e) {
-      print('No Connection Bitch');
-    }
+    unawaited(Throw.createExpense(insertId, name, amount, category, type, date));
 
     return insertId;
   }
@@ -106,11 +103,20 @@ class DatabaseHelp{
       whereArgs: [id],
     );
 
-    try {
-      Throw.updateUserByLocalId(id, name, amount, category, type, date);
-    } catch (e) {
-      print('Nigga this shit aint updated');
-    }
+    await db.update(
+      'my_table',
+      {'synced': 0},
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    unawaited(
+      Throw.updateUserByLocalId(id, name, amount, category, type, date)
+          .catchError((error) {
+            print('Background update sync failed: $error');
+            return false;
+          }),
+    );
   }
 
   static Future<void> updateMongoId(int localId, String mongoId) async {
@@ -127,6 +133,15 @@ class DatabaseHelp{
   static Future<List<Map<String, dynamic>>> getData() async {
     final db = await initDB();
     return await db.query('my_table');
+  }
+
+  static Future<List<Map<String, dynamic>>> getUnsyncedData() async {
+    final db = await initDB();
+    return await db.query(
+      'my_table',
+      where: 'synced = ?',
+      whereArgs: [0],
+    );
   }
 
   static Future<void> deleteTs(int? id) async{

@@ -59,7 +59,7 @@ class Throw {
     return null;
   }
 
-  static Future<void> updateUserByLocalId(
+  static Future<bool> updateUserByLocalId(
     int? localId,
     String name,
     int amount,        // ← Change from String to int
@@ -69,24 +69,35 @@ class Throw {
   ) async {
     final mongoId = await getMongoIdFromLocalId(localId!);
 
-    if (mongoId == null) return;
+    if (mongoId == null) return false;
 
     final url = Uri.parse('$baseUrl/users/$mongoId');
 
-    final response = await http.put(
-      url,
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        "name": name,
-        "amount": amount,
-        "category": category,
-        "type": type,
-        "date": date,
-      }),
-    );
+    final response = await http
+        .put(
+          url,
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            "name": name,
+            "amount": amount,
+            "category": category,
+            "type": type,
+            "date": date,
+          }),
+        )
+        .timeout(const Duration(seconds: 10));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception(
+        'Update failed (${response.statusCode}): ${response.body}',
+      );
+    }
+
+    await DatabaseHelp.updateMongoId(localId!, mongoId);
 
     print(response.statusCode);
     print(response.body);
+    return true;
   }
 
   static Future<void> deleteUserByLocalId(int localId) async {
@@ -102,7 +113,7 @@ class Throw {
     print(response.body);
   }
 
-  static Future<void> createExpense(
+  static Future<bool> createExpense(
     int localId,
     String name,
     int amount,        // ← Change from String to int
@@ -110,35 +121,74 @@ class Throw {
     String type,
     String date,
   ) async {
-    final url = Uri.parse('$baseUrl/expenses');
+    final url = Uri.parse('$baseUrl/users');
 
     try {
-      final response = await http.post(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          "localId": localId,
-          "name": name,
-          "amount": amount,
-          "category": category,
-          "type": type,
-          "date": date,
-        }),
-      );
+      final response = await http
+          .post(
+            url,
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode({
+              "localId": localId,
+              "name": name,
+              "amount": amount,
+              "category": category,
+              "type": type,
+              "date": date,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
 
-      if (response.statusCode == 201 || response.statusCode == 200) {
-        final mongoResponse = jsonDecode(response.body);
-        final mongoId = mongoResponse['_id'];
-        
-        // ✅ Store mongoId back to SQLite
+      if (response.statusCode != 201 && response.statusCode != 200) {
+        throw Exception(
+          'Create failed (${response.statusCode}): ${response.body}',
+        );
+      }
+
+      final mongoResponse = jsonDecode(response.body) as Map<String, dynamic>;
+      final mongoId = mongoResponse['_id'] as String?;
+      if (mongoId != null) {
         await DatabaseHelp.updateMongoId(localId, mongoId);
       }
 
       print(response.statusCode);
       print(response.body);
+      return mongoId != null;
     } catch (e) {
       print('Sync failed: $e');
       // Expense stays local, marked as not synced
+      return false;
+    }
+  }
+
+  static Future<void> syncPendingExpenses() async {
+    final pendingExpenses = await DatabaseHelp.getUnsyncedData();
+
+    for (final expense in pendingExpenses) {
+      try {
+        final mongoId = expense['mongoId'] as String?;
+        if (mongoId == null || mongoId.isEmpty) {
+          await createExpense(
+            expense['id'] as int,
+            expense['name'] as String,
+            expense['amount'] as int,
+            expense['category'] as String,
+            expense['type'] as String,
+            expense['date'] as String,
+          );
+        } else {
+          await updateUserByLocalId(
+            expense['id'] as int,
+            expense['name'] as String,
+            expense['amount'] as int,
+            expense['category'] as String,
+            expense['type'] as String,
+            expense['date'] as String,
+          );
+        }
+      } catch (e) {
+        print('Pending sync failed: $e');
+      }
     }
   }
 }

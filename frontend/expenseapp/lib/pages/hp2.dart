@@ -1,8 +1,10 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'ExpenseAddPage.dart';
 import 'package:intl/intl.dart';
 import '../services/databaseHelper.dart';
+import '../services/ApiService.dart';
 import 'ExpenseEdit.dart';
 
 
@@ -55,21 +57,8 @@ class HomePage2 extends StatelessWidget {
 
   AppBar BarApp() {
     return AppBar(
-      toolbarHeight: 100,
+      toolbarHeight: 0,
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-      title: const Text('Expense Tracker'),
-      titleTextStyle: GoogleFonts.itim(
-        color: const Color.fromARGB(255, 0, 0, 0),
-        fontSize: 35,
-        fontWeight: FontWeight.bold,
-        shadows: <Shadow>[
-          const Shadow(
-            offset: Offset(5.0, 5.0),
-            blurRadius: 8.0,
-            color: Color.fromARGB(158, 0, 0, 0),
-          ),
-        ],
-      ),
       centerTitle: true,
     );
   }
@@ -124,21 +113,56 @@ class ListWithCards extends StatefulWidget {
   _ListWithCardsState createState() => _ListWithCardsState();
 }
 
-class _ListWithCardsState extends State<ListWithCards> {
+class _ListWithCardsState extends State<ListWithCards>
+  with WidgetsBindingObserver {
   List<ExpenseModel> _expenses = [];
   bool _isLoading = true;
   ExpenseSort _sort = ExpenseSort.dateNewest;
+  bool _isSyncing = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadData();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _syncPendingExpenses();
+    }
+  }
+
+  Future<void> _syncPendingExpenses() async {
+    if (_isSyncing) return;
+
+    _isSyncing = true;
+    try {
+      await Throw.syncPendingExpenses();
+
+      if (!mounted) return;
+
+      final data = await DatabaseHelp.getData();
+      setState(() {
+        _expenses = data.map((item) => ExpenseModel.fromMap(item)).toList();
+      });
+    } finally {
+      _isSyncing = false;
+    }
   }
 
   Future<void> _loadData() async {
     setState(() => _isLoading = true);
     try {
       await DatabaseHelp.initDB();
+      unawaited(_syncPendingExpenses());
     } catch(e){
       print("Nigga The Database Aint Initialized");
     }
@@ -195,36 +219,59 @@ class _ListWithCardsState extends State<ListWithCards> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 10),
-          child: DropdownButtonFormField<ExpenseSort>(
-            value: _sort,
-            decoration: const InputDecoration(
-              labelText: 'Sort expenses',
-              border: OutlineInputBorder(),
-            ),
-            items: const [
-              DropdownMenuItem(
-                value: ExpenseSort.dateNewest,
-                child: Text('Newest date'),
+          padding: const EdgeInsets.fromLTRB(25, 8, 25, 4),
+          child: Row(
+            children: [
+              const Icon(Icons.sort, size: 22),
+              const SizedBox(width: 8),
+              Text(
+                'Sort by',
+                style: GoogleFonts.itim(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              DropdownMenuItem(
-                value: ExpenseSort.dateOldest,
-                child: Text('Oldest date'),
-              ),
-              DropdownMenuItem(
-                value: ExpenseSort.amountHighest,
-                child: Text('Highest amount'),
-              ),
-              DropdownMenuItem(
-                value: ExpenseSort.amountLowest,
-                child: Text('Lowest amount'),
+              const Spacer(),
+              Container(
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF5F5F5),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black, width: 2),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<ExpenseSort>(
+                    value: _sort,
+                    isDense: true,
+                    icon: const Icon(Icons.keyboard_arrow_down),
+                    items: const [
+                      DropdownMenuItem(
+                        value: ExpenseSort.dateNewest,
+                        child: Text('Newest'),
+                      ),
+                      DropdownMenuItem(
+                        value: ExpenseSort.dateOldest,
+                        child: Text('Oldest'),
+                      ),
+                      DropdownMenuItem(
+                        value: ExpenseSort.amountHighest,
+                        child: Text('Highest'),
+                      ),
+                      DropdownMenuItem(
+                        value: ExpenseSort.amountLowest,
+                        child: Text('Lowest'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => _sort = value);
+                      }
+                    },
+                  ),
+                ),
               ),
             ],
-            onChanged: (value) {
-              if (value != null) {
-                setState(() => _sort = value);
-              }
-            },
           ),
         ),
         Expanded(
@@ -296,16 +343,7 @@ class CardList extends StatelessWidget {
       symbol: 'Rp',
       decimalDigits: 0,
     );
-    return GestureDetector(
-      onDoubleTap: () async {
-        await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context)=> ExpenseEdit(expenseId:  expense.id)) // Gara gara const nya kontol
-        );
-
-        onRefresh();
-      },
-      child: Container(
+    return Container(
         margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 25),
         padding: const EdgeInsets.all(15),
         decoration: BoxDecoration(
@@ -316,48 +354,74 @@ class CardList extends StatelessWidget {
             BoxShadow(color: Colors.black, blurRadius: 0, offset: Offset(8, 8)),
           ],
         ),
-        child: Row(
+        child: Stack(
           children: [
-            Container(
-              width: 70,
-              height: 70,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(15),
-                border: Border.all(color: Colors.black, width: 2),
-              ),
-              child: Icon(_getCategoryIcon(), color: Colors.black, size: 35),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            Padding(
+              padding: const EdgeInsets.only(right: 40),
+              child: Row(
                 children: [
-                  Text(
-                    expense.name,
-                    style: GoogleFonts.itim(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black,
+                  Container(
+                    width: 70,
+                    height: 70,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: Colors.black, width: 2),
                     ),
+                    child: Icon(_getCategoryIcon(), color: Colors.black, size: 35),
                   ),
-                  Text(
-                    formatter.format(amountValue).replaceAll(',', '.'),
-                    style: GoogleFonts.itim(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(width: 20),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          expense.name,
+                          style: GoogleFonts.itim(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                        Text(
+                          formatter.format(amountValue).replaceAll(',', '.'),
+                          style: GoogleFonts.itim(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        Text(
+                          DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
+                          style: GoogleFonts.itim(fontSize: 16),
+                        ),
+                      ],
                     ),
-                  ),
-                  Text(
-                    DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
-                    style: GoogleFonts.itim(fontSize: 16),
                   ),
                 ],
               ),
             ),
+            Positioned(
+              right: -8,
+              bottom: -8,
+              child: IconButton(
+                tooltip: 'Edit expense',
+                icon: const Icon(Icons.edit, color: Colors.black),
+                onPressed: () async {
+                  await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => ExpenseEdit(
+                        expenseId: expense.id,
+                      ),
+                    ),
+                  );
+
+                  onRefresh();
+                },
+              ),
+            ),
           ],
         ),
-      ),
     );
   }
 }
