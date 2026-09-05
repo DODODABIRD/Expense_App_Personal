@@ -6,21 +6,23 @@ import 'auth_service.dart';
 // import 'mongoServices.dart';
 // import 'NeonDBHelper.dart';
 
-
-
-class DatabaseHelp{
+class DatabaseHelp {
   static Database? _db;
 
   DatabaseHelp._privateConstructor();
   static final DatabaseHelp instance = DatabaseHelp._privateConstructor();
   //Inisialisasi Database
   static Future<Database> initDB() async {
-    if (_db != null) return _db!; // Kalau database udah ada langsung return database
-    String path = join(await getDatabasesPath(), 'my_db.db'); // Basically, join itu menggabungkan dua string jadi satu. kayak naro di ujung gitu kayak print gitu
+    if (_db != null)
+      return _db!; // Kalau database udah ada langsung return database
+    String path = join(
+      await getDatabasesPath(),
+      'my_db.db',
+    ); // Basically, join itu menggabungkan dua string jadi satu. kayak naro di ujung gitu kayak print gitu
     _db = await openDatabase(
       path,
-      version: 4,
-      onCreate: (db , version) async {
+      version: 5,
+      onCreate: (db, version) async {
         await db.execute('''
               CREATE TABLE my_table (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,14 +36,30 @@ class DatabaseHelp{
                 synced INTEGER DEFAULT 0
               )
           ''');
+        await db.execute('''
+          CREATE TABLE app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL
+          )
+        ''');
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
           await db.execute('ALTER TABLE my_table ADD COLUMN mongoId TEXT');
-          await db.execute('ALTER TABLE my_table ADD COLUMN synced INTEGER DEFAULT 0');
+          await db.execute(
+            'ALTER TABLE my_table ADD COLUMN synced INTEGER DEFAULT 0',
+          );
         }
         if (oldVersion < 4) {
           await db.execute('ALTER TABLE my_table ADD COLUMN ownerId TEXT');
+        }
+        if (oldVersion < 5) {
+          await db.execute('''
+            CREATE TABLE app_settings (
+              key TEXT PRIMARY KEY,
+              value TEXT NOT NULL
+            )
+          ''');
         }
       },
     );
@@ -54,11 +72,49 @@ class DatabaseHelp{
     if (userId == null) return;
 
     final db = await initDB();
-    await db.update(
-      'my_table',
-      {'ownerId': userId},
-      where: 'ownerId IS NULL',
+    await db.update('my_table', {'ownerId': userId}, where: 'ownerId IS NULL');
+  }
+
+  static Future<double?> getCachedExchangeRate(String currency) async {
+    final db = await initDB();
+    final rows = await db.query(
+      'app_settings',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: ['rate_$currency'],
+      limit: 1,
     );
+    return rows.isEmpty
+        ? null
+        : double.tryParse(rows.first['value'].toString());
+  }
+
+  static Future<String?> getSetting(String key) async {
+    final db = await initDB();
+    final rows = await db.query(
+      'app_settings',
+      columns: ['value'],
+      where: 'key = ?',
+      whereArgs: [key],
+      limit: 1,
+    );
+    return rows.isEmpty ? null : rows.first['value']?.toString();
+  }
+
+  static Future<void> setSetting(String key, String value) async {
+    final db = await initDB();
+    await db.insert('app_settings', {
+      'key': key,
+      'value': value,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  static Future<void> cacheExchangeRate(String currency, double rate) async {
+    final db = await initDB();
+    await db.insert('app_settings', {
+      'key': 'rate_$currency',
+      'value': rate.toString(),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   static Future<int> insertData(
@@ -70,25 +126,23 @@ class DatabaseHelp{
   ) async {
     final db = await initDB();
 
-    final int insertId = await db.insert(
-      'my_table',
-      {
-        'ownerId': AuthService.currentUser?.uid,
-        'name': name,
-        'amount': amount,
-        'date': date,
-        'category': category,
-        'type': type,
-      },
-      conflictAlgorithm: ConflictAlgorithm.replace,
-    );
+    final int insertId = await db.insert('my_table', {
+      'ownerId': AuthService.currentUser?.uid,
+      'name': name,
+      'amount': amount,
+      'date': date,
+      'category': category,
+      'type': type,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
 
-    unawaited(Throw.createExpense(insertId, name, amount, category, type, date));
+    unawaited(
+      Throw.createExpense(insertId, name, amount, category, type, date),
+    );
 
     return insertId;
   }
 
-/* Update Logic
+  /* Update Logic
   Get new name, new amount, new category, new type;
   New Date = Old Date;
   New Id = Old ID
@@ -129,11 +183,17 @@ class DatabaseHelp{
     );
 
     unawaited(
-      Throw.updateUserByLocalId(id, name, amount, category, type, date)
-          .catchError((error) {
-            print('Background update sync failed: $error');
-            return false;
-          }),
+      Throw.updateUserByLocalId(
+        id,
+        name,
+        amount,
+        category,
+        type,
+        date,
+      ).catchError((error) {
+        print('Background update sync failed: $error');
+        return false;
+      }),
     );
   }
 
@@ -166,24 +226,46 @@ class DatabaseHelp{
     );
   }
 
-  static Future<void> deleteTs(int? id) async{
+  static Future<void> deleteTs(int? id) async {
     final db = await initDB();
-    try{
+    try {
       db.delete(
         'my_table',
         where: 'id = ? AND ownerId = ?',
         whereArgs: [id, AuthService.currentUser?.uid],
       );
       print("Yo, that shit was a bussin move");
-    }catch(e){
+    } catch (e) {
       print('Yo, that deletion shit wasnt a success');
     }
-    try{
+    try {
       Throw.deleteUserByLocalId(id!);
-    }catch(e){
+    } catch (e) {
       print('No connection dawg');
     }
   }
-  
-}
 
+  static Future<void> deleteAllForCurrentUser() async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return;
+
+    final db = await initDB();
+    final expenses = await db.query(
+      'my_table',
+      columns: ['id'],
+      where: 'ownerId = ?',
+      whereArgs: [userId],
+    );
+
+    for (final expense in expenses) {
+      final localId = expense['id'] as int;
+      try {
+        await Throw.deleteUserByLocalId(localId);
+      } catch (_) {
+        // The local delete should still complete when the API is unavailable.
+      }
+    }
+
+    await db.delete('my_table', where: 'ownerId = ?', whereArgs: [userId]);
+  }
+}

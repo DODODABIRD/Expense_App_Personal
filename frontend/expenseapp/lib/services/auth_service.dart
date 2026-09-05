@@ -23,6 +23,31 @@ class AuthService {
 
   static Future<void> signOut() => _auth.signOut();
 
+  static Future<void> updatePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('You must be signed in');
+    final email = user.email;
+    if (email == null) {
+      throw StateError('No email address is associated with this account');
+    }
+
+    final credential = EmailAuthProvider.credential(
+      email: email,
+      password: oldPassword,
+    );
+    await user.reauthenticateWithCredential(credential);
+    await user.updatePassword(newPassword);
+  }
+
+  static Future<void> deleteAccount() async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('You must be signed in');
+    await user.delete();
+  }
+
   static Future<String> getIdToken() async {
     final user = _auth.currentUser;
     if (user == null) throw StateError('You must be signed in');

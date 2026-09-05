@@ -1,6 +1,14 @@
 import 'dart:async';
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:media_store_plus/media_store_plus.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:path_provider/path_provider.dart';
+import '../main.dart';
 import 'ExpenseAddPage.dart';
 import 'package:intl/intl.dart';
 import '../services/databaseHelper.dart';
@@ -8,10 +16,7 @@ import '../services/ApiService.dart';
 import 'ExpenseEdit.dart';
 import '../services/auth_service.dart';
 
-
-
 // FIXME
-
 
 /*
 Database Logic
@@ -29,46 +34,817 @@ Else
 
 */
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-class HomePage2 extends StatelessWidget {
+class HomePage2 extends StatefulWidget {
   const HomePage2({super.key});
 
   @override
+  State<HomePage2> createState() => _HomePage2State();
+}
+
+class _HomePage2State extends State<HomePage2> {
+  final listKey = GlobalKey<_ListWithCardsState>();
+  int _selectedIndex = 2;
+  int _homeTapCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _restoreCurrencyPreference();
+  }
+
+  Future<void> _restoreCurrencyPreference() async {
+    final currency = await DatabaseHelp.getSetting('currency');
+    if (currency == null || currency == 'IDR') return;
+    final rate = await DatabaseHelp.getCachedExchangeRate(currency);
+    if (rate == null || rate <= 0) return;
+    appCurrency.value = currency;
+    appExchangeRate.value = rate;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-      appBar: BarApp(),
-      body: ListWithCards(),
-      floatingActionButton: NeoAddButton(),
-      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+    return Theme(
+      data: Theme.of(context).copyWith(
+        brightness: Brightness.light,
+        scaffoldBackgroundColor: Colors.white,
+        canvasColor: Colors.white,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: const Color(0xFF5DF9FF),
+          brightness: Brightness.light,
+        ),
+      ),
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: _selectedIndex == 0 ? null : _buildAppBar(),
+        body: _buildBody(),
+        bottomNavigationBar: ExpenseBottomBar(
+          selectedIndex: _selectedIndex,
+          onSelected: _onNavigationSelected,
+        ),
+      ),
     );
   }
 
-  AppBar BarApp() {
+  Widget _buildBody() {
+    switch (_selectedIndex) {
+      case 0:
+        return SettingsPage(
+          onDeleteAll: _deleteAllExpenses,
+          onExportPdf: _exportExpenses,
+          onDeleteAccount: _deleteAccount,
+          onChangePassword: _changePassword,
+          onRetrySync: _retrySync,
+          onCurrencyChanged: _changeCurrency,
+        );
+      default:
+        return ValueListenableBuilder<String>(
+          valueListenable: appCurrency,
+          builder: (context, currency, child) => ValueListenableBuilder<double>(
+            valueListenable: appExchangeRate,
+            builder: (context, rate, child) => ListWithCards(key: listKey),
+          ),
+        );
+    }
+  }
+
+  AppBar _buildAppBar() {
     return AppBar(
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-      title: Text(AuthService.currentUser?.email ?? 'Expenses'),
+      title: _selectedIndex == 2
+          ? Row(
+              mainAxisSize: MainAxisSize.max,
+              children: [
+                Text(
+                  'Expenses',
+                  style: GoogleFonts.itim(
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const Spacer(),
+                _buildSortDropdown(),
+              ],
+            )
+          : Text(_selectedIndex == 0 ? 'Settings' : 'Account'),
+    );
+  }
+
+  Widget _buildSortDropdown() {
+    return Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF5DF9FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.black, width: 2),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
+        ],
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(
+          canvasColor: Colors.white,
+          highlightColor: const Color(0x335DF9FF),
+          splashColor: const Color(0x555DF9FF),
+          colorScheme: Theme.of(context).colorScheme.copyWith(
+            primary: Colors.black,
+            secondary: const Color(0xFF5DF9FF),
+          ),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<ExpenseSort>(
+            value: listKey.currentState?._sort ?? ExpenseSort.dateNewest,
+            isDense: true,
+            dropdownColor: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            focusColor: Colors.transparent,
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 13,
+              fontWeight: FontWeight.w700,
+            ),
+            icon: const Icon(
+              Icons.keyboard_arrow_down,
+              size: 20,
+              color: Colors.black,
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: ExpenseSort.dateNewest,
+                child: Text('Newest'),
+              ),
+              DropdownMenuItem(
+                value: ExpenseSort.dateOldest,
+                child: Text('Oldest'),
+              ),
+              DropdownMenuItem(
+                value: ExpenseSort.amountHighest,
+                child: Text('Highest'),
+              ),
+              DropdownMenuItem(
+                value: ExpenseSort.amountLowest,
+                child: Text('Lowest'),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                listKey.currentState?._setSort(value);
+                setState(() {});
+              }
+            },
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _onNavigationSelected(int index) async {
+    if (index == 1) {
+      _homeTapCount = 0;
+      await Navigator.push(
+        context,
+        MaterialPageRoute(builder: (context) => const ExpenseAddPage()),
+      );
+      listKey.currentState?._loadData();
+      setState(() => _selectedIndex = 2);
+      return;
+    }
+
+    if (index == 2) {
+      setState(() {
+        _selectedIndex = index;
+        _homeTapCount++;
+      });
+
+      if (_homeTapCount == 10) {
+        _homeTapCount = 0;
+        await _showJumpscare();
+      }
+      return;
+    }
+
+    setState(() {
+      _selectedIndex = index;
+      _homeTapCount = 0;
+    });
+  }
+
+  Future<void> _deleteAllExpenses() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete all expenses?'),
+        content: const Text(
+          'This will permanently delete every expense from this account. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete all'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true || !mounted) return;
+
+    try {
+      await DatabaseHelp.deleteAllForCurrentUser();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('All expenses deleted.')));
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not delete expenses: $error')),
+      );
+    }
+  }
+
+  Future<void> _exportExpenses() async {
+    try {
+      final expenses = await DatabaseHelp.getData();
+      if (!mounted) return;
+      if (expenses.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('There are no expenses to export.')),
+        );
+        return;
+      }
+
+      final formatter = NumberFormat.currency(
+        locale: _currencyLocale,
+        symbol: _currencySymbol,
+        decimalDigits: 0,
+      );
+      final document = pw.Document();
+      document.addPage(
+        pw.MultiPage(
+          build: (context) => [
+            pw.Header(level: 0, child: pw.Text('Expense Report')),
+            pw.Text('Account: ${AuthService.currentUser?.email ?? 'Unknown'}'),
+            pw.Text(
+              'Generated: ${DateFormat('dd MMM yyyy').format(DateTime.now())}',
+            ),
+            pw.SizedBox(height: 20),
+            pw.TableHelper.fromTextArray(
+              headers: const ['Name', 'Amount', 'Category', 'Type', 'Date'],
+              data: expenses.map((expense) {
+                final amountIdr = expense['amount'] is int
+                    ? expense['amount'] as int
+                    : int.tryParse(expense['amount'].toString()) ?? 0;
+                final amount = amountIdr * appExchangeRate.value;
+                return [
+                  expense['name']?.toString() ?? '',
+                  formatter.format(amount).replaceAll(',', '.'),
+                  expense['category']?.toString() ?? '',
+                  expense['type']?.toString() ?? '',
+                  expense['date']?.toString() ?? '',
+                ];
+              }).toList(),
+            ),
+          ],
+        ),
+      );
+
+      final Uint8List bytes = await document.save();
+      final fileName =
+          'expense-report-${DateTime.now().millisecondsSinceEpoch}.pdf';
+      String? path;
+
+      if (Platform.isAndroid) {
+        MediaStore.appFolder = 'ExpenseApp';
+        await MediaStore.ensureInitialized();
+        final temporaryDirectory = await getTemporaryDirectory();
+        final temporaryFile = File('${temporaryDirectory.path}/$fileName');
+        await temporaryFile.writeAsBytes(bytes, flush: true);
+        final savedFile = await MediaStore().saveFile(
+          tempFilePath: temporaryFile.path,
+          dirType: DirType.download,
+          dirName: DirName.download,
+        );
+        path = savedFile?.uri.toString();
+      } else {
+        path = await FileSaver.instance.saveFile(
+          name: fileName,
+          bytes: bytes,
+          ext: 'pdf',
+          mimeType: MimeType.pdf,
+        );
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            path == null || path.isEmpty
+                ? 'PDF exported to Downloads.'
+                : 'PDF exported: $path',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not export PDF: $error')));
+    }
+  }
+
+  Future<void> _changeCurrency(String currency) async {
+    if (currency == 'IDR') {
+      appCurrency.value = currency;
+      appExchangeRate.value = 1;
+      await DatabaseHelp.setSetting('currency', currency);
+      return;
+    }
+
+    try {
+      final rates = await Throw.getExchangeRates();
+      final rate = rates[currency];
+      if (rate == null || rate <= 0) throw StateError('Invalid exchange rate');
+      await DatabaseHelp.cacheExchangeRate(currency, rate);
+      appCurrency.value = currency;
+      appExchangeRate.value = rate;
+      await DatabaseHelp.setSetting('currency', currency);
+    } catch (_) {
+      final cachedRate = await DatabaseHelp.getCachedExchangeRate(currency);
+      if (cachedRate == null || cachedRate <= 0) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Exchange rate unavailable. Deploy the backend endpoint or connect once online.',
+            ),
+          ),
+        );
+        return;
+      }
+      appCurrency.value = currency;
+      appExchangeRate.value = cachedRate;
+      await DatabaseHelp.setSetting('currency', currency);
+    }
+  }
+
+  Future<void> _retrySync() async {
+    await Throw.syncPendingExpenses();
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Sync retry completed.')));
+  }
+
+  Future<void> _changePassword() async {
+    final passwords = await showDialog<List<String>>(
+      context: context,
+      builder: (context) => const _ChangePasswordDialog(),
+    );
+    if (passwords == null || passwords[0].isEmpty || passwords[1].length < 6) {
+      return;
+    }
+
+    try {
+      await AuthService.updatePassword(
+        oldPassword: passwords[0],
+        newPassword: passwords[1],
+      );
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Password updated.')));
+    } on FirebaseAuthException catch (error) {
+      if (!mounted) return;
+      final message =
+          error.code == 'wrong-password' || error.code == 'invalid-credential'
+          ? 'Current password is incorrect.'
+          : error.message ?? 'Could not update password.';
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(message)));
+    }
+  }
+
+  Future<void> _deleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete account?'),
+        content: const Text(
+          'This permanently deletes your account and all local expenses.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete account'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await DatabaseHelp.deleteAllForCurrentUser();
+    await AuthService.deleteAccount();
+  }
+
+  Future<void> _showJumpscare() async {
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black,
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.black,
+          insetPadding: EdgeInsets.zero,
+          child: GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: SizedBox(
+              width: MediaQuery.sizeOf(context).width,
+              height: MediaQuery.sizeOf(context).height,
+              child: Image.asset('lib/asset/JOJO.jpeg', fit: BoxFit.cover),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog();
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final _oldPasswordController = TextEditingController();
+  final _newPasswordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _oldPasswordController.dispose();
+    _newPasswordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Change password'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            controller: _oldPasswordController,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'Current password'),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _newPasswordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'New password (6+ characters)',
+            ),
+          ),
+        ],
+      ),
       actions: [
-        IconButton(
-          tooltip: 'Sign out',
-          icon: const Icon(Icons.logout),
-          onPressed: () async {
-            await AuthService.signOut();
-          },
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.pop(context, [
+            _oldPasswordController.text,
+            _newPasswordController.text,
+          ]),
+          child: const Text('Update'),
         ),
       ],
+    );
+  }
+}
+
+class SettingsPage extends StatefulWidget {
+  final Future<void> Function() onDeleteAll;
+  final Future<void> Function() onExportPdf;
+  final Future<void> Function() onDeleteAccount;
+  final Future<void> Function() onChangePassword;
+  final Future<void> Function() onRetrySync;
+  final Future<void> Function(String) onCurrencyChanged;
+
+  const SettingsPage({
+    super.key,
+    required this.onDeleteAll,
+    required this.onExportPdf,
+    required this.onDeleteAccount,
+    required this.onChangePassword,
+    required this.onRetrySync,
+    required this.onCurrencyChanged,
+  });
+
+  @override
+  State<SettingsPage> createState() => _SettingsPageState();
+}
+
+class _SettingsPageState extends State<SettingsPage> {
+  int _pendingSync = 0;
+  bool _notificationsEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSyncStatus();
+  }
+
+  Future<void> _loadSyncStatus() async {
+    final pending = await DatabaseHelp.getUnsyncedData();
+    if (mounted) setState(() => _pendingSync = pending.length);
+  }
+
+  Future<void> _retrySync() async {
+    await widget.onRetrySync();
+    await _loadSyncStatus();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+      children: [
+        const SizedBox(height: 30),
+        Text(
+          'Manage your data',
+          style: GoogleFonts.itim(fontSize: 28, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 6),
+        const Text(
+          'Manage your data, account, and app preferences.',
+          style: TextStyle(color: Color(0xFF64748B)),
+        ),
+        const SizedBox(height: 24),
+        _buildSectionTitle('Data & sync'),
+        _buildSyncCard(),
+        const SizedBox(height: 16),
+        _SettingsAction(
+          icon: Icons.picture_as_pdf_outlined,
+          title: 'Export expenses as PDF',
+          subtitle: 'Save a complete report of your expenses.',
+          color: const Color(0xFF5DF9FF),
+          onTap: widget.onExportPdf,
+        ),
+        const SizedBox(height: 16),
+        _SettingsAction(
+          icon: Icons.delete_sweep_outlined,
+          title: 'Delete all expenses',
+          subtitle: 'Permanently remove every expense from this account.',
+          color: const Color(0xFFFFD6D6),
+          onTap: widget.onDeleteAll,
+        ),
+        const SizedBox(height: 28),
+        _buildSectionTitle('Preferences'),
+        _buildPreferencesCard(),
+        const SizedBox(height: 28),
+        _buildSectionTitle('Account'),
+        _SettingsAction(
+          icon: Icons.password_outlined,
+          title: 'Change password',
+          subtitle: 'Set a new password for this account.',
+          color: const Color(0xFFE5E7EB),
+          onTap: widget.onChangePassword,
+        ),
+        const SizedBox(height: 16),
+        _SettingsAction(
+          icon: Icons.person_remove_outlined,
+          title: 'Delete account',
+          subtitle: 'Permanently remove your account and data.',
+          color: const Color(0xFFFFD6D6),
+          onTap: widget.onDeleteAccount,
+        ),
+        const SizedBox(height: 28),
+        _buildSectionTitle('Signed-in account'),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.black, width: 2),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.account_circle_outlined, size: 42),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  AuthService.currentUser?.email ?? 'Signed-in account',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Sign out',
+                onPressed: AuthService.signOut,
+                icon: const Icon(Icons.logout),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 28),
+        _buildSectionTitle('About'),
+        const ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(Icons.info_outline),
+          title: Text('Expense App'),
+          subtitle: Text('Version 0.0.1'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Text(
+        title,
+        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      ),
+    );
+  }
+
+  Widget _buildSyncCard() {
+    final synced = _pendingSync == 0;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.black, width: 2),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
+        ],
+      ),
+      child: Row(
+        children: [
+          Icon(
+            synced ? Icons.cloud_done_outlined : Icons.cloud_upload_outlined,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              synced
+                  ? 'All expenses are synced'
+                  : '$_pendingSync expense(s) waiting to sync',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+          if (!synced)
+            IconButton(
+              tooltip: 'Retry sync',
+              onPressed: _retrySync,
+              icon: const Icon(Icons.refresh),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreferencesCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.black, width: 2),
+      ),
+      child: Column(
+        children: [
+          ValueListenableBuilder<String>(
+            valueListenable: appCurrency,
+            builder: (context, currency, child) => ListTile(
+              leading: const Icon(Icons.payments_outlined),
+              title: const Text('Currency'),
+              subtitle: const Text('Used when displaying expense amounts'),
+              trailing: DropdownButton<String>(
+                value: currency,
+                underline: const SizedBox.shrink(),
+                items: const [
+                  DropdownMenuItem(value: 'IDR', child: Text('IDR')),
+                  DropdownMenuItem(value: 'USD', child: Text('USD')),
+                  DropdownMenuItem(value: 'EUR', child: Text('EUR')),
+                ],
+                onChanged: (value) {
+                  if (value != null) widget.onCurrencyChanged(value);
+                },
+              ),
+            ),
+          ),
+          const Divider(height: 1),
+          ValueListenableBuilder<ThemeMode>(
+            valueListenable: appThemeMode,
+            builder: (context, mode, child) => SwitchListTile(
+              secondary: const Icon(Icons.dark_mode_outlined),
+              title: const Text('Dark theme'),
+              subtitle: const Text('Use a darker color scheme'),
+              value: mode == ThemeMode.dark,
+              onChanged: (enabled) => appThemeMode.value = enabled
+                  ? ThemeMode.dark
+                  : ThemeMode.light,
+            ),
+          ),
+          const Divider(height: 1),
+          SwitchListTile(
+            secondary: const Icon(Icons.notifications_none_outlined),
+            title: const Text('Expense reminders'),
+            subtitle: const Text('Enable reminders to record expenses'),
+            value: _notificationsEnabled,
+            onChanged: (enabled) =>
+                setState(() => _notificationsEnabled = enabled),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SettingsAction extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final Color color;
+  final Future<void> Function() onTap;
+
+  const _SettingsAction({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(18),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.black, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black,
+                offset: Offset(4, 4),
+                blurRadius: 0,
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+                child: Icon(icon, color: Colors.black),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: Colors.black,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(color: Color(0xFF64748B)),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: Colors.black),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -118,12 +894,14 @@ class ExpenseModel {
 }
 
 class ListWithCards extends StatefulWidget {
+  const ListWithCards({super.key});
+
   @override
   _ListWithCardsState createState() => _ListWithCardsState();
 }
 
 class _ListWithCardsState extends State<ListWithCards>
-  with WidgetsBindingObserver {
+    with WidgetsBindingObserver {
   List<ExpenseModel> _expenses = [];
   bool _isLoading = true;
   ExpenseSort _sort = ExpenseSort.dateNewest;
@@ -173,11 +951,9 @@ class _ListWithCardsState extends State<ListWithCards>
       await DatabaseHelp.initDB();
       await DatabaseHelp.assignLegacyExpensesToCurrentUser();
       unawaited(_syncPendingExpenses());
-    } catch(e){
+    } catch (e) {
       print("Nigga The Database Aint Initialized");
     }
-
-
 
     try {
       // 1. Panggil getData() langsung dari class karena sudah static
@@ -189,7 +965,6 @@ class _ListWithCardsState extends State<ListWithCards>
         _expenses = data.map((item) => ExpenseModel.fromMap(item)).toList();
         _isLoading = false;
       });
-
     } catch (e) {
       print("Error loading data: $e");
       setState(() => _isLoading = false);
@@ -217,7 +992,6 @@ class _ListWithCardsState extends State<ListWithCards>
 
   @override
   Widget build(BuildContext context) {
-
     if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
@@ -226,81 +1000,23 @@ class _ListWithCardsState extends State<ListWithCards>
       return const Center(child: Text('Data Kosong'));
     }
 
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(25, 8, 25, 4),
-          child: Row(
-            children: [
-              const Icon(Icons.sort, size: 22),
-              const SizedBox(width: 8),
-              Text(
-                'Sort by',
-                style: GoogleFonts.itim(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const Spacer(),
-              Container(
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.black, width: 2),
-                ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<ExpenseSort>(
-                    value: _sort,
-                    isDense: true,
-                    icon: const Icon(Icons.keyboard_arrow_down),
-                    items: const [
-                      DropdownMenuItem(
-                        value: ExpenseSort.dateNewest,
-                        child: Text('Newest'),
-                      ),
-                      DropdownMenuItem(
-                        value: ExpenseSort.dateOldest,
-                        child: Text('Oldest'),
-                      ),
-                      DropdownMenuItem(
-                        value: ExpenseSort.amountHighest,
-                        child: Text('Highest'),
-                      ),
-                      DropdownMenuItem(
-                        value: ExpenseSort.amountLowest,
-                        child: Text('Lowest'),
-                      ),
-                    ],
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => _sort = value);
-                      }
-                    },
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: RefreshIndicator(
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        padding: const EdgeInsets.only(bottom: 100),
+        itemCount: _sortedExpenses.length,
+        itemBuilder: (context, index) {
+          return CardList(
+            expense: _sortedExpenses[index],
             onRefresh: _loadData,
-            child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 100),
-              itemCount: _sortedExpenses.length,
-              itemBuilder: (context, index) {
-                return CardList(
-                  expense: _sortedExpenses[index],
-                  onRefresh: _loadData,
-                );
-              },
-            ),
-          ),
-        ),
-      ],
+          );
+        },
+      ),
     );
+  }
+
+  void _setSort(ExpenseSort value) {
+    setState(() => _sort = value);
   }
 }
 
@@ -350,135 +1066,176 @@ class CardList extends StatelessWidget {
     final amountValue = expense.amount;
     final formatter = NumberFormat.currency(
       locale: 'id_ID',
-      symbol: 'Rp',
+      symbol: _currencySymbol,
       decimalDigits: 0,
     );
     return Container(
-        margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 25),
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: _getBackgroundColor(),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.black, width: 3),
-          boxShadow: const [
-            BoxShadow(color: Colors.black, blurRadius: 0, offset: Offset(8, 8)),
-          ],
-        ),
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.only(right: 40),
-              child: Row(
-                children: [
-                  Container(
-                    width: 70,
-                    height: 70,
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(15),
-                      border: Border.all(color: Colors.black, width: 2),
-                    ),
-                    child: Icon(_getCategoryIcon(), color: Colors.black, size: 35),
+      margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 25),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: _getBackgroundColor(),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black, width: 3),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, blurRadius: 0, offset: Offset(8, 8)),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(right: 40),
+            child: Row(
+              children: [
+                Container(
+                  width: 70,
+                  height: 70,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(15),
+                    border: Border.all(color: Colors.black, width: 2),
                   ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          expense.name,
-                          style: GoogleFonts.itim(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black,
-                          ),
-                        ),
-                        Text(
-                          formatter.format(amountValue).replaceAll(',', '.'),
-                          style: GoogleFonts.itim(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        Text(
-                          DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
-                          style: GoogleFonts.itim(fontSize: 16),
-                        ),
-                      ],
-                    ),
+                  child: Icon(
+                    _getCategoryIcon(),
+                    color: Colors.black,
+                    size: 35,
                   ),
-                ],
-              ),
-            ),
-            Positioned(
-              right: -8,
-              bottom: -8,
-              child: IconButton(
-                tooltip: 'Edit expense',
-                icon: const Icon(Icons.edit, color: Colors.black),
-                onPressed: () async {
-                  await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ExpenseEdit(
-                        expenseId: expense.id,
+                ),
+                const SizedBox(width: 20),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        expense.name,
+                        style: GoogleFonts.itim(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
                       ),
-                    ),
-                  );
-
-                  onRefresh();
-                },
-              ),
+                      Text(
+                        formatter.format(amountValue * appExchangeRate.value),
+                        style: GoogleFonts.itim(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
+                        style: GoogleFonts.itim(fontSize: 16),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          Positioned(
+            right: -8,
+            bottom: -8,
+            child: IconButton(
+              tooltip: 'Edit expense',
+              icon: const Icon(Icons.edit, color: Colors.black),
+              onPressed: () async {
+                await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ExpenseEdit(expenseId: expense.id),
+                  ),
+                );
+
+                onRefresh();
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
-class NeoAddButton extends StatelessWidget {
-  const NeoAddButton({super.key});
+String get _currencySymbol {
+  switch (appCurrency.value) {
+    case 'USD':
+      return r'$';
+    case 'EUR':
+      return '€';
+    default:
+      return 'Rp';
+  }
+}
+
+String get _currencyLocale {
+  switch (appCurrency.value) {
+    case 'USD':
+      return 'en_US';
+    case 'EUR':
+      return 'de_DE';
+    default:
+      return 'id_ID';
+  }
+}
+
+class ExpenseBottomBar extends StatelessWidget {
+  final int selectedIndex;
+  final ValueChanged<int> onSelected;
+
+  const ExpenseBottomBar({
+    super.key,
+    required this.selectedIndex,
+    required this.onSelected,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 80,
-      height: 60,
-      decoration: BoxDecoration(
-        color: const Color(0xFF5DF9FF),
-        borderRadius: BorderRadius.circular(15),
-        border: Border.all(color: Colors.black, width: 3),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
-        ],
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(24, 8, 24, 18),
+      child: Container(
+        height: 76,
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(38),
+          border: Border.all(color: Colors.black, width: 3),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(5, 5), blurRadius: 0),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildItem(Icons.settings_outlined, 0),
+            _buildItem(Icons.add, 1),
+            _buildItem(Icons.home_outlined, 2),
+          ],
+        ),
       ),
-      child: RawMaterialButton(
-        onPressed: () async {
-          // Tunggu sampai user kembali dari halaman Add
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const ExpenseAddPage()),
-          );
+    );
+  }
 
-          // Refresh data setelah kembali
-          final state = context.findAncestorStateOfType<_ListWithCardsState>();
-          state?._loadData();
-
-        },
-        child: const Icon(
-          Icons.add,
+  Widget _buildItem(IconData icon, int index) {
+    final isSelected = selectedIndex == index;
+    return GestureDetector(
+      onTap: () => onSelected(index),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOutBack,
+        width: isSelected ? 58 : 42,
+        height: isSelected ? 58 : 42,
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF5DF9FF) : Colors.transparent,
+          shape: BoxShape.circle,
+          border: isSelected ? Border.all(color: Colors.black, width: 2) : null,
+        ),
+        child: Icon(
+          icon,
           color: Colors.black,
-          size: 35,
-          weight: 900.0,
+          size: isSelected ? 31 : 25,
+          weight: isSelected ? 800 : 500,
         ),
       ),
     );
   }
 }
 
-enum ExpenseSort {
-  dateNewest,
-  dateOldest,
-  amountHighest,
-  amountLowest,
-}
+enum ExpenseSort { dateNewest, dateOldest, amountHighest, amountLowest }

@@ -22,6 +22,20 @@ class Throw {
     print(response.body);
   }
 
+  static Future<Map<String, double>> getExchangeRates() async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/exchange-rates'), headers: await _headers())
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw Exception('Exchange rates unavailable (${response.statusCode})');
+    }
+
+    final rates = jsonDecode(response.body)['rates'] as Map<String, dynamic>;
+    return rates.map(
+      (currency, rate) => MapEntry(currency, (rate as num).toDouble()),
+    );
+  }
+
   Future<void> getUserById(String id) async {
     final url = Uri.parse('$baseUrl/users/$id');
 
@@ -70,10 +84,10 @@ class Throw {
   static Future<bool> updateUserByLocalId(
     int? localId,
     String name,
-    int amount,        // ← Change from String to int
+    int amount, // ← Change from String to int
     String category,
     String type,
-    String date
+    String date,
   ) async {
     final mongoId = await getMongoIdFromLocalId(localId!);
 
@@ -124,7 +138,7 @@ class Throw {
   static Future<bool> createExpense(
     int localId,
     String name,
-    int amount,        // ← Change from String to int
+    int amount, // ← Change from String to int
     String category,
     String type,
     String date,

@@ -68,10 +68,33 @@ const ExpenseSchema = new mongoose.Schema(
 );
 
 ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
-const User = mongoose.models.User || mongoose.model("nigga", ExpenseSchema);
+const User = mongoose.models.Expense || mongoose.model("Expense", ExpenseSchema);
 
 
 app 
+/**
+ * GET current exchange rates with IDR as the base currency.
+ */
+app.get("/api/exchange-rates", requireAuth, async (req, res) => {
+  try {
+    const response = await fetch("https://open.er-api.com/v6/latest/IDR");
+    if (!response.ok) {
+      return res.status(502).json({ error: "Exchange-rate provider unavailable" });
+    }
+    const data = await response.json();
+    res.json({
+      base: "IDR",
+      rates: {
+        IDR: 1,
+        USD: data.rates.USD,
+        EUR: data.rates.EUR,
+      },
+    });
+  } catch (err) {
+    res.status(502).json({ error: "Could not retrieve exchange rates" });
+  }
+});
+
 /**
  * CREATE
  * POST /api/users

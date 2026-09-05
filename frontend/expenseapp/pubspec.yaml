@@ -39,6 +39,10 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/app_icon.png
+    - assets/splash_logo.png
+    - lib/asset/JOJO.jpeg
 
 flutter_launcher_icons:
   android: true
