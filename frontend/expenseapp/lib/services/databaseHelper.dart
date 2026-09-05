@@ -229,6 +229,47 @@ class DatabaseHelp {
     );
   }
 
+  static Future<int> importMissingExpenses(
+    List<Map<String, dynamic>> onlineExpenses,
+  ) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return 0;
+
+    final db = await initDB();
+    final localRows = await db.query(
+      'my_table',
+      columns: ['mongoId'],
+      where: 'ownerId = ? AND mongoId IS NOT NULL',
+      whereArgs: [userId],
+    );
+    final localMongoIds = localRows
+        .map((row) => row['mongoId']?.toString())
+        .whereType<String>()
+        .toSet();
+
+    var imported = 0;
+    for (final onlineExpense in onlineExpenses) {
+      final mongoId = onlineExpense['_id']?.toString();
+      if (mongoId == null || localMongoIds.contains(mongoId)) continue;
+
+      await db.insert('my_table', {
+        'mongoId': mongoId,
+        'ownerId': userId,
+        'name': onlineExpense['name']?.toString() ?? 'Unknown',
+        'amount': onlineExpense['amount'] is num
+            ? (onlineExpense['amount'] as num).toInt()
+            : int.tryParse(onlineExpense['amount']?.toString() ?? '0') ?? 0,
+        'date': onlineExpense['date']?.toString() ?? '',
+        'category': onlineExpense['category']?.toString() ?? 'general',
+        'type': onlineExpense['type']?.toString() ?? 'expected',
+        'synced': 1,
+      });
+      localMongoIds.add(mongoId);
+      imported++;
+    }
+    return imported;
+  }
+
   static Future<List<Map<String, dynamic>>> getUnsyncedData() async {
     final db = await initDB();
     return await db.query(

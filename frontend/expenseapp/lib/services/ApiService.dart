@@ -22,6 +22,19 @@ class Throw {
     print(response.body);
   }
 
+  static Future<List<Map<String, dynamic>>> getOnlineExpenses() async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/users'), headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Could not load online expenses (${response.statusCode})',
+      );
+    }
+    final data = jsonDecode(response.body) as List<dynamic>;
+    return data.cast<Map<String, dynamic>>();
+  }
+
   static Future<Map<String, double>> getExchangeRates() async {
     final response = await http
         .get(Uri.parse('$baseUrl/exchange-rates'), headers: await _headers())

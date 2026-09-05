@@ -29,6 +29,8 @@ const refreshBtn = document.getElementById('refresh-btn');
 const downloadBtn = document.getElementById('download-btn');
 let currentExpenses = [];
 let isRegistering = false;
+let refreshTimer = null;
+let isFetchingExpenses = false;
 
 function setAuthMode(registering) {
     isRegistering = registering;
@@ -45,15 +47,31 @@ function showDashboard(user) {
     dashboard.hidden = false;
     signedInUser.textContent = user.email || '';
     fetchExpenses();
+    startAutoRefresh();
 }
 
 function showAuth() {
+    stopAutoRefresh();
     authPanel.hidden = false;
     dashboard.hidden = true;
     signedInUser.textContent = '';
     list.innerHTML = '';
     mobileCards.innerHTML = '';
     currentExpenses = [];
+}
+
+function startAutoRefresh() {
+    stopAutoRefresh();
+    refreshTimer = window.setInterval(() => {
+        if (!document.hidden && auth.currentUser) fetchExpenses();
+    }, 5 * 60 * 1000);
+}
+
+function stopAutoRefresh() {
+    if (refreshTimer !== null) {
+        window.clearInterval(refreshTimer);
+        refreshTimer = null;
+    }
 }
 
 async function authHeaders() {
@@ -74,6 +92,8 @@ function formatCurrency(value) {
 }
 
 async function fetchExpenses() {
+    if (isFetchingExpenses || !auth.currentUser) return;
+    isFetchingExpenses = true;
     try {
         const response = await fetch('/api/users', { headers: await authHeaders() });
         if (!response.ok) throw new Error('Failed to fetch');
@@ -82,6 +102,8 @@ async function fetchExpenses() {
         renderExpenses(expenses);
     } catch (error) {
         console.error('Error fetching expenses:', error);
+    } finally {
+        isFetchingExpenses = false;
     }
 }
 
@@ -229,6 +251,10 @@ auth.onAuthStateChanged((user) => {
     } else {
         showAuth();
     }
+});
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && auth.currentUser) fetchExpenses();
 });
 
 if (downloadBtn) {

@@ -95,6 +95,7 @@ class _HomePage2State extends State<HomePage2> {
           onChangePassword: _changePassword,
           onRetrySync: _retrySync,
           onCurrencyChanged: _changeCurrency,
+          onLoadOnlineExpenses: _loadOnlineExpenses,
         );
       default:
         return ListWithCards(key: listKey);
@@ -399,6 +400,41 @@ class _HomePage2State extends State<HomePage2> {
     ).showSnackBar(const SnackBar(content: Text('Sync retry completed.')));
   }
 
+  Future<void> _loadOnlineExpenses() async {
+    var loadingShown = false;
+    try {
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(child: CircularProgressIndicator()),
+      );
+      loadingShown = true;
+
+      final onlineExpenses = await Throw.getOnlineExpenses();
+      final imported = await DatabaseHelp.importMissingExpenses(onlineExpenses);
+
+      if (!mounted) return;
+      if (loadingShown) Navigator.pop(context);
+      loadingShown = false;
+      listKey.currentState?._loadData();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            imported == 0
+                ? 'Your local data is already up to date.'
+                : 'Loaded $imported expense(s) from your account.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      if (loadingShown) Navigator.pop(context);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not load online expenses: $error')),
+      );
+    }
+  }
+
   Future<void> _changePassword() async {
     final passwords = await showDialog<List<String>>(
       context: context,
@@ -582,6 +618,7 @@ class SettingsPage extends StatefulWidget {
   final Future<void> Function() onChangePassword;
   final Future<void> Function() onRetrySync;
   final Future<void> Function(String) onCurrencyChanged;
+  final Future<void> Function() onLoadOnlineExpenses;
 
   const SettingsPage({
     super.key,
@@ -591,6 +628,7 @@ class SettingsPage extends StatefulWidget {
     required this.onChangePassword,
     required this.onRetrySync,
     required this.onCurrencyChanged,
+    required this.onLoadOnlineExpenses,
   });
 
   @override
@@ -635,6 +673,14 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 24),
         _buildSectionTitle('Data & sync'),
         _buildSyncCard(),
+        const SizedBox(height: 16),
+        _SettingsAction(
+          icon: Icons.cloud_download_outlined,
+          title: 'Load online expenses',
+          subtitle: 'Import expenses created on another device.',
+          color: const Color(0xFF5DF9FF),
+          onTap: widget.onLoadOnlineExpenses,
+        ),
         const SizedBox(height: 16),
         _SettingsAction(
           icon: Icons.picture_as_pdf_outlined,
@@ -1050,20 +1096,99 @@ class _ListWithCardsState extends State<ListWithCards>
     }
 
     if (_expenses.isEmpty) {
-      return const Center(child: Text('Data Kosong'));
+      return Column(
+        children: [
+          const Expanded(child: Center(child: Text('Data Kosong'))),
+          _buildTotalCard(),
+        ],
+      );
     }
 
-    return RefreshIndicator(
-      onRefresh: _loadData,
-      child: ListView.builder(
-        padding: const EdgeInsets.only(bottom: 100),
-        itemCount: _sortedExpenses.length,
-        itemBuilder: (context, index) {
-          return CardList(
-            expense: _sortedExpenses[index],
+    return Column(
+      children: [
+        Expanded(
+          child: RefreshIndicator(
             onRefresh: _loadData,
-          );
-        },
+            child: ListView.builder(
+              padding: const EdgeInsets.only(bottom: 100),
+              itemCount: _sortedExpenses.length,
+              itemBuilder: (context, index) {
+                return CardList(
+                  expense: _sortedExpenses[index],
+                  onRefresh: _loadData,
+                );
+              },
+            ),
+          ),
+        ),
+        _buildTotalCard(),
+      ],
+    );
+  }
+
+  Widget _buildTotalCard() {
+    final totalIdr = _expenses.fold<int>(
+      0,
+      (total, expense) => total + expense.amount,
+    );
+    final formatter = NumberFormat.currency(
+      locale: _currencyLocale,
+      symbol: _currencySymbol,
+      decimalDigits: 0,
+    );
+
+    return Align(
+      alignment: Alignment.center,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(24, 1, 24, 3),
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: 100,
+            maxWidth: MediaQuery.sizeOf(context).width - 48,
+          ),
+          child: IntrinsicWidth(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainer,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.black, width: 1.5),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(2, 2),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.account_balance_wallet_outlined,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        formatter.format(totalIdr * appExchangeRate.value),
+                        maxLines: 1,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurface,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

@@ -64,7 +64,10 @@ const ExpenseSchema = new mongoose.Schema(
     type: { type: String, required: true },
     date: { type: String, required: true },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+    collection: "niggas",
+  }
 );
 
 ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
