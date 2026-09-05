@@ -34,9 +34,10 @@ async function requireAuth(req, res, next) {
 
 // ✅ MongoDB connection (cached for Vercel)
 let isConnected = false;
+let indexesReady = false;
 
 async function connectDB() {
-  if (isConnected) return;
+  if (isConnected && indexesReady) return;
 
   if (!process.env.MONGODB_URI) {
     throw new Error("MONGODB_URI is missing");
@@ -44,6 +45,18 @@ async function connectDB() {
 
   await mongoose.connect(process.env.MONGODB_URI);
   isConnected = true;
+
+  if (!indexesReady) {
+    const indexes = await User.collection.indexes();
+    for (const index of indexes) {
+      const keys = Object.keys(index.key || {});
+      if (index.unique && keys.length === 1 && keys[0] === "localId") {
+        await User.collection.dropIndex(index.name);
+      }
+    }
+    await User.syncIndexes();
+    indexesReady = true;
+  }
 }
 
 // TODO: 
@@ -108,16 +121,31 @@ app.post("/api/users", requireAuth, async (req, res) => {
     if (!req.body.localId) {
       return res.status(400).json({ error: "localId is required" });
     }
-    const user = await User.create({
-      ownerId: req.user.uid,
-      localId: req.body.localId,
-      name: req.body.name,
-      amount: req.body.amount,
-      category: req.body.category,
-      type: req.body.type,
-      date: req.body.date,
-    });
-    res.status(201).json(user);
+    const localId = String(req.body.localId);
+    const user = await User.findOneAndUpdate(
+      {
+        ownerId: req.user.uid,
+        localId,
+      },
+      {
+        $set: {
+          ownerId: req.user.uid,
+          localId,
+          name: req.body.name,
+          amount: req.body.amount,
+          category: req.body.category,
+          type: req.body.type,
+          date: req.body.date,
+        },
+      },
+      {
+        new: true,
+        upsert: true,
+        runValidators: true,
+        setDefaultsOnInsert: true,
+      }
+    );
+    res.status(200).json(user);
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
