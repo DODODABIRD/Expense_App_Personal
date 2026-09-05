@@ -13,8 +13,10 @@ class DatabaseHelp {
   static final DatabaseHelp instance = DatabaseHelp._privateConstructor();
   //Inisialisasi Database
   static Future<Database> initDB() async {
-    if (_db != null)
-      return _db!; // Kalau database udah ada langsung return database
+    if (_db != null) {
+      await _ensureSettingsTable(_db!);
+      return _db!;
+    }
     String path = join(
       await getDatabasesPath(),
       'my_db.db',
@@ -37,7 +39,7 @@ class DatabaseHelp {
               )
           ''');
         await db.execute('''
-          CREATE TABLE app_settings (
+          CREATE TABLE IF NOT EXISTS app_settings (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL
           )
@@ -55,7 +57,7 @@ class DatabaseHelp {
         }
         if (oldVersion < 5) {
           await db.execute('''
-            CREATE TABLE app_settings (
+            CREATE TABLE IF NOT EXISTS app_settings (
               key TEXT PRIMARY KEY,
               value TEXT NOT NULL
             )
@@ -64,7 +66,17 @@ class DatabaseHelp {
       },
     );
 
+    await _ensureSettingsTable(_db!);
     return _db!;
+  }
+
+  static Future<void> _ensureSettingsTable(Database db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL
+      )
+    ''');
   }
 
   static Future<void> assignLegacyExpensesToCurrentUser() async {

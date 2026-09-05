@@ -16,7 +16,6 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
   String _selectedType = 'expected';
   DateTime _selectedDate = DateTime.now();
 
-
   final Map<String, IconData> _categoryIcons = {
     'makanan': Icons.fastfood,
     'school supply': Icons.school,
@@ -48,18 +47,22 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 30),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
+            size: 30,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Add Expense',
           style: GoogleFonts.itim(
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 28,
             fontWeight: FontWeight.bold,
           ),
@@ -115,7 +118,10 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
                   children: [
                     Text(
                       "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}",
-                      style: GoogleFonts.itim(fontSize: 18),
+                      style: GoogleFonts.itim(
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
                     ),
                     const Icon(Icons.calendar_today, color: Colors.black),
                   ],
@@ -138,6 +144,7 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.5,
+                      color: Colors.black,
                     ),
                   ),
                 ),
@@ -154,7 +161,11 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
       padding: const EdgeInsets.only(bottom: 8, left: 5),
       child: Text(
         label,
-        style: GoogleFonts.itim(fontSize: 20, fontWeight: FontWeight.bold),
+        style: GoogleFonts.itim(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
     );
   }
@@ -169,9 +180,10 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
       child: TextField(
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        style: GoogleFonts.itim(fontSize: 18),
+        style: GoogleFonts.itim(fontSize: 18, color: Colors.black),
         decoration: InputDecoration(
           hintText: hint,
+          hintStyle: const TextStyle(color: Colors.black),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(15),
         ),
@@ -217,7 +229,7 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
 
                   Text(
                     displayMap != null ? displayMap[item]! : item,
-                    style: GoogleFonts.itim(fontSize: 18),
+                    style: GoogleFonts.itim(fontSize: 18, color: Colors.black),
                   ),
                 ],
               ),
@@ -256,11 +268,19 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
     );
 
     try {
-      final cleanAmount = int.tryParse(
-        _amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-      ) ?? 0;
+      final cleanAmount =
+          int.tryParse(
+            _amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+          ) ??
+          0;
 
-      await DatabaseHelp.insertData(_nameController.text, cleanAmount, "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}", _selectedCategory, _selectedType);
+      await DatabaseHelp.insertData(
+        _nameController.text,
+        cleanAmount,
+        "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}",
+        _selectedCategory,
+        _selectedType,
+      );
       print("Berhasil");
       if (mounted) Navigator.pop(context); // Untuk show loading
       ScaffoldMessenger.of(context).showSnackBar(

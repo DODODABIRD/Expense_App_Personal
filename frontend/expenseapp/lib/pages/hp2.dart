@@ -45,6 +45,7 @@ class _HomePage2State extends State<HomePage2> {
   final listKey = GlobalKey<_ListWithCardsState>();
   int _selectedIndex = 2;
   int _homeTapCount = 0;
+  bool _isChangingCurrency = false;
 
   @override
   void initState() {
@@ -53,34 +54,33 @@ class _HomePage2State extends State<HomePage2> {
   }
 
   Future<void> _restoreCurrencyPreference() async {
-    final currency = await DatabaseHelp.getSetting('currency');
-    if (currency == null || currency == 'IDR') return;
-    final rate = await DatabaseHelp.getCachedExchangeRate(currency);
-    if (rate == null || rate <= 0) return;
-    appCurrency.value = currency;
-    appExchangeRate.value = rate;
+    try {
+      final currency = await DatabaseHelp.getSetting('currency');
+      if (currency == null || currency == 'IDR') return;
+      final rate = await DatabaseHelp.getCachedExchangeRate(currency);
+      if (rate == null || rate <= 0) return;
+      appCurrency.value = currency;
+      appExchangeRate.value = rate;
+    } catch (_) {
+      // Keep the default IDR display if the cache is unavailable.
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Theme(
-      data: Theme.of(context).copyWith(
-        brightness: Brightness.light,
-        scaffoldBackgroundColor: Colors.white,
-        canvasColor: Colors.white,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF5DF9FF),
-          brightness: Brightness.light,
-        ),
+    final colors = Theme.of(context).colorScheme;
+    return Scaffold(
+      backgroundColor: colors.surface,
+      appBar: _selectedIndex == 0 ? null : _buildAppBar(),
+      body: Stack(
+        children: [
+          _buildBody(),
+          if (_isChangingCurrency) const _CurrencyLoadingOverlay(),
+        ],
       ),
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        appBar: _selectedIndex == 0 ? null : _buildAppBar(),
-        body: _buildBody(),
-        bottomNavigationBar: ExpenseBottomBar(
-          selectedIndex: _selectedIndex,
-          onSelected: _onNavigationSelected,
-        ),
+      bottomNavigationBar: ExpenseBottomBar(
+        selectedIndex: _selectedIndex,
+        onSelected: _onNavigationSelected,
       ),
     );
   }
@@ -97,19 +97,13 @@ class _HomePage2State extends State<HomePage2> {
           onCurrencyChanged: _changeCurrency,
         );
       default:
-        return ValueListenableBuilder<String>(
-          valueListenable: appCurrency,
-          builder: (context, currency, child) => ValueListenableBuilder<double>(
-            valueListenable: appExchangeRate,
-            builder: (context, rate, child) => ListWithCards(key: listKey),
-          ),
-        );
+        return ListWithCards(key: listKey);
     }
   }
 
   AppBar _buildAppBar() {
     return AppBar(
-      backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+      backgroundColor: Theme.of(context).colorScheme.surface,
       title: _selectedIndex == 2
           ? Row(
               mainAxisSize: MainAxisSize.max,
@@ -143,7 +137,7 @@ class _HomePage2State extends State<HomePage2> {
       ),
       child: Theme(
         data: Theme.of(context).copyWith(
-          canvasColor: Colors.white,
+          canvasColor: Theme.of(context).colorScheme.surfaceContainer,
           highlightColor: const Color(0x335DF9FF),
           splashColor: const Color(0x555DF9FF),
           colorScheme: Theme.of(context).colorScheme.copyWith(
@@ -155,7 +149,7 @@ class _HomePage2State extends State<HomePage2> {
           child: DropdownButton<ExpenseSort>(
             value: listKey.currentState?._sort ?? ExpenseSort.dateNewest,
             isDense: true,
-            dropdownColor: Colors.white,
+            dropdownColor: Theme.of(context).colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(14),
             focusColor: Colors.transparent,
             style: const TextStyle(
@@ -358,37 +352,42 @@ class _HomePage2State extends State<HomePage2> {
   }
 
   Future<void> _changeCurrency(String currency) async {
-    if (currency == 'IDR') {
-      appCurrency.value = currency;
-      appExchangeRate.value = 1;
-      await DatabaseHelp.setSetting('currency', currency);
-      return;
-    }
-
+    if (mounted) setState(() => _isChangingCurrency = true);
     try {
-      final rates = await Throw.getExchangeRates();
-      final rate = rates[currency];
-      if (rate == null || rate <= 0) throw StateError('Invalid exchange rate');
-      await DatabaseHelp.cacheExchangeRate(currency, rate);
-      appCurrency.value = currency;
-      appExchangeRate.value = rate;
-      await DatabaseHelp.setSetting('currency', currency);
-    } catch (_) {
-      final cachedRate = await DatabaseHelp.getCachedExchangeRate(currency);
-      if (cachedRate == null || cachedRate <= 0) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-              'Exchange rate unavailable. Deploy the backend endpoint or connect once online.',
-            ),
-          ),
-        );
+      if (currency == 'IDR') {
+        appCurrency.value = currency;
+        appExchangeRate.value = 1;
+        await DatabaseHelp.setSetting('currency', currency);
         return;
       }
-      appCurrency.value = currency;
-      appExchangeRate.value = cachedRate;
-      await DatabaseHelp.setSetting('currency', currency);
+
+      try {
+        final rates = await Throw.getExchangeRates();
+        final rate = rates[currency];
+        if (rate == null || rate <= 0) {
+          throw StateError('Invalid exchange rate');
+        }
+        await DatabaseHelp.cacheExchangeRate(currency, rate);
+        appCurrency.value = currency;
+        appExchangeRate.value = rate;
+        await DatabaseHelp.setSetting('currency', currency);
+      } catch (_) {
+        final cachedRate = await DatabaseHelp.getCachedExchangeRate(currency);
+        if (cachedRate == null || cachedRate <= 0) {
+          throw StateError('Exchange rate unavailable while offline');
+        }
+        appCurrency.value = currency;
+        appExchangeRate.value = cachedRate;
+        await DatabaseHelp.setSetting('currency', currency);
+      }
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not change currency: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isChangingCurrency = false);
     }
   }
 
@@ -535,6 +534,47 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
   }
 }
 
+class _CurrencyLoadingOverlay extends StatelessWidget {
+  const _CurrencyLoadingOverlay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: ColoredBox(
+        color: Color(0xCCFFFFFF),
+        child: Center(
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: Colors.black, width: 2),
+              boxShadow: const [
+                BoxShadow(
+                  color: Colors.black,
+                  offset: Offset(4, 4),
+                  blurRadius: 0,
+                ),
+              ],
+            ),
+            child: const Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                CircularProgressIndicator(color: Colors.black),
+                SizedBox(height: 16),
+                Text(
+                  'Getting newest exchange rate...',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class SettingsPage extends StatefulWidget {
   final Future<void> Function() onDeleteAll;
   final Future<void> Function() onExportPdf;
@@ -590,7 +630,7 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 6),
         const Text(
           'Manage your data, account, and app preferences.',
-          style: TextStyle(color: Color(0xFF64748B)),
+          style: TextStyle(color: Colors.grey),
         ),
         const SizedBox(height: 24),
         _buildSectionTitle('Data & sync'),
@@ -636,7 +676,7 @@ class _SettingsPageState extends State<SettingsPage> {
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.black, width: 2),
           ),
@@ -685,7 +725,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black, width: 2),
         boxShadow: const [
@@ -720,7 +760,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildPreferencesCard() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black, width: 2),
       ),
@@ -792,7 +832,7 @@ class _SettingsAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
+      color: Theme.of(context).colorScheme.surfaceContainer,
       borderRadius: BorderRadius.circular(18),
       child: InkWell(
         borderRadius: BorderRadius.circular(18),
@@ -800,7 +840,7 @@ class _SettingsAction extends StatelessWidget {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: Theme.of(context).colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.black, width: 2),
             boxShadow: const [
@@ -826,8 +866,8 @@ class _SettingsAction extends StatelessWidget {
                   children: [
                     Text(
                       title,
-                      style: const TextStyle(
-                        color: Colors.black,
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
@@ -835,12 +875,17 @@ class _SettingsAction extends StatelessWidget {
                     const SizedBox(height: 4),
                     Text(
                       subtitle,
-                      style: const TextStyle(color: Color(0xFF64748B)),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: Colors.black),
+              Icon(
+                Icons.chevron_right,
+                color: Theme.of(context).colorScheme.onSurface,
+              ),
             ],
           ),
         ),
@@ -911,13 +956,21 @@ class _ListWithCardsState extends State<ListWithCards>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    appCurrency.addListener(_onCurrencyChanged);
+    appExchangeRate.addListener(_onCurrencyChanged);
     _loadData();
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    appCurrency.removeListener(_onCurrencyChanged);
+    appExchangeRate.removeListener(_onCurrencyChanged);
     super.dispose();
+  }
+
+  void _onCurrencyChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
@@ -1118,11 +1171,15 @@ class CardList extends StatelessWidget {
                         style: GoogleFonts.itim(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
+                          color: Colors.black,
                         ),
                       ),
                       Text(
                         DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
-                        style: GoogleFonts.itim(fontSize: 16),
+                        style: GoogleFonts.itim(
+                          fontSize: 16,
+                          color: Colors.black,
+                        ),
                       ),
                     ],
                   ),
@@ -1194,7 +1251,7 @@ class ExpenseBottomBar extends StatelessWidget {
         height: 76,
         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(38),
           border: Border.all(color: Colors.black, width: 3),
           boxShadow: const [
@@ -1204,16 +1261,16 @@ class ExpenseBottomBar extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
-            _buildItem(Icons.settings_outlined, 0),
-            _buildItem(Icons.add, 1),
-            _buildItem(Icons.home_outlined, 2),
+            _buildItem(context, Icons.settings_outlined, 0),
+            _buildItem(context, Icons.add, 1),
+            _buildItem(context, Icons.home_outlined, 2),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildItem(IconData icon, int index) {
+  Widget _buildItem(BuildContext context, IconData icon, int index) {
     final isSelected = selectedIndex == index;
     return GestureDetector(
       onTap: () => onSelected(index),
@@ -1229,7 +1286,9 @@ class ExpenseBottomBar extends StatelessWidget {
         ),
         child: Icon(
           icon,
-          color: Colors.black,
+          color: isSelected
+              ? Colors.black
+              : Theme.of(context).colorScheme.onSurface,
           size: isSelected ? 31 : 25,
           weight: isSelected ? 800 : 500,
         ),

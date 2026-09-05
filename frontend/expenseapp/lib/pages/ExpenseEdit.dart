@@ -19,14 +19,12 @@ class _ExpenseEditState extends State<ExpenseEdit> {
   String _selectedType = 'expected';
   DateTime _selectedDate = DateTime.now();
 
-  
-@override
+  @override
   void initState() {
     super.initState();
     _loadExpenseData();
   }
 
-  
   Future<void> _loadExpenseData() async {
     try {
       final data = await getDataById(widget.expenseId!);
@@ -36,25 +34,27 @@ class _ExpenseEditState extends State<ExpenseEdit> {
           _amountController.text = data['amount']?.toString() ?? '';
           _selectedCategory = data['category'] ?? 'makanan';
           _selectedType = data['type'] ?? 'expected';
-          _selectedDate = data['date'] != null ? DateTime.parse(data['date']) : DateTime.now();
+          _selectedDate = data['date'] != null
+              ? DateTime.parse(data['date'])
+              : DateTime.now();
         });
       }
     } catch (e) {
       print("Error loading data: $e");
     }
   }
-  
-  static Future<Map<String, dynamic>?> getDataById(int id) async {
-  final Database db = await DatabaseHelp.initDB();
-  List<Map<String, dynamic>> result = await db.query(
-    'my_table',
-    where: 'id = ?',
-    whereArgs: [id],
-    limit: 1,
-  );
 
-  return result.isNotEmpty ? result.first : null;
-}
+  static Future<Map<String, dynamic>?> getDataById(int id) async {
+    final Database db = await DatabaseHelp.initDB();
+    List<Map<String, dynamic>> result = await db.query(
+      'my_table',
+      where: 'id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+
+    return result.isNotEmpty ? result.first : null;
+  }
 
   final Map<String, IconData> _categoryIcons = {
     'makanan': Icons.fastfood,
@@ -86,19 +86,23 @@ class _ExpenseEditState extends State<ExpenseEdit> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Theme.of(context).colorScheme.surface,
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: Theme.of(context).colorScheme.surface,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black, size: 30),
+          icon: Icon(
+            Icons.arrow_back,
+            color: Theme.of(context).colorScheme.onSurface,
+            size: 30,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
 
         title: Text(
           'Edit Expense',
           style: GoogleFonts.itim(
-            color: Colors.black,
+            color: Theme.of(context).colorScheme.onSurface,
             fontSize: 28,
             fontWeight: FontWeight.bold,
           ),
@@ -106,7 +110,11 @@ class _ExpenseEditState extends State<ExpenseEdit> {
         centerTitle: true,
         actions: [
           IconButton(
-            icon: Icon(Icons.delete, color: Colors.black, size: 30),
+            icon: Icon(
+              Icons.delete,
+              color: Theme.of(context).colorScheme.onSurface,
+              size: 30,
+            ),
             onPressed: () {
               DatabaseHelp.deleteTs(widget.expenseId);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -118,23 +126,24 @@ class _ExpenseEditState extends State<ExpenseEdit> {
               );
               Navigator.pop(context);
             },
-
-           )
+          ),
         ],
-
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(25),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            
             _buildLabel('Expense Name'),
             _buildTextField(_nameController, _nameController.text),
             const SizedBox(height: 20),
 
             _buildLabel('Amount (Rp)'),
-            _buildTextField(_amountController, _amountController.text, isNumber: true),
+            _buildTextField(
+              _amountController,
+              _amountController.text,
+              isNumber: true,
+            ),
             const SizedBox(height: 20),
 
             _buildLabel('Category'),
@@ -173,7 +182,10 @@ class _ExpenseEditState extends State<ExpenseEdit> {
                   children: [
                     Text(
                       "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}",
-                      style: GoogleFonts.itim(fontSize: 18),
+                      style: GoogleFonts.itim(
+                        fontSize: 18,
+                        color: Colors.black,
+                      ),
                     ),
                     const Icon(Icons.calendar_today, color: Colors.black),
                   ],
@@ -196,6 +208,7 @@ class _ExpenseEditState extends State<ExpenseEdit> {
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1.5,
+                      color: Colors.black,
                     ),
                   ),
                 ),
@@ -212,7 +225,11 @@ class _ExpenseEditState extends State<ExpenseEdit> {
       padding: const EdgeInsets.only(bottom: 8, left: 5),
       child: Text(
         label,
-        style: GoogleFonts.itim(fontSize: 20, fontWeight: FontWeight.bold),
+        style: GoogleFonts.itim(
+          fontSize: 20,
+          fontWeight: FontWeight.bold,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
     );
   }
@@ -227,9 +244,10 @@ class _ExpenseEditState extends State<ExpenseEdit> {
       child: TextField(
         controller: controller,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-        style: GoogleFonts.itim(fontSize: 18),
+        style: GoogleFonts.itim(fontSize: 18, color: Colors.black),
         decoration: InputDecoration(
           hintText: hint,
+          hintStyle: const TextStyle(color: Colors.black),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.all(15),
         ),
@@ -275,7 +293,7 @@ class _ExpenseEditState extends State<ExpenseEdit> {
 
                   Text(
                     displayMap != null ? displayMap[item]! : item,
-                    style: GoogleFonts.itim(fontSize: 18),
+                    style: GoogleFonts.itim(fontSize: 18, color: Colors.black),
                   ),
                 ],
               ),
@@ -314,17 +332,19 @@ class _ExpenseEditState extends State<ExpenseEdit> {
     );
 
     try {
-      final cleanAmount = int.tryParse(
-        _amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
-      ) ?? 0;
+      final cleanAmount =
+          int.tryParse(
+            _amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
+          ) ??
+          0;
 
       await DatabaseHelp.updateTs(
-        widget.expenseId, 
-        _nameController.text, 
-        cleanAmount,  // ← Parse to int, not pass the controller
-        _selectedCategory, 
-        _selectedType, 
-        "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}"
+        widget.expenseId,
+        _nameController.text,
+        cleanAmount, // ← Parse to int, not pass the controller
+        _selectedCategory,
+        _selectedType,
+        "${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}",
       );
       print("Berhasil Di Update");
       if (mounted) Navigator.pop(context);
