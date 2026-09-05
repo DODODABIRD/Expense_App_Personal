@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import '../services/databaseHelper.dart';
 import '../services/ApiService.dart';
 import 'ExpenseEdit.dart';
+import '../services/auth_service.dart';
 
 
 
@@ -57,9 +58,17 @@ class HomePage2 extends StatelessWidget {
 
   AppBar BarApp() {
     return AppBar(
-      toolbarHeight: 0,
       backgroundColor: const Color.fromARGB(255, 255, 255, 255),
-      centerTitle: true,
+      title: Text(AuthService.currentUser?.email ?? 'Expenses'),
+      actions: [
+        IconButton(
+          tooltip: 'Sign out',
+          icon: const Icon(Icons.logout),
+          onPressed: () async {
+            await AuthService.signOut();
+          },
+        ),
+      ],
     );
   }
 }
@@ -162,6 +171,7 @@ class _ListWithCardsState extends State<ListWithCards>
     setState(() => _isLoading = true);
     try {
       await DatabaseHelp.initDB();
+      await DatabaseHelp.assignLegacyExpensesToCurrentUser();
       unawaited(_syncPendingExpenses());
     } catch(e){
       print("Nigga The Database Aint Initialized");
@@ -454,14 +464,6 @@ class NeoAddButton extends StatelessWidget {
           final state = context.findAncestorStateOfType<_ListWithCardsState>();
           state?._loadData();
 
-          // Karena NeoAddButton di luar ListWithCards, kita perlu cara untuk memberitahu ListWithCards.
-          // Cara termudah: restart aplikasi atau gunakan GlobalKey/Provider.
-          // Namun di sini kita bisa memaksa rebuild via Navigator result atau callback.
-          // Mari kita buat navigasi yang lebih cerdas.
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => const HomePage2()),
-          );
         },
         child: const Icon(
           Icons.add,

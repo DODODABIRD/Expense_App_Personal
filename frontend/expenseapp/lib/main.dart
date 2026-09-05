@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
-// import 'pages/homepage.dart';
-import 'pages/hp2.dart';
-// import 'pages/homepage.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'pages/auth_gate.dart';
+import 'firebase_options.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID');
+	await Firebase.initializeApp(
+  options: DefaultFirebaseOptions.currentPlatform,
+);
   runApp(const MyApp());
 }
 
@@ -21,7 +24,7 @@ class MyApp extends StatelessWidget {
 			theme: ThemeData(
 				primarySwatch: Colors.blue,
 			),
-			home: HomePage2(),
+			home: const AuthGate(),
 		);
 	}
 }

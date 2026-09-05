@@ -33,7 +33,7 @@ class _ExpenseEditState extends State<ExpenseEdit> {
       if (data != null) {
         setState(() {
           _nameController.text = data['name'] ?? '';
-          _amountController.text = data['amount'] ?? '';
+          _amountController.text = data['amount']?.toString() ?? '';
           _selectedCategory = data['category'] ?? 'makanan';
           _selectedType = data['type'] ?? 'expected';
           _selectedDate = data['date'] != null ? DateTime.parse(data['date']) : DateTime.now();

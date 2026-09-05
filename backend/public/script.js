@@ -1,3 +1,26 @@
+const firebaseConfig = {
+    apiKey: 'AIzaSyBScOUH8uoz0OjzmeMZpIAegniNU-axDEI',
+    authDomain: 'unmurce-2f3e3.firebaseapp.com',
+    projectId: 'unmurce-2f3e3',
+    storageBucket: 'unmurce-2f3e3.firebasestorage.app',
+    messagingSenderId: '515835567480',
+    appId: '1:515835567480:web:13c5d1a0159cabb645bc8d'
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const authPanel = document.getElementById('auth-panel');
+const authForm = document.getElementById('auth-form');
+const authEmail = document.getElementById('auth-email');
+const authPassword = document.getElementById('auth-password');
+const authError = document.getElementById('auth-error');
+const authSubmit = document.getElementById('auth-submit');
+const authToggle = document.getElementById('auth-toggle');
+const authTitle = document.getElementById('auth-title');
+const authKicker = document.getElementById('auth-kicker');
+const dashboard = document.querySelector('.dashboard');
+const signedInUser = document.getElementById('signed-in-user');
+const signOutBtn = document.getElementById('sign-out-btn');
 const form = document.getElementById('expense-form');
 const list = document.getElementById('expense-list');
 const mobileCards = document.getElementById('mobile-cards');
@@ -5,6 +28,42 @@ const totalAmountDisplay = document.getElementById('total-amount');
 const refreshBtn = document.getElementById('refresh-btn');
 const downloadBtn = document.getElementById('download-btn');
 let currentExpenses = [];
+let isRegistering = false;
+
+function setAuthMode(registering) {
+    isRegistering = registering;
+    authTitle.textContent = registering ? 'Create account' : 'Sign in';
+    authKicker.textContent = registering ? 'NEW ACCOUNT' : 'WELCOME BACK';
+    authSubmit.textContent = registering ? 'Create account' : 'Sign in';
+    authToggle.textContent = registering ? 'Already have an account? Sign in' : 'Create an account';
+    authPassword.autocomplete = registering ? 'new-password' : 'current-password';
+    authError.textContent = '';
+}
+
+function showDashboard(user) {
+    authPanel.hidden = true;
+    dashboard.hidden = false;
+    signedInUser.textContent = user.email || '';
+    fetchExpenses();
+}
+
+function showAuth() {
+    authPanel.hidden = false;
+    dashboard.hidden = true;
+    signedInUser.textContent = '';
+    list.innerHTML = '';
+    mobileCards.innerHTML = '';
+    currentExpenses = [];
+}
+
+async function authHeaders() {
+    const user = auth.currentUser;
+    if (!user) throw new Error('Please sign in first');
+    return {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${await user.getIdToken()}`
+    };
+}
 
 function formatCurrency(value) {
     return new Intl.NumberFormat('id-ID', {
@@ -16,7 +75,7 @@ function formatCurrency(value) {
 
 async function fetchExpenses() {
     try {
-        const response = await fetch('/api/users');
+        const response = await fetch('/api/users', { headers: await authHeaders() });
         if (!response.ok) throw new Error('Failed to fetch');
         
         const expenses = await response.json();
@@ -142,6 +201,36 @@ function downloadPdf() {
     doc.save(`Pengeluaran_Dodo_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
+authToggle.addEventListener('click', () => setAuthMode(!isRegistering));
+
+authForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    authError.textContent = '';
+    authSubmit.disabled = true;
+    try {
+        if (isRegistering) {
+            await auth.createUserWithEmailAndPassword(authEmail.value.trim(), authPassword.value);
+        } else {
+            await auth.signInWithEmailAndPassword(authEmail.value.trim(), authPassword.value);
+        }
+        authForm.reset();
+    } catch (error) {
+        authError.textContent = error.message.replace('Firebase: ', '').replace(/ \(auth\/.*\)\.?$/, '');
+    } finally {
+        authSubmit.disabled = false;
+    }
+});
+
+signOutBtn.addEventListener('click', () => auth.signOut());
+
+auth.onAuthStateChanged((user) => {
+    if (user) {
+        showDashboard(user);
+    } else {
+        showAuth();
+    }
+});
+
 if (downloadBtn) {
     downloadBtn.addEventListener('click', downloadPdf);
 }
@@ -167,9 +256,7 @@ if (form) {
         try {
             const response = await fetch('/api/users', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: await authHeaders(),
                 body: JSON.stringify(payload)
             });
 
@@ -190,5 +277,3 @@ if (refreshBtn) {
     refreshBtn.addEventListener('click', fetchExpenses);
 }
 
-// Initial fetch
-fetchExpenses();

@@ -1,14 +1,22 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'databaseHelper.dart';
+import 'auth_service.dart';
 
 const String baseUrl = "https://expense-app-personal.vercel.app/api";
 
 class Throw {
+  static Future<Map<String, String>> _headers() async {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer ${await AuthService.getIdToken()}',
+    };
+  }
+
   static Future<void> getUsers() async {
     final url = Uri.parse('$baseUrl/users');
 
-    final response = await http.get(url);
+    final response = await http.get(url, headers: await _headers());
 
     print(response.statusCode);
     print(response.body);
@@ -17,7 +25,7 @@ class Throw {
   Future<void> getUserById(String id) async {
     final url = Uri.parse('$baseUrl/users/$id');
 
-    final response = await http.get(url);
+    final response = await http.get(url, headers: await _headers());
 
     print(response.statusCode);
     print(response.body);
@@ -28,7 +36,7 @@ class Throw {
 
     final response = await http.put(
       url,
-      headers: {'Content-Type': 'application/json'},
+      headers: await _headers(),
       body: jsonEncode({"name": "Updated Name"}),
     );
 
@@ -39,7 +47,7 @@ class Throw {
   Future<void> deleteUser(String id) async {
     final url = Uri.parse('$baseUrl/users/$id');
 
-    final response = await http.delete(url);
+    final response = await http.delete(url, headers: await _headers());
 
     print(response.statusCode);
     print(response.body);
@@ -48,7 +56,7 @@ class Throw {
   static Future<String?> getMongoIdFromLocalId(int localId) async {
     final url = Uri.parse('$baseUrl/users/local/$localId');
 
-    final response = await http.get(url);
+    final response = await http.get(url, headers: await _headers());
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -76,7 +84,7 @@ class Throw {
     final response = await http
         .put(
           url,
-          headers: {'Content-Type': 'application/json'},
+          headers: await _headers(),
           body: jsonEncode({
             "name": name,
             "amount": amount,
@@ -107,7 +115,7 @@ class Throw {
 
     final url = Uri.parse('$baseUrl/users/$mongoId');
 
-    final response = await http.delete(url);
+    final response = await http.delete(url, headers: await _headers());
 
     print(response.statusCode);
     print(response.body);
@@ -127,7 +135,7 @@ class Throw {
       final response = await http
           .post(
             url,
-            headers: {'Content-Type': 'application/json'},
+            headers: await _headers(),
             body: jsonEncode({
               "localId": localId,
               "name": name,

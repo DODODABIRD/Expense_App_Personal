@@ -22,6 +22,103 @@ body {
     line-height: 1.5;
 }
 
+[hidden] {
+    display: none !important;
+}
+
+.auth-panel {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 420px);
+    gap: clamp(2rem, 8vw, 8rem);
+    align-items: center;
+    max-width: 1120px;
+    margin: 0 auto;
+    padding: 3rem 1.5rem;
+}
+
+.auth-copy {
+    max-width: 560px;
+}
+
+.auth-copy h1 {
+    margin: 0.5rem 0 1rem;
+    font-size: clamp(2.5rem, 6vw, 5.25rem);
+    line-height: 0.98;
+    letter-spacing: -0.06em;
+}
+
+.auth-copy > p:last-child {
+    color: var(--text-muted);
+    font-size: 1.125rem;
+    max-width: 34rem;
+}
+
+.eyebrow {
+    color: var(--primary-color);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+}
+
+.auth-form {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 1rem;
+    box-shadow: 0 20px 50px rgba(15, 23, 42, 0.12);
+    display: grid;
+    gap: 0.55rem;
+    padding: 2rem;
+}
+
+.auth-heading {
+    margin-bottom: 1rem;
+}
+
+.auth-heading span {
+    color: var(--text-muted);
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+}
+
+.auth-heading h2 {
+    margin: 0.35rem 0 0;
+    font-size: 2rem;
+}
+
+.auth-form label {
+    color: var(--text-main);
+    font-size: 0.875rem;
+    font-weight: 600;
+    margin-top: 0.5rem;
+}
+
+.auth-form .btn-primary {
+    margin-top: 1rem;
+}
+
+.auth-toggle {
+    background: transparent;
+    border: 0;
+    color: var(--primary-color);
+    cursor: pointer;
+    font-size: 0.875rem;
+    padding: 0.65rem;
+}
+
+.auth-error {
+    color: var(--danger);
+    font-size: 0.8125rem;
+    min-height: 1.25rem;
+}
+
+.signed-in-user {
+    color: var(--text-muted);
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
 .dashboard {
     max-width: 1000px;
     margin: 2rem auto;
@@ -33,6 +130,12 @@ header {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 2rem;
+}
+
+header > div:last-child {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
 }
 
 h1 {
@@ -101,7 +204,7 @@ input {
 input:focus {
     outline: none;
     border-color: var(--primary-color);
-    ring: 2px solid var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.2);
 }
 
 .btn-primary {
@@ -180,6 +283,20 @@ td {
 }
 
 @media (max-width: 640px) {
+    .auth-panel {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+        padding: 2rem 1rem;
+    }
+
+    .auth-copy h1 {
+        font-size: 3rem;
+    }
+
+    .auth-form {
+        padding: 1.25rem;
+    }
+
     .dashboard {
         margin: 1rem auto;
         padding: 0 0.5rem;
@@ -190,6 +307,12 @@ td {
         align-items: flex-start;
         gap: 1rem;
         margin-bottom: 1rem;
+    }
+
+    header > div:last-child {
+        align-items: stretch;
+        flex-direction: column;
+        width: 100%;
     }
 
     h1 {

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "515835567480",
+    "project_id": "unmurce-2f3e3",
+    "storage_bucket": "unmurce-2f3e3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:515835567480:android:bae3ea2beb911dfb45bc8d",
+        "android_client_info": {
+          "package_name": "com.example.expenseapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDe59AcakNuAd5CfiEqCLK6IOCwB_kfMBs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
