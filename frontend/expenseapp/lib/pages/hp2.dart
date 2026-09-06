@@ -15,6 +15,7 @@ import '../services/databaseHelper.dart';
 import '../services/ApiService.dart';
 import 'ExpenseEdit.dart';
 import '../services/auth_service.dart';
+import '../services/notification_expense_service.dart';
 
 // FIXME
 
@@ -51,6 +52,27 @@ class _HomePage2State extends State<HomePage2> {
   void initState() {
     super.initState();
     _restoreCurrencyPreference();
+    _startNotificationParser();
+  }
+
+  Future<void> _startNotificationParser() async {
+    final service = NotificationExpenseService.instance;
+    if (!await service.isEnabled()) return;
+    await service.start(_showNotificationParserError, onExpenseAdded: () async {
+      listKey.currentState?._loadData();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Expense parsed from notification.')),
+        );
+      }
+    });
+  }
+
+  Future<void> _showNotificationParserError(String error) async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not parse notification: $error')),
+    );
   }
 
   Future<void> _restoreCurrencyPreference() async {
@@ -638,11 +660,42 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   int _pendingSync = 0;
   bool _notificationsEnabled = true;
+  bool _autoExpenseParserEnabled = false;
 
   @override
   void initState() {
     super.initState();
     _loadSyncStatus();
+    _loadNotificationParserStatus();
+  }
+
+  Future<void> _loadNotificationParserStatus() async {
+    final enabled = await NotificationExpenseService.instance.isEnabled();
+    if (mounted) setState(() => _autoExpenseParserEnabled = enabled);
+    if (enabled) {
+      await NotificationExpenseService.instance.start(_showParserError);
+    }
+  }
+
+  Future<void> _showParserError(String error) async {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Could not parse notification: $error')),
+    );
+  }
+
+  Future<void> _toggleAutoExpenseParser(bool enabled) async {
+    if (!enabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Disable notification access in Android Settings.'),
+        ),
+      );
+      return;
+    }
+    await NotificationExpenseService.instance.openAccessSettings();
+    await NotificationExpenseService.instance.start(_showParserError);
+    if (mounted) setState(() => _autoExpenseParserEnabled = true);
   }
 
   Future<void> _loadSyncStatus() async {
@@ -700,6 +753,9 @@ class _SettingsPageState extends State<SettingsPage> {
         const SizedBox(height: 28),
         _buildSectionTitle('Preferences'),
         _buildPreferencesCard(),
+        const SizedBox(height: 28),
+        _buildSectionTitle('Automation'),
+        _buildAutoExpenseParserCard(),
         const SizedBox(height: 28),
         _buildSectionTitle('Account'),
         _SettingsAction(
@@ -855,6 +911,25 @@ class _SettingsPageState extends State<SettingsPage> {
                 setState(() => _notificationsEnabled = enabled),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAutoExpenseParserCard() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.black, width: 2),
+      ),
+      child: SwitchListTile(
+        secondary: const Icon(Icons.auto_awesome_outlined),
+        title: const Text('Auto Expense parser'),
+        subtitle: const Text(
+          'Read generic notifications and create expenses automatically.',
+        ),
+        value: _autoExpenseParserEnabled,
+        onChanged: _toggleAutoExpenseParser,
       ),
     );
   }

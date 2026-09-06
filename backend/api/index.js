@@ -86,8 +86,87 @@ const ExpenseSchema = new mongoose.Schema(
 ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
 const User = mongoose.models.Expense || mongoose.model("Expense", ExpenseSchema);
 
+const parserApiKey =
+  process.env.GEMINI_KEY;
+
+function normalizeParsedExpense(value) {
+  const amount = Number(value?.amount);
+  const type = String(value?.type || "others").toLowerCase();
+  return {
+    name: String(value?.name || "Unknown expense").trim(),
+    amount: Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0,
+    category: String(value?.category || "general").trim().toLowerCase(),
+    type: ["expected", "unexpected", "others"].includes(type)
+      ? type
+      : "others",
+  };
+}
+
 
 app 
+/**
+ * Parse a notification into the expense fields understood by the app.
+ * The API key stays on the backend; notification text is never sent directly
+ * from the mobile app to Google.
+ */
+app.post("/api/parse-notification", requireAuth, async (req, res) => {
+  try {
+    if (!parserApiKey) {
+      return res.status(503).json({ error: "Gemini API key is not configured" });
+    }
+
+    const notification = String(req.body?.message || "").trim();
+    if (!notification) {
+      return res.status(400).json({ error: "Notification message is required" });
+    }
+
+    const prompt = `You extract expenses from a generic mobile notification.
+Return only valid JSON with exactly these keys: name (string), amount (integer
+in the source currency), category (short lowercase string), and type (one of
+expected, unexpected, others). If it is not clearly an expense, still return
+the best reasonable interpretation and use others. Do not include markdown.
+Notification title: ${String(req.body?.title || "")}
+Notification app: ${String(req.body?.packageName || "")}
+Notification message: ${notification}`;
+
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" +
+        encodeURIComponent(parserApiKey),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                name: { type: "STRING" },
+                amount: { type: "INTEGER" },
+                category: { type: "STRING" },
+                type: { type: "STRING", enum: ["expected", "unexpected", "others"] },
+              },
+              required: ["name", "amount", "category", "type"],
+            },
+          },
+        }),
+      }
+    );
+
+    const body = await response.json();
+    if (!response.ok) {
+      return res.status(502).json({ error: "Gemini could not parse notification" });
+    }
+
+    const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return res.status(502).json({ error: "Gemini returned no parsed expense" });
+    return res.json(normalizeParsedExpense(JSON.parse(text)));
+  } catch (err) {
+    return res.status(502).json({ error: "Could not parse notification" });
+  }
+});
+
 /**
  * GET current exchange rates with IDR as the base currency.
  */

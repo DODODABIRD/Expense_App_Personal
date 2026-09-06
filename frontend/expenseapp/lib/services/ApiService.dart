@@ -49,6 +49,28 @@ class Throw {
     );
   }
 
+  static Future<Map<String, dynamic>> parseNotification({
+    required String title,
+    required String message,
+    required String packageName,
+  }) async {
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/parse-notification'),
+          headers: await _headers(),
+          body: jsonEncode({
+            'title': title,
+            'message': message,
+            'packageName': packageName,
+          }),
+        )
+        .timeout(const Duration(seconds: 30));
+    if (response.statusCode != 200) {
+      throw Exception('Notification parsing failed (${response.statusCode})');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   Future<void> getUserById(String id) async {
     final url = Uri.parse('$baseUrl/users/$id');
 
@@ -128,7 +150,7 @@ class Throw {
       );
     }
 
-    await DatabaseHelp.updateMongoId(localId!, mongoId);
+    await DatabaseHelp.updateMongoId(localId, mongoId);
 
     print(response.statusCode);
     print(response.body);
