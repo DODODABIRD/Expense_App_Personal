@@ -87,7 +87,10 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
 const User = mongoose.models.Expense || mongoose.model("Expense", ExpenseSchema);
 
 const parserApiKey =
-  process.env.GEMINI_KEY;
+  process.env.GEMINI_KEY ||
+  process.env.GEMINI_API_KEY ||
+  process.env.GOOGLE_STUDIO_API_KEY ||
+  process.env.GOOGLE_API_KEY;
 
 function normalizeParsedExpense(value) {
   const amount = Number(value?.amount);
@@ -130,7 +133,7 @@ Notification app: ${String(req.body?.packageName || "")}
 Notification message: ${notification}`;
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" +
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=" +
         encodeURIComponent(parserApiKey),
       {
         method: "POST",
@@ -156,14 +159,16 @@ Notification message: ${notification}`;
 
     const body = await response.json();
     if (!response.ok) {
-      return res.status(502).json({ error: "Gemini could not parse notification" });
+      const providerError = body.error?.message || "Gemini request failed";
+      return res.status(502).json({ error: providerError });
     }
 
-    const text = body.candidates?.[0]?.content?.parts?.[0]?.text;
+    const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
     if (!text) return res.status(502).json({ error: "Gemini returned no parsed expense" });
-    return res.json(normalizeParsedExpense(JSON.parse(text)));
+    const jsonText = text.replace(/^```(?:json)?\s*|\s*```$/gi, "").trim();
+    return res.json(normalizeParsedExpense(JSON.parse(jsonText)));
   } catch (err) {
-    return res.status(502).json({ error: "Could not parse notification" });
+    return res.status(502).json({ error: `Could not parse notification: ${err.message}` });
   }
 });
 

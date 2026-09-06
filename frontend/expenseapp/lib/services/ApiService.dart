@@ -66,7 +66,14 @@ class Throw {
         )
         .timeout(const Duration(seconds: 30));
     if (response.statusCode != 200) {
-      throw Exception('Notification parsing failed (${response.statusCode})');
+      String message = 'Notification parsing failed (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['error'] != null) message = body['error'].toString();
+      } catch (_) {
+        // Keep the status-based message when the backend response is not JSON.
+      }
+      throw Exception(message);
     }
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
