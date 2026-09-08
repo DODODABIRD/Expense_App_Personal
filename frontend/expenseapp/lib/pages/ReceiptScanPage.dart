@@ -107,12 +107,17 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
     });
 
     try {
-      final rawItems = await Throw.parseReceipt(_imageFile!);
+      final parsedReceipt = await Throw.parseReceipt(_imageFile!);
+      final rawItems = parsedReceipt['items'] as List<Map<String, dynamic>>;
+      final detectedDate = DateTime.tryParse(
+        parsedReceipt['date']?.toString() ?? '',
+      );
       for (final item in _items) {
         item.nameController.dispose();
         item.amountController.dispose();
       }
       setState(() {
+        if (detectedDate != null) _selectedDate = detectedDate;
         _items = rawItems.map((item) {
           final category = item['category']?.toString() ?? 'makanan';
           final type = item['type']?.toString() ?? 'others';

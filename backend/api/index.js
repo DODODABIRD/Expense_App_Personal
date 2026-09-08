@@ -198,6 +198,13 @@ function normalizeReceiptItem(value) {
   };
 }
 
+function normalizeReceiptDate(value) {
+  const date = String(value || '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return Number.isNaN(parsed.getTime()) ? null : date;
+}
+
 /**
  * Parse a photo of a purchase receipt into a line-item split bill.
  * Tax/service charges printed on the receipt are distributed proportionally
@@ -216,7 +223,7 @@ app.post("/api/parse-receipt", requireAuth, async (req, res) => {
     const mimeType = String(req.body?.mimeType || "image/jpeg");
 
     const prompt = `You extract itemized purchases from a photo of a store or
-restaurant receipt. Read every purchased line item and ignore lines such as
+restaurant receipt. Read the receipt date and every purchased line item, and ignore lines such as
 subtotal, cash, change, or payment method. If the receipt also lists a tax
 (PPN/tax) and/or a service charge, distribute those charges proportionally
 across every item so each item's "amount" already includes its share of the
@@ -224,7 +231,8 @@ tax and service charge. Return only valid JSON with an "items" array. Each
 item has: name (string), quantity (integer, default 1), amount (integer,
 final price for that whole line, in the receipt's currency, tax/service
 included), category (one of ${RECEIPT_CATEGORIES.join(", ")}), and type (one
-of expected, unexpected, others). Do not include markdown.`;
+of expected, unexpected, others). The top-level "date" must be the purchase
+date in YYYY-MM-DD format, or null if it cannot be read. Do not include markdown.`;
 
     const response = await fetch(
       "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" +
@@ -246,6 +254,7 @@ of expected, unexpected, others). Do not include markdown.`;
             responseSchema: {
               type: "OBJECT",
               properties: {
+                date: { type: "STRING", nullable: true },
                 items: {
                   type: "ARRAY",
                   items: {
@@ -261,7 +270,7 @@ of expected, unexpected, others). Do not include markdown.`;
                   },
                 },
               },
-              required: ["items"],
+              required: ["date", "items"],
             },
           },
         }),
@@ -282,7 +291,7 @@ of expected, unexpected, others). Do not include markdown.`;
     if (items.length === 0) {
       return res.status(422).json({ error: "No items were detected on the receipt" });
     }
-    return res.json({ items });
+    return res.json({ date: normalizeReceiptDate(parsed?.date), items });
   } catch (err) {
     return res.status(502).json({ error: `Could not parse receipt: ${err.message}` });
   }

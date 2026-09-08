@@ -50,7 +50,7 @@ class Throw {
     );
   }
 
-  static Future<List<Map<String, dynamic>>> parseReceipt(
+  static Future<Map<String, dynamic>> parseReceipt(
     File imageFile,
   ) async {
     final bytes = await imageFile.readAsBytes();
@@ -78,7 +78,10 @@ class Throw {
       throw Exception(message);
     }
     final data = jsonDecode(response.body) as Map<String, dynamic>;
-    return (data['items'] as List<dynamic>).cast<Map<String, dynamic>>();
+    return {
+      'date': data['date']?.toString(),
+      'items': (data['items'] as List<dynamic>).cast<Map<String, dynamic>>(),
+    };
   }
 
   static Future<Map<String, dynamic>> parseNotification({
