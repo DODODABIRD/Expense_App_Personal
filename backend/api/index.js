@@ -4,7 +4,9 @@ const admin = require("firebase-admin");
 const cors = require("cors");
 
 const app = express();
-app.use(express.json());
+// Base64 receipt images can exceed Express defaults; allow larger JSON payloads.
+app.use(express.json({ limit: "8mb" }));
+app.use(express.urlencoded({ extended: true, limit: "8mb" }));
 app.use(cors());
 
 if (!admin.apps.length) {
@@ -169,6 +171,120 @@ Notification message: ${notification}`;
     return res.json(normalizeParsedExpense(JSON.parse(jsonText)));
   } catch (err) {
     return res.status(502).json({ error: `Could not parse notification: ${err.message}` });
+  }
+});
+
+const RECEIPT_CATEGORIES = [
+  "makanan",
+  "school supply",
+  "baju",
+  "elektronik",
+  "transportasi",
+  "kesehatan",
+  "hiburan",
+];
+
+function normalizeReceiptItem(value) {
+  const amount = Number(value?.amount);
+  const quantity = Number(value?.quantity);
+  const category = String(value?.category || "makanan").trim().toLowerCase();
+  const type = String(value?.type || "others").toLowerCase();
+  return {
+    name: String(value?.name || "Unknown item").trim(),
+    quantity: Number.isFinite(quantity) && quantity > 0 ? Math.round(quantity) : 1,
+    amount: Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0,
+    category: RECEIPT_CATEGORIES.includes(category) ? category : "makanan",
+    type: ["expected", "unexpected", "others"].includes(type) ? type : "others",
+  };
+}
+
+/**
+ * Parse a photo of a purchase receipt into a line-item split bill.
+ * Tax/service charges printed on the receipt are distributed proportionally
+ * into each item's amount so every returned item is already final price.
+ */
+app.post("/api/parse-receipt", requireAuth, async (req, res) => {
+  try {
+    if (!parserApiKey) {
+      return res.status(503).json({ error: "Gemini API key is not configured" });
+    }
+
+    const imageBase64 = String(req.body?.image || "").trim();
+    if (!imageBase64) {
+      return res.status(400).json({ error: "Receipt image is required" });
+    }
+    const mimeType = String(req.body?.mimeType || "image/jpeg");
+
+    const prompt = `You extract itemized purchases from a photo of a store or
+restaurant receipt. Read every purchased line item and ignore lines such as
+subtotal, cash, change, or payment method. If the receipt also lists a tax
+(PPN/tax) and/or a service charge, distribute those charges proportionally
+across every item so each item's "amount" already includes its share of the
+tax and service charge. Return only valid JSON with an "items" array. Each
+item has: name (string), quantity (integer, default 1), amount (integer,
+final price for that whole line, in the receipt's currency, tax/service
+included), category (one of ${RECEIPT_CATEGORIES.join(", ")}), and type (one
+of expected, unexpected, others). Do not include markdown.`;
+
+    const response = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" +
+        encodeURIComponent(parserApiKey),
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: prompt },
+                { inline_data: { mime_type: mimeType, data: imageBase64 } },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            responseSchema: {
+              type: "OBJECT",
+              properties: {
+                items: {
+                  type: "ARRAY",
+                  items: {
+                    type: "OBJECT",
+                    properties: {
+                      name: { type: "STRING" },
+                      quantity: { type: "INTEGER" },
+                      amount: { type: "INTEGER" },
+                      category: { type: "STRING" },
+                      type: { type: "STRING", enum: ["expected", "unexpected", "others"] },
+                    },
+                    required: ["name", "quantity", "amount", "category", "type"],
+                  },
+                },
+              },
+              required: ["items"],
+            },
+          },
+        }),
+      }
+    );
+
+    const body = await response.json();
+    if (!response.ok) {
+      const providerError = body.error?.message || "Gemini request failed";
+      return res.status(502).json({ error: providerError });
+    }
+
+    const text = body.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+    if (!text) return res.status(502).json({ error: "Gemini returned no parsed receipt" });
+    const jsonText = text.replace(/^```(?:json)?\s*|\s*```$/gi, "").trim();
+    const parsed = JSON.parse(jsonText);
+    const items = Array.isArray(parsed?.items) ? parsed.items.map(normalizeReceiptItem) : [];
+    if (items.length === 0) {
+      return res.status(422).json({ error: "No items were detected on the receipt" });
+    }
+    return res.json({ items });
+  } catch (err) {
+    return res.status(502).json({ error: `Could not parse receipt: ${err.message}` });
   }
 });
 

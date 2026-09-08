@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/databaseHelper.dart';
+import 'ReceiptScanPage.dart';
 
 class ExpenseAddPage extends StatefulWidget {
   const ExpenseAddPage({super.key});
@@ -68,6 +69,16 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
           ),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Scan receipt',
+            icon: Icon(
+              Icons.receipt_long,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            onPressed: _openReceiptScanner,
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(25),
@@ -250,6 +261,14 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
         BoxShadow(color: Colors.black, offset: Offset(5, 5), blurRadius: 0),
       ],
     );
+  }
+
+  Future<void> _openReceiptScanner() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (context) => const ReceiptScanPage()),
+    );
+    if (saved == true && mounted) Navigator.pop(context);
   }
 
   Future<void> _saveExpense() async {

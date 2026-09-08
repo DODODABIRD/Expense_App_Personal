@@ -1,5 +1,6 @@
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'dart:io';
 import 'databaseHelper.dart';
 import 'auth_service.dart';
 
@@ -47,6 +48,37 @@ class Throw {
     return rates.map(
       (currency, rate) => MapEntry(currency, (rate as num).toDouble()),
     );
+  }
+
+  static Future<List<Map<String, dynamic>>> parseReceipt(
+    File imageFile,
+  ) async {
+    final bytes = await imageFile.readAsBytes();
+    final base64Image = base64Encode(bytes);
+    final lowerPath = imageFile.path.toLowerCase();
+    final mimeType = lowerPath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+
+    final response = await http
+        .post(
+          Uri.parse('$baseUrl/parse-receipt'),
+          headers: await _headers(),
+          body: jsonEncode({'image': base64Image, 'mimeType': mimeType}),
+        )
+        .timeout(const Duration(seconds: 45));
+    if (response.statusCode != 200) {
+      String message = response.statusCode == 413
+          ? 'Receipt image is too large. Please retake the photo closer or use a smaller image.'
+          : 'Receipt parsing failed (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['error'] != null) message = body['error'].toString();
+      } catch (_) {
+        // Keep the status-based message when the backend response is not JSON.
+      }
+      throw Exception(message);
+    }
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    return (data['items'] as List<dynamic>).cast<Map<String, dynamic>>();
   }
 
   static Future<Map<String, dynamic>> parseNotification({
