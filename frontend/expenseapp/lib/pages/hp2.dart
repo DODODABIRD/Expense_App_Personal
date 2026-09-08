@@ -6,6 +6,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:media_store_plus/media_store_plus.dart';
+import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import '../main.dart';
@@ -310,21 +311,52 @@ class _HomePage2State extends State<HomePage2> {
               'Generated: ${DateFormat('dd MMM yyyy').format(DateTime.now())}',
             ),
             pw.SizedBox(height: 20),
-            pw.TableHelper.fromTextArray(
-              headers: const ['Name', 'Amount', 'Category', 'Type', 'Date'],
-              data: expenses.map((expense) {
-                final amountIdr = expense['amount'] is int
-                    ? expense['amount'] as int
-                    : int.tryParse(expense['amount'].toString()) ?? 0;
-                final amount = amountIdr * appExchangeRate.value;
-                return [
-                  expense['name']?.toString() ?? '',
-                  formatter.format(amount).replaceAll(',', '.'),
-                  expense['category']?.toString() ?? '',
-                  expense['type']?.toString() ?? '',
-                  expense['date']?.toString() ?? '',
-                ];
-              }).toList(),
+            pw.Table(
+              border: pw.TableBorder.all(color: pdf.PdfColors.black),
+              columnWidths: const {
+                0: pw.FlexColumnWidth(0.75),
+                1: pw.FixedColumnWidth(82),
+              },
+              children: [
+                _buildPdfRow(
+                  const ['Name', 'Amount', 'Category', 'Type', 'Date'],
+                  pdf.PdfColors.grey300,
+                  isHeader: true,
+                ),
+                ...expenses.map((expense) {
+                  final amountIdr = expense['amount'] is int
+                      ? expense['amount'] as int
+                      : int.tryParse(expense['amount'].toString()) ?? 0;
+                  final amount = amountIdr * appExchangeRate.value;
+                  final type = expense['type']?.toString() ?? '';
+                  return _buildPdfRow(
+                    [
+                      expense['name']?.toString() ?? '',
+                      formatter.format(amount).replaceAll(',', '.'),
+                      expense['category']?.toString() ?? '',
+                      type,
+                      expense['date']?.toString() ?? '',
+                    ],
+                    _pdfTypeColor(type),
+                  );
+                }),
+              ],
+            ),
+            pw.SizedBox(height: 16),
+            pw.Align(
+              alignment: pw.Alignment.centerRight,
+              child: pw.Text(
+                'Total expenses: ${formatter.format(expenses.fold<double>(0, (total, expense) {
+                  final amountIdr = expense['amount'] is int
+                      ? expense['amount'] as int
+                      : int.tryParse(expense['amount'].toString()) ?? 0;
+                  return total + amountIdr * appExchangeRate.value;
+                })).replaceAll(',', '.')}',
+                style: pw.TextStyle(
+                  fontWeight: pw.FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
             ),
           ],
         ),
@@ -371,6 +403,44 @@ class _HomePage2State extends State<HomePage2> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Could not export PDF: $error')));
+    }
+  }
+
+  pw.TableRow _buildPdfRow(
+    List<String> values,
+    pdf.PdfColor color, {
+    bool isHeader = false,
+  }) {
+    return pw.TableRow(
+      decoration: pw.BoxDecoration(color: color),
+      children: values
+          .map(
+            (value) => pw.Padding(
+              padding: const pw.EdgeInsets.all(6),
+              child: pw.Text(
+                value,
+                style: pw.TextStyle(
+                  fontWeight: isHeader
+                      ? pw.FontWeight.bold
+                      : pw.FontWeight.normal,
+                ),
+              ),
+            ),
+          )
+          .toList(),
+    );
+  }
+
+  pdf.PdfColor _pdfTypeColor(String type) {
+    switch (type.toLowerCase()) {
+      case 'expected':
+        return pdf.PdfColor.fromInt(0xFFF9EB5D);
+      case 'unexpected':
+        return pdf.PdfColor.fromInt(0xFFFF5D5D);
+      case 'others':
+        return pdf.PdfColor.fromInt(0xFF5D9BFF);
+      default:
+        return pdf.PdfColors.white;
     }
   }
 
