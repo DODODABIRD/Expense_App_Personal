@@ -22,6 +22,17 @@ class MainActivity : FlutterActivity() {
 						result.success(null)
 					}
 					"isEnabled" -> result.success(isNotificationAccessEnabled())
+					"setAllowedPackages" -> {
+						val packages = (call.argument<List<String>>("packages") ?: emptyList()).toSet()
+						NotificationListener.allowedPackages = packages
+						NotificationListener.allowAllNotifications =
+							call.argument<Boolean>("allowAll") == true
+						result.success(null)
+					}
+					"setParserActive" -> {
+						NotificationListener.parserActive = call.argument<Boolean>("active") == true
+						result.success(null)
+					}
 					"start" -> result.success(null)
 					else -> result.notImplemented()
 				}

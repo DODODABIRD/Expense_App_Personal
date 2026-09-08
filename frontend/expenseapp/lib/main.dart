@@ -3,6 +3,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'pages/auth_gate.dart';
 import 'firebase_options.dart';
+import 'services/databaseHelper.dart';
 
 final ValueNotifier<ThemeMode> appThemeMode = ValueNotifier(ThemeMode.light);
 final ValueNotifier<String> appCurrency = ValueNotifier('IDR');
@@ -12,6 +13,12 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id_ID');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  try {
+    final savedTheme = await DatabaseHelp.getSetting('theme_mode');
+    if (savedTheme == 'dark') appThemeMode.value = ThemeMode.dark;
+  } catch (_) {
+    // Use the light theme when local settings cannot be read.
+  }
   runApp(const MyApp());
 }
 

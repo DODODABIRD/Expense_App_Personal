@@ -29,14 +29,17 @@ class _ExpenseEditState extends State<ExpenseEdit> {
     try {
       final data = await getDataById(widget.expenseId!);
       if (data != null) {
+        final category = data['category']?.toString().trim().toLowerCase();
+        final type = data['type']?.toString().trim().toLowerCase();
         setState(() {
           _nameController.text = data['name'] ?? '';
           _amountController.text = data['amount']?.toString() ?? '';
-          _selectedCategory = data['category'] ?? 'makanan';
-          _selectedType = data['type'] ?? 'expected';
-          _selectedDate = data['date'] != null
-              ? DateTime.parse(data['date'])
-              : DateTime.now();
+          _selectedCategory = _categories.contains(category)
+              ? category!
+              : 'makanan';
+          _selectedType = _types.containsKey(type) ? type! : 'others';
+            _selectedDate = DateTime.tryParse(data['date']?.toString() ?? '')
+              ?? DateTime.now();
         });
       }
     } catch (e) {
@@ -280,19 +283,19 @@ class _ExpenseEditState extends State<ExpenseEdit> {
           // This ensures the pop-up menu background is white
           dropdownColor: Colors.white,
           items: items.map((String item) {
-            IconData? iconData = _categoryIcons[item];
+            final iconData = _categoryIcons[item];
 
             return DropdownMenuItem<String>(
               value: item,
               child: Row(
                 children: [
-                  if (iconData != Null) ...[
+                  if (iconData != null) ...[
                     Icon(iconData, color: Colors.black, size: 24),
                     const SizedBox(width: 12),
                   ],
 
                   Text(
-                    displayMap != null ? displayMap[item]! : item,
+                    displayMap?[item] ?? item,
                     style: GoogleFonts.itim(fontSize: 18, color: Colors.black),
                   ),
                 ],

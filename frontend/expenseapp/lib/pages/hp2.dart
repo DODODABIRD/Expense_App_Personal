@@ -57,7 +57,7 @@ class _HomePage2State extends State<HomePage2> {
 
   Future<void> _startNotificationParser() async {
     final service = NotificationExpenseService.instance;
-    if (!await service.isEnabled()) return;
+    if (!await service.isParserEnabled() || !await service.isEnabled()) return;
     await service.start(_showNotificationParserError, onExpenseAdded: () async {
       listKey.currentState?._loadData();
       if (mounted) {
@@ -661,19 +661,53 @@ class _SettingsPageState extends State<SettingsPage> {
   int _pendingSync = 0;
   bool _notificationsEnabled = true;
   bool _autoExpenseParserEnabled = false;
+  Set<String> _allowedNotificationApps = {};
 
   @override
   void initState() {
     super.initState();
     _loadSyncStatus();
     _loadNotificationParserStatus();
+    _loadAllowedNotificationApps();
+    _loadReminderPreference();
+  }
+
+  Future<void> _loadReminderPreference() async {
+    final saved = await DatabaseHelp.getSetting('expense_reminders');
+    if (mounted && saved != null) {
+      setState(() => _notificationsEnabled = saved == 'true');
+    }
+  }
+
+  Future<void> _loadAllowedNotificationApps() async {
+    final apps = await NotificationExpenseService.instance.getAllowedApps();
+    if (mounted) setState(() => _allowedNotificationApps = apps);
+  }
+
+  Future<void> _setNotificationAppAllowed(String packageName, bool allowed) async {
+    final apps = {..._allowedNotificationApps};
+    if (packageName == NotificationExpenseService.allNotificationsKey) {
+      apps.clear();
+      if (allowed) apps.add(NotificationExpenseService.allNotificationsKey);
+    } else if (apps.contains(NotificationExpenseService.allNotificationsKey)) {
+      apps.remove(NotificationExpenseService.allNotificationsKey);
+      if (allowed) apps.add(packageName);
+    }
+    if (allowed) {
+      apps.add(packageName);
+    } else {
+      apps.remove(packageName);
+    }
+    setState(() => _allowedNotificationApps = apps);
+    await NotificationExpenseService.instance.setAllowedApps(apps);
   }
 
   Future<void> _loadNotificationParserStatus() async {
-    final enabled = await NotificationExpenseService.instance.isEnabled();
+    final service = NotificationExpenseService.instance;
+    final enabled = await service.isParserEnabled() && await service.isEnabled();
     if (mounted) setState(() => _autoExpenseParserEnabled = enabled);
     if (enabled) {
-      await NotificationExpenseService.instance.start(_showParserError);
+      await service.start(_showParserError);
     }
   }
 
@@ -686,15 +720,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _toggleAutoExpenseParser(bool enabled) async {
     if (!enabled) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Disable notification access in Android Settings.'),
-        ),
-      );
+      await NotificationExpenseService.instance.setParserEnabled(false);
+      if (mounted) setState(() => _autoExpenseParserEnabled = false);
       return;
     }
-    await NotificationExpenseService.instance.openAccessSettings();
-    await NotificationExpenseService.instance.start(_showParserError);
+    final service = NotificationExpenseService.instance;
+    await service.setParserEnabled(true);
+    if (!await service.isEnabled()) await service.openAccessSettings();
+    if (await service.isEnabled()) await service.start(_showParserError);
     if (mounted) setState(() => _autoExpenseParserEnabled = true);
   }
 
@@ -896,9 +929,14 @@ class _SettingsPageState extends State<SettingsPage> {
               title: const Text('Dark theme'),
               subtitle: const Text('Use a darker color scheme'),
               value: mode == ThemeMode.dark,
-              onChanged: (enabled) => appThemeMode.value = enabled
-                  ? ThemeMode.dark
-                  : ThemeMode.light,
+              onChanged: (enabled) async {
+                final mode = enabled ? ThemeMode.dark : ThemeMode.light;
+                appThemeMode.value = mode;
+                await DatabaseHelp.setSetting(
+                  'theme_mode',
+                  enabled ? 'dark' : 'light',
+                );
+              },
             ),
           ),
           const Divider(height: 1),
@@ -907,8 +945,13 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('Expense reminders'),
             subtitle: const Text('Enable reminders to record expenses'),
             value: _notificationsEnabled,
-            onChanged: (enabled) =>
-                setState(() => _notificationsEnabled = enabled),
+            onChanged: (enabled) async {
+              setState(() => _notificationsEnabled = enabled);
+              await DatabaseHelp.setSetting(
+                'expense_reminders',
+                enabled.toString(),
+              );
+            },
           ),
         ],
       ),
@@ -922,14 +965,61 @@ class _SettingsPageState extends State<SettingsPage> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black, width: 2),
       ),
-      child: SwitchListTile(
-        secondary: const Icon(Icons.auto_awesome_outlined),
-        title: const Text('Auto Expense parser'),
-        subtitle: const Text(
-          'Read generic notifications and create expenses automatically.',
-        ),
-        value: _autoExpenseParserEnabled,
-        onChanged: _toggleAutoExpenseParser,
+      child: Column(
+        children: [
+          SwitchListTile(
+            secondary: const Icon(Icons.auto_awesome_outlined),
+            title: const Text('Auto Expense parser'),
+            subtitle: const Text(
+              'Read selected payment notifications automatically.',
+            ),
+            value: _autoExpenseParserEnabled,
+            onChanged: _toggleAutoExpenseParser,
+          ),
+          const Divider(height: 1),
+          ExpansionTile(
+            leading: const Icon(Icons.filter_alt_outlined),
+            title: const Text('Allowed payment apps'),
+            subtitle: Text(
+              _allowedNotificationApps.contains(
+                NotificationExpenseService.allNotificationsKey,
+              )
+                  ? 'All notifications selected'
+                  : '${_allowedNotificationApps.length} selected',
+            ),
+            children: [
+              CheckboxListTile(
+                dense: true,
+                title: const Text('All notifications'),
+                subtitle: const Text('Include notifications from every app'),
+                value: _allowedNotificationApps.contains(
+                  NotificationExpenseService.allNotificationsKey,
+                ),
+                onChanged: (allowed) {
+                  if (allowed != null) {
+                    _setNotificationAppAllowed(
+                      NotificationExpenseService.allNotificationsKey,
+                      allowed,
+                    );
+                  }
+                },
+              ),
+              ...NotificationExpenseService.supportedApps.entries.map(
+                  (entry) => CheckboxListTile(
+                    dense: true,
+                    title: Text(entry.value),
+                    subtitle: Text(entry.key),
+                    value: _allowedNotificationApps.contains(entry.key),
+                    onChanged: (allowed) {
+                      if (allowed != null) {
+                        _setNotificationAppAllowed(entry.key, allowed);
+                      }
+                    },
+                  ),
+                ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1033,17 +1123,22 @@ class ExpenseModel {
   });
 
   factory ExpenseModel.fromMap(Map<String, dynamic> map) {
+    final parsedDate = DateTime.tryParse(map['date']?.toString() ?? '');
     return ExpenseModel(
       id: map['id'] as int?,
-      name: map['name'] ?? 'Unknown',
+      name: map['name']?.toString().trim().isNotEmpty == true
+          ? map['name'].toString()
+          : 'Unknown',
       amount: map['amount'] is int
           ? map['amount'] as int
           : int.tryParse(map['amount']?.toString() ?? '0') ?? 0,
-      date: map['date'] != null
-          ? DateTime.tryParse(map['date'].toString()) ?? DateTime.now()
-          : DateTime.now(),
-      category: map['category'] ?? 'general',
-      type: map['type'] ?? 'expected',
+      date: parsedDate ?? DateTime.now(),
+      category: map['category']?.toString().trim().isNotEmpty == true
+          ? map['category'].toString().trim().toLowerCase()
+          : 'general',
+      type: map['type']?.toString().trim().isNotEmpty == true
+          ? map['type'].toString().trim().toLowerCase()
+          : 'others',
     );
   }
 
