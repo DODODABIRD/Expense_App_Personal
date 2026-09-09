@@ -45,6 +45,7 @@ class HomePage2 extends StatefulWidget {
 
 class _HomePage2State extends State<HomePage2> {
   final listKey = GlobalKey<_ListWithCardsState>();
+  late final PageController _pageController;
   int _selectedIndex = 2;
   int _homeTapCount = 0;
   bool _isChangingCurrency = false;
@@ -52,21 +53,31 @@ class _HomePage2State extends State<HomePage2> {
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _selectedIndex);
     _restoreCurrencyPreference();
     _startNotificationParser();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
   }
 
   Future<void> _startNotificationParser() async {
     final service = NotificationExpenseService.instance;
     if (!await service.isParserEnabled() || !await service.isEnabled()) return;
-    await service.start(_showNotificationParserError, onExpenseAdded: () async {
-      listKey.currentState?._loadData();
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Expense parsed from notification.')),
-        );
-      }
-    });
+    await service.start(
+      _showNotificationParserError,
+      onExpenseAdded: () async {
+        listKey.currentState?._loadData();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Expense parsed from notification.')),
+          );
+        }
+      },
+    );
   }
 
   Future<void> _showNotificationParserError(String error) async {
@@ -94,56 +105,99 @@ class _HomePage2State extends State<HomePage2> {
     final colors = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: colors.surface,
-      appBar: _selectedIndex == 0 ? null : _buildAppBar(),
       body: Stack(
         children: [
-          _buildBody(),
+          PageView(
+            controller: _pageController,
+            physics: const BouncingScrollPhysics(),
+            onPageChanged: _onPageChanged,
+            children: [
+              _buildSettingsPage(),
+              ExpenseAddPage(
+                embedded: true,
+                onCancel: _goToHome,
+                onSaved: _goToHome,
+              ),
+              ListWithCards(key: listKey),
+            ],
+          ),
+          if (_selectedIndex == 2)
+            Positioned(
+              top: 8,
+              left: 18,
+              right: 18,
+              child: SafeArea(bottom: false, child: _buildFloatingHomeHeader()),
+            ),
+          Positioned(
+            left: 24,
+            right: 24,
+            bottom: 14,
+            child: ExpenseBottomBar(
+              selectedIndex: _selectedIndex,
+              onSelected: _onNavigationSelected,
+            ),
+          ),
           if (_isChangingCurrency) const _CurrencyLoadingOverlay(),
         ],
-      ),
-      bottomNavigationBar: ExpenseBottomBar(
-        selectedIndex: _selectedIndex,
-        onSelected: _onNavigationSelected,
       ),
     );
   }
 
-  Widget _buildBody() {
-    switch (_selectedIndex) {
-      case 0:
-        return SettingsPage(
-          onDeleteAll: _deleteAllExpenses,
-          onExportPdf: _exportExpenses,
-          onDeleteAccount: _deleteAccount,
-          onChangePassword: _changePassword,
-          onRetrySync: _retrySync,
-          onCurrencyChanged: _changeCurrency,
-          onLoadOnlineExpenses: _loadOnlineExpenses,
-        );
-      default:
-        return ListWithCards(key: listKey);
-    }
+  Widget _buildFloatingHomeHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.black, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black,
+                offset: Offset(4, 4),
+                blurRadius: 0,
+              ),
+            ],
+          ),
+          child: Text(
+            'Expenses',
+            style: GoogleFonts.itim(fontSize: 27, fontWeight: FontWeight.bold),
+          ),
+        ),
+        _buildSortDropdown(),
+      ],
+    );
   }
 
-  AppBar _buildAppBar() {
-    return AppBar(
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      title: _selectedIndex == 2
-          ? Row(
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                Text(
-                  'Expenses',
-                  style: GoogleFonts.itim(
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-                _buildSortDropdown(),
-              ],
-            )
-          : Text(_selectedIndex == 0 ? 'Settings' : 'Account'),
+  Widget _buildSettingsPage() {
+    return SettingsPage(
+      onDeleteAll: _deleteAllExpenses,
+      onExportPdf: _exportExpenses,
+      onDeleteAccount: _deleteAccount,
+      onChangePassword: _changePassword,
+      onRetrySync: _retrySync,
+      onCurrencyChanged: _changeCurrency,
+      onLoadOnlineExpenses: _loadOnlineExpenses,
+    );
+  }
+
+  void _onPageChanged(int index) {
+    if (!mounted) return;
+    setState(() {
+      _selectedIndex = index;
+      _homeTapCount = index == 2 ? _homeTapCount + 1 : 0;
+    });
+  }
+
+  Future<void> _goToHome() async {
+    if (!mounted) return;
+    listKey.currentState?._loadData();
+    await _pageController.animateToPage(
+      2,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -217,34 +271,22 @@ class _HomePage2State extends State<HomePage2> {
   }
 
   Future<void> _onNavigationSelected(int index) async {
-    if (index == 1) {
-      _homeTapCount = 0;
-      await Navigator.push(
-        context,
-        MaterialPageRoute(builder: (context) => const ExpenseAddPage()),
-      );
-      listKey.currentState?._loadData();
-      setState(() => _selectedIndex = 2);
-      return;
-    }
-
-    if (index == 2) {
-      setState(() {
-        _selectedIndex = index;
+    if (index == _selectedIndex) {
+      if (index == 2) {
         _homeTapCount++;
-      });
-
-      if (_homeTapCount == 10) {
-        _homeTapCount = 0;
-        await _showJumpscare();
+        if (_homeTapCount == 10) {
+          _homeTapCount = 0;
+          await _showJumpscare();
+        }
       }
       return;
     }
 
-    setState(() {
-      _selectedIndex = index;
-      _homeTapCount = 0;
-    });
+    await _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOutCubic,
+    );
   }
 
   Future<void> _deleteAllExpenses() async {
@@ -329,16 +371,13 @@ class _HomePage2State extends State<HomePage2> {
                       : int.tryParse(expense['amount'].toString()) ?? 0;
                   final amount = amountIdr * appExchangeRate.value;
                   final type = expense['type']?.toString() ?? '';
-                  return _buildPdfRow(
-                    [
-                      expense['name']?.toString() ?? '',
-                      formatter.format(amount).replaceAll(',', '.'),
-                      expense['category']?.toString() ?? '',
-                      type,
-                      expense['date']?.toString() ?? '',
-                    ],
-                    _pdfTypeColor(type),
-                  );
+                  return _buildPdfRow([
+                    expense['name']?.toString() ?? '',
+                    formatter.format(amount).replaceAll(',', '.'),
+                    expense['category']?.toString() ?? '',
+                    type,
+                    expense['date']?.toString() ?? '',
+                  ], _pdfTypeColor(type));
                 }),
               ],
             ),
@@ -347,9 +386,7 @@ class _HomePage2State extends State<HomePage2> {
               alignment: pw.Alignment.centerRight,
               child: pw.Text(
                 'Total expenses: ${formatter.format(expenses.fold<double>(0, (total, expense) {
-                  final amountIdr = expense['amount'] is int
-                      ? expense['amount'] as int
-                      : int.tryParse(expense['amount'].toString()) ?? 0;
+                  final amountIdr = expense['amount'] is int ? expense['amount'] as int : int.tryParse(expense['amount'].toString()) ?? 0;
                   return total + amountIdr * appExchangeRate.value;
                 })).replaceAll(',', '.')}',
                 style: pw.TextStyle(
@@ -754,7 +791,10 @@ class _SettingsPageState extends State<SettingsPage> {
     if (mounted) setState(() => _allowedNotificationApps = apps);
   }
 
-  Future<void> _setNotificationAppAllowed(String packageName, bool allowed) async {
+  Future<void> _setNotificationAppAllowed(
+    String packageName,
+    bool allowed,
+  ) async {
     final apps = {..._allowedNotificationApps};
     if (packageName == NotificationExpenseService.allNotificationsKey) {
       apps.clear();
@@ -774,7 +814,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadNotificationParserStatus() async {
     final service = NotificationExpenseService.instance;
-    final enabled = await service.isParserEnabled() && await service.isEnabled();
+    final enabled =
+        await service.isParserEnabled() && await service.isEnabled();
     if (mounted) setState(() => _autoExpenseParserEnabled = enabled);
     if (enabled) {
       await service.start(_showParserError);
@@ -814,7 +855,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 150),
       children: [
         const SizedBox(height: 30),
         Text(
@@ -1052,8 +1093,8 @@ class _SettingsPageState extends State<SettingsPage> {
             title: const Text('Allowed payment apps'),
             subtitle: Text(
               _allowedNotificationApps.contains(
-                NotificationExpenseService.allNotificationsKey,
-              )
+                    NotificationExpenseService.allNotificationsKey,
+                  )
                   ? 'All notifications selected'
                   : '${_allowedNotificationApps.length} selected',
             ),
@@ -1075,18 +1116,18 @@ class _SettingsPageState extends State<SettingsPage> {
                 },
               ),
               ...NotificationExpenseService.supportedApps.entries.map(
-                  (entry) => CheckboxListTile(
-                    dense: true,
-                    title: Text(entry.value),
-                    subtitle: Text(entry.key),
-                    value: _allowedNotificationApps.contains(entry.key),
-                    onChanged: (allowed) {
-                      if (allowed != null) {
-                        _setNotificationAppAllowed(entry.key, allowed);
-                      }
-                    },
-                  ),
+                (entry) => CheckboxListTile(
+                  dense: true,
+                  title: Text(entry.value),
+                  subtitle: Text(entry.key),
+                  value: _allowedNotificationApps.contains(entry.key),
+                  onChanged: (allowed) {
+                    if (allowed != null) {
+                      _setNotificationAppAllowed(entry.key, allowed);
+                    }
+                  },
                 ),
+              ),
             ],
           ),
         ],
@@ -1336,32 +1377,30 @@ class _ListWithCardsState extends State<ListWithCards>
     }
 
     if (_expenses.isEmpty) {
-      return Column(
+      return Stack(
         children: [
-          const Expanded(child: Center(child: Text('Data Kosong'))),
-          _buildTotalCard(),
+          const Center(child: Text('Data Kosong')),
+          Positioned(bottom: 104, left: 0, right: 0, child: _buildTotalCard()),
         ],
       );
     }
 
-    return Column(
+    return Stack(
       children: [
-        Expanded(
-          child: RefreshIndicator(
-            onRefresh: _loadData,
-            child: ListView.builder(
-              padding: const EdgeInsets.only(bottom: 100),
-              itemCount: _sortedExpenses.length,
-              itemBuilder: (context, index) {
-                return CardList(
-                  expense: _sortedExpenses[index],
-                  onRefresh: _loadData,
-                );
-              },
-            ),
+        RefreshIndicator(
+          onRefresh: _loadData,
+          child: ListView.builder(
+            padding: const EdgeInsets.only(top: 92, bottom: 190),
+            itemCount: _sortedExpenses.length,
+            itemBuilder: (context, index) {
+              return CardList(
+                expense: _sortedExpenses[index],
+                onRefresh: _loadData,
+              );
+            },
           ),
         ),
-        _buildTotalCard(),
+        Positioned(bottom: 104, left: 0, right: 0, child: _buildTotalCard()),
       ],
     );
   }
@@ -1380,7 +1419,7 @@ class _ListWithCardsState extends State<ListWithCards>
     return Align(
       alignment: Alignment.center,
       child: Container(
-        margin: const EdgeInsets.fromLTRB(24, 1, 24, 3),
+        margin: const EdgeInsets.symmetric(horizontal: 24),
         child: ConstrainedBox(
           constraints: BoxConstraints(
             minWidth: 100,
@@ -1388,15 +1427,15 @@ class _ListWithCardsState extends State<ListWithCards>
           ),
           child: IntrinsicWidth(
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainer,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.black, width: 1.5),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(color: Colors.black, width: 2),
                 boxShadow: const [
                   BoxShadow(
                     color: Colors.black,
-                    offset: Offset(2, 2),
+                    offset: Offset(4, 4),
                     blurRadius: 0,
                   ),
                 ],
@@ -1407,9 +1446,9 @@ class _ListWithCardsState extends State<ListWithCards>
                   Icon(
                     Icons.account_balance_wallet_outlined,
                     color: Theme.of(context).colorScheme.onSurface,
-                    size: 18,
+                    size: 20,
                   ),
-                  const SizedBox(width: 6),
+                  const SizedBox(width: 8),
                   Flexible(
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
@@ -1419,7 +1458,7 @@ class _ListWithCardsState extends State<ListWithCards>
                         style: TextStyle(
                           color: Theme.of(context).colorScheme.onSurface,
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -1610,27 +1649,24 @@ class ExpenseBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(24, 8, 24, 18),
-      child: Container(
-        height: 76,
-        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(38),
-          border: Border.all(color: Colors.black, width: 3),
-          boxShadow: const [
-            BoxShadow(color: Colors.black, offset: Offset(5, 5), blurRadius: 0),
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildItem(context, Icons.settings_outlined, 0),
-            _buildItem(context, Icons.add, 1),
-            _buildItem(context, Icons.home_outlined, 2),
-          ],
-        ),
+    return Container(
+      height: 76,
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(38),
+        border: Border.all(color: Colors.black, width: 3),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(5, 5), blurRadius: 0),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildItem(context, Icons.settings_outlined, 0),
+          _buildItem(context, Icons.add, 1),
+          _buildItem(context, Icons.home_outlined, 2),
+        ],
       ),
     );
   }

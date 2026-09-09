@@ -302,23 +302,11 @@ class DatabaseHelp {
     final userId = AuthService.currentUser?.uid;
     if (userId == null) return;
 
+    // Bulk-delete on the backend first; only wipe local data once the
+    // server confirms success so nothing local is lost on failure.
+    await Throw.deleteAllExpenses();
+
     final db = await initDB();
-    final expenses = await db.query(
-      'my_table',
-      columns: ['id'],
-      where: 'ownerId = ?',
-      whereArgs: [userId],
-    );
-
-    for (final expense in expenses) {
-      final localId = expense['id'] as int;
-      try {
-        await Throw.deleteUserByLocalId(localId);
-      } catch (_) {
-        // The local delete should still complete when the API is unavailable.
-      }
-    }
-
     await db.delete('my_table', where: 'ownerId = ?', whereArgs: [userId]);
   }
 }

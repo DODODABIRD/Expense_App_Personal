@@ -4,7 +4,16 @@ import '../services/databaseHelper.dart';
 import 'ReceiptScanPage.dart';
 
 class ExpenseAddPage extends StatefulWidget {
-  const ExpenseAddPage({super.key});
+  final bool embedded;
+  final VoidCallback? onCancel;
+  final VoidCallback? onSaved;
+
+  const ExpenseAddPage({
+    super.key,
+    this.embedded = false,
+    this.onCancel,
+    this.onSaved,
+  });
 
   @override
   State<ExpenseAddPage> createState() => _ExpenseAddPageState();
@@ -58,7 +67,9 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
             color: Theme.of(context).colorScheme.onSurface,
             size: 30,
           ),
-          onPressed: () => Navigator.pop(context),
+          onPressed: widget.embedded
+              ? widget.onCancel
+              : () => Navigator.pop(context),
         ),
         title: Text(
           'Add Expense',
@@ -268,7 +279,13 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
       context,
       MaterialPageRoute(builder: (context) => const ReceiptScanPage()),
     );
-    if (saved == true && mounted) Navigator.pop(context);
+    if (saved == true && mounted) {
+      if (widget.embedded) {
+        widget.onSaved?.call();
+      } else {
+        Navigator.pop(context);
+      }
+    }
   }
 
   Future<void> _saveExpense() async {
@@ -309,7 +326,13 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
         ),
       );
 
-      if (mounted) Navigator.pop(context);
+      if (mounted) {
+        if (widget.embedded) {
+          widget.onSaved?.call();
+        } else {
+          Navigator.pop(context);
+        }
+      }
     } catch (e) {
       print("ERror : $e");
       ScaffoldMessenger.of(context).showSnackBar(

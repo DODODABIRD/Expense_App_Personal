@@ -212,6 +212,26 @@ class Throw {
     print(response.body);
   }
 
+  /// Bulk-deletes every expense owned by the current user in one request.
+  static Future<void> deleteAllExpenses() async {
+    final url = Uri.parse('$baseUrl/users/delete-all');
+
+    final response = await http
+        .post(url, headers: await _headers())
+        .timeout(const Duration(seconds: 15));
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String message = 'Delete all failed (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['error'] != null) message = body['error'].toString();
+      } catch (_) {
+        // Keep the status-based message when the backend response is not JSON.
+      }
+      throw Exception(message);
+    }
+  }
+
   static Future<bool> createExpense(
     int localId,
     String name,

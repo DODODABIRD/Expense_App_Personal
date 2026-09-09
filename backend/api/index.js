@@ -418,6 +418,21 @@ app.delete("/api/users/:id", requireAuth, async (req, res) => {
 });
 
 /**
+ * BULK DELETE
+ * POST /api/users/delete-all
+ * Deletes every expense owned by the authenticated user in a single query.
+ */
+app.post("/api/users/delete-all", requireAuth, async (req, res) => {
+  try {
+    await connectDB();
+    const result = await User.deleteMany({ ownerId: req.user.uid });
+    res.status(200).json({ message: "Deleted", deletedCount: result.deletedCount });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+/**
  * READ (one by localId)
  * GET /api/users/local/:localId
  */
