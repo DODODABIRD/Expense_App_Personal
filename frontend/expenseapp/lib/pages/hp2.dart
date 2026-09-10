@@ -338,6 +338,18 @@ class _HomePage2State extends State<HomePage2> {
         return;
       }
 
+      final sortedExpenses = [...expenses]
+        ..sort((first, second) {
+          final firstDate = DateTime.tryParse(first['date']?.toString() ?? '');
+          final secondDate = DateTime.tryParse(
+            second['date']?.toString() ?? '',
+          );
+          if (firstDate == null && secondDate == null) return 0;
+          if (firstDate == null) return 1;
+          if (secondDate == null) return -1;
+          return secondDate.compareTo(firstDate);
+        });
+
       final formatter = NumberFormat.currency(
         locale: _currencyLocale,
         symbol: _currencySymbol,
@@ -365,7 +377,7 @@ class _HomePage2State extends State<HomePage2> {
                   pdf.PdfColors.grey300,
                   isHeader: true,
                 ),
-                ...expenses.map((expense) {
+                ...sortedExpenses.map((expense) {
                   final amountIdr = expense['amount'] is int
                       ? expense['amount'] as int
                       : int.tryParse(expense['amount'].toString()) ?? 0;
