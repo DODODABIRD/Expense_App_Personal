@@ -6,6 +6,7 @@ import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:media_store_plus/media_store_plus.dart';
+import 'package:open_filex/open_filex.dart';
 import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -415,6 +416,7 @@ class _HomePage2State extends State<HomePage2> {
       final fileName =
           'expense-report-${DateTime.now().millisecondsSinceEpoch}.pdf';
       String? path;
+      late final String fileToOpenPath;
 
       if (Platform.isAndroid) {
         MediaStore.appFolder = 'ExpenseApp';
@@ -428,6 +430,7 @@ class _HomePage2State extends State<HomePage2> {
           dirName: DirName.download,
         );
         path = savedFile?.uri.toString();
+        fileToOpenPath = temporaryFile.path;
       } else {
         path = await FileSaver.instance.saveFile(
           name: fileName,
@@ -435,15 +438,25 @@ class _HomePage2State extends State<HomePage2> {
           ext: 'pdf',
           mimeType: MimeType.pdf,
         );
+        fileToOpenPath = path;
+      }
+
+      var couldOpenFile = true;
+      try {
+        await OpenFilex.open(fileToOpenPath);
+      } catch (_) {
+        couldOpenFile = false;
       }
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            path == null || path.isEmpty
-                ? 'PDF exported to Downloads.'
-                : 'PDF exported: $path',
+            couldOpenFile
+                ? (path?.isEmpty != false
+                      ? 'PDF exported to Downloads.'
+                      : 'PDF exported: $path')
+                : 'PDF exported. Open it from Downloads.',
           ),
         ),
       );
@@ -962,7 +975,7 @@ class _SettingsPageState extends State<SettingsPage> {
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.info_outline),
           title: Text('Expense App'),
-          subtitle: Text('Version 0.0.1'),
+          subtitle: Text('Version 0.1.2'),
         ),
       ],
     );
