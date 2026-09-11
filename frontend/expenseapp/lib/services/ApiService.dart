@@ -6,6 +6,22 @@ import 'auth_service.dart';
 
 const String baseUrl = "https://expense-app-personal.vercel.app/api";
 
+typedef ReceiptScanProgress = void Function(double progress, String message);
+
+class ReceiptScanCancelledException implements Exception {
+  @override
+  String toString() => 'Receipt scan cancelled';
+}
+
+class ReceiptScanOperation {
+  final Future<Map<String, dynamic>> future;
+  final void Function() _cancel;
+
+  ReceiptScanOperation(this.future, this._cancel);
+
+  void cancel() => _cancel();
+}
+
 class Throw {
   static Future<Map<String, String>> _headers() async {
     return {
@@ -50,21 +66,55 @@ class Throw {
     );
   }
 
-  static Future<Map<String, dynamic>> parseReceipt(
+  static ReceiptScanOperation parseReceipt(
+    File imageFile, {
+    ReceiptScanProgress? onProgress,
+  }) {
+    final client = http.Client();
+    var cancelled = false;
+
+    void cancel() {
+      cancelled = true;
+      client.close();
+    }
+
+    final future = _parseReceipt(
+      imageFile,
+      client,
+      onProgress,
+      () => cancelled,
+    ).whenComplete(client.close);
+    return ReceiptScanOperation(future, cancel);
+  }
+
+  static Future<Map<String, dynamic>> _parseReceipt(
     File imageFile,
+    http.Client client,
+    ReceiptScanProgress? onProgress,
+    bool Function() isCancelled,
   ) async {
     final bytes = await imageFile.readAsBytes();
+    onProgress?.call(0.15, 'Preparing receipt image');
     final base64Image = base64Encode(bytes);
     final lowerPath = imageFile.path.toLowerCase();
     final mimeType = lowerPath.endsWith('.png') ? 'image/png' : 'image/jpeg';
+    onProgress?.call(0.3, 'Uploading receipt');
 
-    final response = await http
-        .post(
-          Uri.parse('$baseUrl/parse-receipt'),
-          headers: await _headers(),
-          body: jsonEncode({'image': base64Image, 'mimeType': mimeType}),
-        )
-        .timeout(const Duration(seconds: 45));
+    late final http.Response response;
+    try {
+      response = await client
+          .post(
+            Uri.parse('$baseUrl/parse-receipt'),
+            headers: await _headers(),
+            body: jsonEncode({'image': base64Image, 'mimeType': mimeType}),
+          )
+          .timeout(const Duration(seconds: 45));
+    } catch (error) {
+      if (isCancelled()) throw ReceiptScanCancelledException();
+      rethrow;
+    }
+
+    onProgress?.call(0.85, 'Reading receipt with OCR');
     if (response.statusCode != 200) {
       String message = response.statusCode == 413
           ? 'Receipt image is too large. Please retake the photo closer or use a smaller image.'
@@ -78,9 +128,11 @@ class Throw {
       throw Exception(message);
     }
     final data = jsonDecode(response.body) as Map<String, dynamic>;
+    onProgress?.call(1, 'Receipt data received');
     return {
       'date': data['date']?.toString(),
       'items': (data['items'] as List<dynamic>).cast<Map<String, dynamic>>(),
+      'provider': data['provider']?.toString(),
     };
   }
 

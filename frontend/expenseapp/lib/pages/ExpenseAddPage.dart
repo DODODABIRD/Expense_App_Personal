@@ -92,7 +92,7 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(25),
+        padding: EdgeInsets.fromLTRB(25, 25, 25, widget.embedded ? 180 : 100),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -172,6 +172,7 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
                 ),
               ),
             ),
+
           ],
         ),
       ),

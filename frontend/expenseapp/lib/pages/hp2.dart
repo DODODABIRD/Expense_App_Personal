@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:android_intent_plus/android_intent.dart';
+import 'package:android_intent_plus/flag.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -416,6 +418,7 @@ class _HomePage2State extends State<HomePage2> {
       final fileName =
           'expense-report-${DateTime.now().millisecondsSinceEpoch}.pdf';
       String? path;
+      String? androidContentUri;
       late final String fileToOpenPath;
 
       if (Platform.isAndroid) {
@@ -430,6 +433,7 @@ class _HomePage2State extends State<HomePage2> {
           dirName: DirName.download,
         );
         path = savedFile?.uri.toString();
+        androidContentUri = path;
         fileToOpenPath = temporaryFile.path;
       } else {
         path = await FileSaver.instance.saveFile(
@@ -441,9 +445,24 @@ class _HomePage2State extends State<HomePage2> {
         fileToOpenPath = path;
       }
 
-      var couldOpenFile = true;
+      var couldOpenFile = false;
       try {
-        await OpenFilex.open(fileToOpenPath);
+        if (Platform.isAndroid && androidContentUri != null) {
+          final intent = AndroidIntent(
+            action: 'android.intent.action.VIEW',
+            data: androidContentUri,
+            type: 'application/pdf',
+            flags: <int>[Flag.FLAG_GRANT_READ_URI_PERMISSION],
+          );
+          await intent.launch();
+          couldOpenFile = true;
+        } else {
+          final openResult = await OpenFilex.open(
+            fileToOpenPath,
+            type: 'application/pdf',
+          );
+          couldOpenFile = openResult.type == ResultType.done;
+        }
       } catch (_) {
         couldOpenFile = false;
       }

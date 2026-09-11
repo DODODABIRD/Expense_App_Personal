@@ -21,7 +21,7 @@ class _ReceiptItemDraft {
   final int quantity;
   String category;
   String type;
-  bool checked;
+  bool checked = true;
 
   _ReceiptItemDraft({
     required this.nameController,
@@ -29,7 +29,6 @@ class _ReceiptItemDraft {
     required this.quantity,
     required this.category,
     required this.type,
-    this.checked = true,
   });
 
   int get amount =>
@@ -58,12 +57,18 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
 
   File? _imageFile;
   bool _isProcessing = false;
+  bool _isCancelling = false;
   String? _errorMessage;
   DateTime _selectedDate = DateTime.now();
   List<_ReceiptItemDraft> _items = [];
+  ReceiptScanOperation? _scanOperation;
+  double _scanProgress = 0;
+  String _scanStatus = '';
+  List<String> _scanLogs = [];
 
   @override
   void dispose() {
+    _scanOperation?.cancel();
     for (final item in _items) {
       item.nameController.dispose();
       item.amountController.dispose();
@@ -103,11 +108,21 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
     if (_imageFile == null) return;
     setState(() {
       _isProcessing = true;
+      _isCancelling = false;
+      _scanProgress = 0;
+      _scanStatus = 'Preparing receipt image';
+      _scanLogs = ['Preparing receipt image'];
       _errorMessage = null;
     });
 
+    final operation = Throw.parseReceipt(
+      _imageFile!,
+      onProgress: _updateScanProgress,
+    );
+    _scanOperation = operation;
+
     try {
-      final parsedReceipt = await Throw.parseReceipt(_imageFile!);
+      final parsedReceipt = await operation.future;
       final rawItems = parsedReceipt['items'] as List<Map<String, dynamic>>;
       final detectedDate = DateTime.tryParse(
         parsedReceipt['date']?.toString() ?? '',
@@ -135,12 +150,56 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
             type: _types.containsKey(type) ? type : 'others',
           );
         }).toList();
+        final provider = parsedReceipt['provider'] == 'azure'
+            ? 'Azure Document Intelligence'
+            : 'Gemini';
+        _scanStatus = 'Receipt processed with $provider';
+        if (_scanLogs.isEmpty || _scanLogs.last != _scanStatus) {
+          _scanLogs = [..._scanLogs, _scanStatus];
+        }
       });
+    } on ReceiptScanCancelledException {
+      if (mounted) {
+        setState(() {
+          _scanStatus = 'Scan cancelled';
+          _scanLogs = [..._scanLogs, _scanStatus];
+          _errorMessage = null;
+        });
+      }
     } catch (error) {
-      setState(() => _errorMessage = 'Could not scan receipt: $error');
+      if (mounted) {
+        setState(() => _errorMessage = 'Could not scan receipt: $error');
+      }
     } finally {
-      if (mounted) setState(() => _isProcessing = false);
+      if (identical(_scanOperation, operation)) _scanOperation = null;
+      if (mounted) {
+        setState(() {
+          _isProcessing = false;
+          _isCancelling = false;
+        });
+      }
     }
+  }
+
+  void _updateScanProgress(double progress, String message) {
+    if (!mounted) return;
+    setState(() {
+      _scanProgress = progress.clamp(0.0, 1.0).toDouble();
+      _scanStatus = message;
+      if (_scanLogs.isEmpty || _scanLogs.last != message) {
+        _scanLogs = [..._scanLogs, message];
+      }
+    });
+  }
+
+  void _cancelScan() {
+    if (_scanOperation == null || _isCancelling) return;
+    setState(() {
+      _isCancelling = true;
+      _scanStatus = 'Cancelling scan';
+      _scanLogs = [..._scanLogs, _scanStatus];
+    });
+    _scanOperation!.cancel();
   }
 
   int get _selectedTotal => _items
@@ -188,9 +247,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
     } catch (error) {
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not save items: $error')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not save items: $error')));
     }
   }
 
@@ -229,10 +288,8 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                       ),
                     ],
                     if (_isProcessing) ...[
-                      const SizedBox(height: 24),
-                      const Center(child: CircularProgressIndicator()),
-                      const SizedBox(height: 8),
-                      const Center(child: Text('Reading receipt...')),
+                      const SizedBox(height: 16),
+                      _buildProcessingPanel(),
                     ],
                     if (!_isProcessing && _items.isNotEmpty) ...[
                       const SizedBox(height: 20),
@@ -288,7 +345,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
             children: [
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _pickImage(ImageSource.camera),
+                  onPressed: _isProcessing
+                      ? null
+                      : () => _pickImage(ImageSource.camera),
                   icon: const Icon(Icons.camera_alt_outlined),
                   label: const Text('Camera'),
                 ),
@@ -296,12 +355,82 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: () => _pickImage(ImageSource.gallery),
+                  onPressed: _isProcessing
+                      ? null
+                      : () => _pickImage(ImageSource.gallery),
                   icon: const Icon(Icons.photo_library_outlined),
                   label: const Text('Gallery'),
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProcessingPanel() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        border: Border.all(color: Colors.black, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(strokeWidth: 2.5),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  _scanStatus,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+              Text('${(_scanProgress * 100).round()}%'),
+            ],
+          ),
+          const SizedBox(height: 14),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: LinearProgressIndicator(minHeight: 9, value: _scanProgress),
+          ),
+          const SizedBox(height: 14),
+          ..._scanLogs.asMap().entries.map(
+            (entry) => Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    entry.key == _scanLogs.length - 1
+                        ? Icons.more_horiz
+                        : Icons.check_circle_outline,
+                    size: 17,
+                    color: entry.key == _scanLogs.length - 1
+                        ? Colors.teal
+                        : Colors.green,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(child: Text(entry.value)),
+                ],
+              ),
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              onPressed: _isCancelling ? null : _cancelScan,
+              icon: const Icon(Icons.close),
+              label: Text(_isCancelling ? 'Cancelling...' : 'Cancel'),
+            ),
           ),
         ],
       ),
@@ -354,8 +483,7 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
         children: [
           Checkbox(
             value: item.checked,
-            onChanged: (value) =>
-                setState(() => item.checked = value ?? false),
+            onChanged: (value) => setState(() => item.checked = value ?? false),
           ),
           Expanded(
             child: Column(
