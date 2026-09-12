@@ -3,6 +3,8 @@ const mongoose = require("mongoose");
 const admin = require("firebase-admin");
 const cors = require("cors");
 
+// Nigga
+
 const app = express();
 // Base64 receipt images can exceed Express defaults; allow larger JSON payloads.
 app.use(express.json({ limit: "8mb" }));
