@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Unmurce | Expense Dashboard</title>
+    <link rel="stylesheet" href="/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+</head>
+<body>
+    <section id="auth-panel" class="auth-panel">
+        <div class="auth-copy">
+            <p class="eyebrow">UNMURCE / PERSONAL FINANCE</p>
+            <h1>Keep every expense in view.</h1>
+            <p>Sign in to access your private expense dashboard from any device.</p>
+        </div>
+        <form id="auth-form" class="auth-form">
+            <div class="auth-heading"><span id="auth-kicker">WELCOME BACK</span><h2 id="auth-title">Sign in</h2></div>
+            <label for="auth-email">Email</label>
+            <input id="auth-email" type="email" autocomplete="email" required>
+            <label for="auth-password">Password</label>
+            <input id="auth-password" type="password" autocomplete="current-password" minlength="6" required>
+            <p id="auth-error" class="auth-error" role="alert"></p>
+            <button id="auth-submit" class="btn-primary" type="submit">Sign in</button>
+            <button id="auth-toggle" class="auth-toggle" type="button">Create an account</button>
+        </form>
+    </section>
+    <div class="dashboard">
+        <header>
+            <div><p class="eyebrow">UNMURCE / PERSONAL FINANCE</p><h1>Pengeluaran Dodo</h1><p id="signed-in-user" class="signed-in-user"></p></div>
+            <div class="stats"><div class="stat-card"><span class="label">Total Expenses</span><span id="total-amount" class="value">Rp0</span></div><button id="sign-out-btn" class="btn-secondary" type="button">Sign out</button></div>
+        </header>
+        <main><section class="expense-list-container"><div class="list-header"><h2>Recent Transactions</h2><div><button id="download-btn" class="btn-secondary" type="button">Download PDF</button><button id="refresh-btn" class="btn-secondary" type="button">Refresh</button></div></div><div class="table-responsive"><table id="expense-table"><thead><tr><th>Date</th><th>Name</th><th>Category</th><th>Type</th><th>Amount</th></tr></thead><tbody id="expense-list"></tbody></table></div><div class="mobile-cards" id="mobile-cards"></div></section></main>
+    </div>
+    <script src="/script.js"></script>
+</body>
+</html>

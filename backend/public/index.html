@@ -3,114 +3,96 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Expense Tracker Dashboard</title>
-    <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+    <meta name="description" content="Dodo Dabird - profile, portfolio, and Unmurce expense tracking.">
+    <title>Dodo Dabird | Builder and Designer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="portfolio.css">
 </head>
-<body>
-    <section id="auth-panel" class="auth-panel">
-        <div class="auth-copy">
-            <p class="eyebrow">PERSONAL FINANCE</p>
-            <h1>Keep every expense in view.</h1>
-            <p>Sign in to access your private expense dashboard from any device.</p>
-        </div>
-        <form id="auth-form" class="auth-form">
-            <div class="auth-heading">
-                <span id="auth-kicker">WELCOME BACK</span>
-                <h2 id="auth-title">Sign in</h2>
-            </div>
-            <label for="auth-email">Email</label>
-            <input id="auth-email" type="email" autocomplete="email" required>
-            <label for="auth-password">Password</label>
-            <input id="auth-password" type="password" autocomplete="current-password" minlength="6" required>
-            <p id="auth-error" class="auth-error" role="alert"></p>
-            <button id="auth-submit" class="btn-primary" type="submit">Sign in</button>
-            <button id="auth-toggle" class="auth-toggle" type="button">Create an account</button>
-        </form>
-    </section>
+<body id="top">
+    <header class="site-header">
+        <a class="brand" href="/" aria-label="Dodo Dabird home">
+            <span class="brand-mark">DD</span>
+            <span>DODO DABIRD</span>
+        </a>
+        <nav class="site-nav" aria-label="Primary navigation">
+            <a href="#about">About</a>
+            <details class="nav-dropdown">
+                <summary>Projects <span aria-hidden="true">+</span></summary>
+                <div class="dropdown-menu">
+                    <a href="/expenses"><strong>Unmurce</strong><small>Personal finance app</small></a>
+                    <a href="#work"><strong>Portfolio</strong><small>Selected experiments</small></a>
+                    <a href="#contact"><strong>Start a project</strong><small>Let's make something useful</small></a>
+                </div>
+            </details>
+            <a href="#contact">Contact</a>
+        </nav>
+        <a class="header-action" href="/expenses">Open Unmurce <span aria-hidden="true">&#8599;</span></a>
+    </header>
 
-    <div class="dashboard">
-        <header>
+    <main>
+        <section class="hero page-section">
+            <div class="hero-copy">
+                <p class="eyebrow"><span class="status-dot"></span> Available for thoughtful work</p>
+                <h1>I build calm, useful digital tools.</h1>
+                <p class="hero-lede">Hey, I am Dodo. This is the home of my work, experiments, and Unmurce, a personal expense app made to make money feel less noisy.</p>
+                <div class="hero-actions">
+                    <a class="button button-primary" href="#work">See selected work <span aria-hidden="true">&#8595;</span></a>
+                    <a class="button button-quiet" href="#contact">Say hello <span aria-hidden="true">&#8599;</span></a>
+                </div>
+                <div class="hero-meta" aria-label="Profile highlights">
+                    <span>Product-minded builder</span>
+                    <span>Indonesia / Worldwide</span>
+                </div>
+            </div>
+            <div class="hero-art" aria-label="Unmurce app preview">
+                <div class="orbit orbit-one"></div>
+                <div class="orbit orbit-two"></div>
+                <div class="profile-stamp">DODO<br><span>01 / 04</span></div>
+                <div class="app-preview">
+                    <div class="preview-topbar"><span class="preview-logo">U</span><span>Unmurce</span><span class="preview-dots">...</span></div>
+                    <div class="preview-heading"><span>Good evening, Dodo</span><strong>Rp 4.82m</strong><small>monthly balance</small></div>
+                    <div class="preview-chart"><span class="chart-label">SPENDING FLOW</span><div class="chart-bars"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+                    <div class="preview-row"><span class="row-icon row-blue">F</span><span><strong>Food & coffee</strong><small>Today, 12:42</small></span><b>-Rp 42k</b></div>
+                    <div class="preview-row"><span class="row-icon row-yellow">T</span><span><strong>Transport</strong><small>Yesterday, 08:10</small></span><b>-Rp 18k</b></div>
+                </div>
+            </div>
+        </section>
+
+        <section id="about" class="intro-band page-section">
+            <p class="section-index">01 / ABOUT</p>
             <div>
-                <p class="eyebrow">PERSONAL FINANCE</p>
-                <h1>Pengeluaran Dodo</h1>
-                <p id="signed-in-user" class="signed-in-user"></p>
+                <h2>Curious about the space between a good idea and a good experience.</h2>
+                <p>I like working where product thinking, visual systems, and code meet. This site is a living placeholder for the things I am learning and making next.</p>
             </div>
-            <div class="stats">
-                <div class="stat-card">
-                    <span class="label">Total Expenses</span>
-                    <span id="total-amount" class="value">Rp0</span>
-                </div>
-                <button id="sign-out-btn" class="btn-secondary" type="button">Sign out</button>
+            <div class="about-facts"><span>Based in<br><strong>Indonesia</strong></span><span>Focus<br><strong>Web & mobile</strong></span><span>Currently<br><strong>Building Unmurce</strong></span></div>
+        </section>
+
+        <section id="work" class="work-section page-section">
+            <div class="section-heading"><div><p class="section-index">02 / SELECTED WORK</p><h2>A few things in progress.</h2></div><p class="section-note">Some polished, some still becoming. Each one is a small exercise in making complex things feel clear.</p></div>
+            <div class="project-grid">
+                <a class="project-card project-featured" href="/expenses">
+                    <div class="project-visual unmurce-visual"><span class="visual-tag">LIVE PROJECT</span><div class="visual-phone"><span class="phone-notch"></span><div class="phone-content"><span class="phone-kicker">THIS MONTH</span><strong>Rp 4.82m</strong><div class="phone-line"></div><div class="phone-item"><i></i><span></span><b></b></div><div class="phone-item"><i></i><span></span><b></b></div><div class="phone-item"><i></i><span></span><b></b></div></div></div><span class="visual-caption">UNMURCE / PERSONAL FINANCE</span></div>
+                    <div class="project-info"><div><p class="project-number">01</p><h3>Unmurce</h3><p>A private expense tracker with receipt scanning, notifications, and a simple view of where money goes.</p></div><span class="project-arrow" aria-hidden="true">&#8599;</span></div>
+                </a>
+                <article class="project-card">
+                    <div class="project-visual placeholder-visual"><span class="visual-tag">COMING SOON</span><div class="placeholder-lines"><i></i><i></i><i></i></div><span class="placeholder-label">PROJECT<br>PLACEHOLDER</span></div>
+                    <div class="project-info"><div><p class="project-number">02</p><h3>Next experiment</h3><p>A place for the next small tool, collaboration, or strange idea worth giving a screen.</p></div><span class="project-arrow" aria-hidden="true">&#8599;</span></div>
+                </article>
+                <article class="project-card">
+                    <div class="project-visual placeholder-visual placeholder-green"><span class="visual-tag">OPEN SLOT</span><div class="placeholder-circle">?</div><span class="placeholder-label">YOUR PROJECT<br>COULD LIVE HERE</span></div>
+                    <div class="project-info"><div><p class="project-number">03</p><h3>A future collaboration</h3><p>Placeholder for a case study, client project, or open-source contribution.</p></div><span class="project-arrow" aria-hidden="true">&#8599;</span></div>
+                </article>
             </div>
-        </header>
+        </section>
 
-        <main>
-            <!-- <section class="add-expense">
-                <h2>Add New Expense</h2>
-                <form id="expense-form">
-                    <div class="form-group">
-                        <input type="text" id="name" placeholder="Name (e.g. Lunch)" required>
-                    </div>
-                    <div class="form-group">
-                        <input type="number" id="amount" placeholder="Amount (10000)" required step="100">
-                    </div>
-                    <div class="form-group">
-                        <select id="category" required style="width: 100%; padding: 0.625rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
-                            <option value="Food">Food</option>
-                            <option value="Transport">Transport</option>
-                            <option value="Bills">Bills</option>
-                            <option value="Entertainment">Entertainment</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <select id="type" required style="width: 100%; padding: 0.625rem; border-radius: 0.5rem; border: 1px solid var(--border-color);">
-                            <option value="Expense">Expense</option>
-                            <option value="Income">Income</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <input type="date" id="date" required style="width: 100%; padding: 0.625rem 0.875rem; border: 1px solid var(--border-color); border-radius: 0.5rem;" />
-                    </div>
-                    <button type="submit" class="btn-primary">Add</button>
-                </form>
-            </section> -->
+        <section id="contact" class="contact-section page-section">
+            <p class="section-index">03 / CONTACT</p>
+            <div class="contact-layout"><div><h2>Have a useful problem?<br><em>Let’s talk about it.</em></h2><p class="contact-copy">For collaborations, feedback on Unmurce, or a good conversation about building for the web.</p></div><a class="contact-link" href="mailto:hello@dododabird.us">hello@dododabird.us <span aria-hidden="true">&#8599;</span></a></div>
+        </section>
+    </main>
 
-            <section class="expense-list-container">
-                <div class="list-header">
-                    <h2>Recent Transactions</h2>
-                    <div>
-                        <button id="download-btn" class="btn-secondary">Download PDF</button>
-                        <button id="refresh-btn" class="btn-secondary">Refresh</button>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <table id="expense-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Name</th>
-                                <th>Category</th>
-                                <th>Type</th>
-                                <th>Amount</th>
-                            </tr>
-                        </thead>
-                        <tbody id="expense-list">
-                            <!-- Expenses will be injected here -->
-                        </tbody>
-                    </table>
-                </div>
-                <div class="mobile-cards" id="mobile-cards">
-                    <!-- Mobile cards will be injected here -->
-                </div>
-            </section>
-        </main>
-    </div>
-    <script src="script.js"></script>
+    <footer class="site-footer"><span>&copy; 2026 Dodo Dabird</span><span>Made with intent, shipped in public.</span><a href="#top">Back to top &#8593;</a></footer>
 </body>
 </html>

@@ -10,6 +10,7 @@
   "routes": [
     { "src": "^/api/(.*)", "dest": "/api/index.js" },
     { "src": "^/$", "dest": "/public/index.html" },
+    { "src": "^/expenses/?$", "dest": "/public/app.html" },
     { "src": "^/(.*)$", "dest": "/public/$1" }
   ]
 }

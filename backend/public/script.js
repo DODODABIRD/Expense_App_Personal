@@ -7,6 +7,10 @@ const firebaseConfig = {
     appId: '1:515835567480:web:13c5d1a0159cabb645bc8d'
 };
 
+const API_BASE_URL = (
+    window.EXPENSE_API_BASE_URL || 'https://dododabird.us/api'
+).replace(/\/+$/, '');
+
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const authPanel = document.getElementById('auth-panel');
@@ -95,7 +99,7 @@ async function fetchExpenses() {
     if (isFetchingExpenses || !auth.currentUser) return;
     isFetchingExpenses = true;
     try {
-        const response = await fetch('/api/users', { headers: await authHeaders() });
+        const response = await fetch(`${API_BASE_URL}/users`, { headers: await authHeaders() });
         if (!response.ok) throw new Error('Failed to fetch');
         
         const expenses = await response.json();
@@ -280,7 +284,7 @@ if (form) {
         };
 
         try {
-            const response = await fetch('/api/users', {
+            const response = await fetch(`${API_BASE_URL}/users`, {
                 method: 'POST',
                 headers: await authHeaders(),
                 body: JSON.stringify(payload)

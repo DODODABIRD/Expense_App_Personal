@@ -4,7 +4,10 @@ import 'dart:io';
 import 'databaseHelper.dart';
 import 'auth_service.dart';
 
-const String baseUrl = "https://expense-app-personal.vercel.app/api";
+const String baseUrl = String.fromEnvironment(
+  'EXPENSE_API_BASE_URL',
+  defaultValue: 'https://dododabird.us/api',
+);
 
 typedef ReceiptScanProgress = void Function(double progress, String message);
 
