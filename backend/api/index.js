@@ -3,8 +3,6 @@ const mongoose = require("mongoose");
 const admin = require("firebase-admin");
 const cors = require("cors");
 
-// Nigga
-
 const app = express();
 // Base64 receipt images can exceed Express defaults; allow larger JSON payloads.
 app.use(express.json({ limit: "8mb" }));
@@ -113,8 +111,6 @@ function normalizeParsedExpense(value) {
   };
 }
 
-
-app 
 /**
  * Parse a notification into the expense fields understood by the app.
  * The API key stays on the backend; notification text is never sent directly
