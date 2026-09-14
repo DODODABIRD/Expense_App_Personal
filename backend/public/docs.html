@@ -39,6 +39,11 @@
             padding: 0;
         }
 
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 40px;
+        }
+
         body {
             font-family: var(--font);
             background: var(--bg);
@@ -148,13 +153,15 @@
             border-radius: 12px;
             font-weight: 700;
             font-size: 0.9rem;
-            transition: background 0.15s ease, transform 0.15s ease;
+            border: 2.5px solid transparent;
+            transition: all 0.15s ease;
         }
 
         .sidebar-link:hover,
         .sidebar-link.active {
             background: var(--card-yellow);
             border: var(--border-thin);
+            box-shadow: var(--shadow-sm);
             transform: translateX(4px);
         }
 
@@ -290,18 +297,97 @@
             font-weight: 800;
         }
 
-        td {
-            background: var(--card-white);
-            font-weight: 600;
+        /* Responsive Table Wrapper */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 16px 0;
+        }
+
+        pre {
+            max-width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            white-space: pre;
+            word-wrap: normal;
         }
 
         @media (max-width: 840px) {
             .docs-container {
                 grid-template-columns: 1fr;
+                margin: 20px auto;
+                gap: 24px;
             }
 
             .docs-sidebar {
-                position: static;
+                position: sticky;
+                top: 12px;
+                z-index: 90;
+                flex-direction: row;
+                overflow-x: auto;
+                white-space: nowrap;
+                padding: 10px 14px;
+                border-radius: var(--radius-pill);
+                gap: 6px;
+                -webkit-overflow-scrolling: touch;
+                box-shadow: var(--shadow);
+                background: rgba(255, 255, 255, 0.95);
+                backdrop-filter: blur(10px);
+            }
+
+            .sidebar-title {
+                display: none;
+            }
+
+            .sidebar-link {
+                padding: 6px 14px;
+                font-size: 0.82rem;
+                border-radius: var(--radius-pill);
+                flex-shrink: 0;
+            }
+
+            .sidebar-link.active {
+                transform: none;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .docs-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 14px;
+                padding: 16px 0;
+            }
+
+            .docs-nav-btns {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .btn-neo {
+                flex: 1;
+                justify-content: center;
+                padding: 8px 12px;
+                font-size: 0.8rem;
+            }
+        }
+
+        @media (max-width: 580px) {
+            .docs-card {
+                padding: 22px 18px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+
+            h2 {
+                font-size: 1.35rem;
+            }
+
+            pre {
+                padding: 14px;
+                font-size: 0.78rem;
             }
         }
     </style>
@@ -427,37 +513,39 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
             <section id="api" class="docs-card">
                 <span class="tag-badge">REST API</span>
                 <h2>06. Backend API Reference</h2>
-                <table>
-                    <thead>
-                        <tr>
-                            <th>Method</th>
-                            <th>Endpoint</th>
-                            <th>Description</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><span class="method-badge method-get">GET</span></td>
-                            <td><code>/api/users</code></td>
-                            <td>Fetch all expense records for authenticated user</td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-badge method-post">POST</span></td>
-                            <td><code>/api/users</code></td>
-                            <td>Create or upsert new expense item</td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-badge method-delete">DELETE</span></td>
-                            <td><code>/api/users/:id</code></td>
-                            <td>Delete single transaction by ObjectId</td>
-                        </tr>
-                        <tr>
-                            <td><span class="method-badge method-post">POST</span></td>
-                            <td><code>/api/parse-receipt</code></td>
-                            <td>Upload base64 image & parse line-item breakdown</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Method</th>
+                                <th>Endpoint</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="method-badge method-get">GET</span></td>
+                                <td><code>/api/users</code></td>
+                                <td>Fetch all expense records for authenticated user</td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge method-post">POST</span></td>
+                                <td><code>/api/users</code></td>
+                                <td>Create or upsert new expense item</td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge method-delete">DELETE</span></td>
+                                <td><code>/api/users/:id</code></td>
+                                <td>Delete single transaction by ObjectId</td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge method-post">POST</span></td>
+                                <td><code>/api/parse-receipt</code></td>
+                                <td>Upload base64 image & parse line-item breakdown</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </section>
 
             <!-- 07. Setup -->
@@ -479,6 +567,47 @@ npm start
             </section>
         </main>
     </div>
+
+    <!-- ScrollSpy Script for Table of Contents -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sections = document.querySelectorAll('.docs-content section[id]');
+            const navLinks = document.querySelectorAll('.sidebar-link');
+
+            function setActiveLink() {
+                let currentSectionId = '';
+                const scrollPosition = window.scrollY + 140;
+
+                sections.forEach(section => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
+                        currentSectionId = section.getAttribute('id');
+                    }
+                });
+
+                if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 50) {
+                    if (sections.length > 0) {
+                        currentSectionId = sections[sections.length - 1].getAttribute('id');
+                    }
+                }
+
+                if (currentSectionId) {
+                    navLinks.forEach(link => {
+                        const href = link.getAttribute('href').replace('#', '');
+                        if (href === currentSectionId) {
+                            link.classList.add('active');
+                        } else {
+                            link.classList.remove('active');
+                        }
+                    });
+                }
+            }
+
+            window.addEventListener('scroll', setActiveLink, { passive: true });
+            setActiveLink();
+        });
+    </script>
 </body>
 
 </html>

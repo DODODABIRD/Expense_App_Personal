@@ -567,42 +567,125 @@ input:focus, select:focus {
     flex: 1;
 }
 
-/* Responsive */
+/* Responsive Enhancements for Mobile View */
 @media (max-width: 640px) {
+    body {
+        padding-bottom: 100px;
+    }
+
+    .dashboard {
+        margin: 16px auto;
+        padding: 0 14px;
+        gap: 18px;
+    }
+
     .auth-panel {
         grid-template-columns: 1fr;
-        gap: 2rem;
+        gap: 1.5rem;
         padding: 1.5rem 1rem;
+    }
+
+    .auth-copy h1 {
+        font-size: 2.2rem;
+    }
+
+    .auth-form {
+        padding: 1.5rem;
     }
     
     .app-header {
         flex-direction: column;
         align-items: flex-start;
+        gap: 12px;
     }
     
+    .title-badge {
+        font-size: 1.3rem;
+        padding: 8px 18px;
+    }
+
     .header-right {
         width: 100%;
+        display: flex;
         justify-content: space-between;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .dropdown-filter-btn, .btn-neo {
+        padding: 8px 14px;
+        font-size: 0.82rem;
     }
 
     .stat-banner {
+        padding: 18px;
         flex-direction: column;
         align-items: flex-start;
+        gap: 14px;
     }
 
     .stat-value {
-        font-size: 1.8rem;
+        font-size: 1.85rem;
     }
 
     .add-action-btn {
         width: 100%;
+        text-align: center;
+        justify-content: center;
+        padding: 12px;
+        font-size: 0.95rem;
+    }
+
+    .neo-expense-card {
+        padding: 14px 16px;
+        gap: 12px;
+        border-radius: var(--radius-lg);
+    }
+
+    .card-icon-container {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+    }
+
+    .card-icon-container svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .card-info .item-name {
+        font-size: 1.1rem;
+    }
+
+    .card-info .item-amount {
+        font-size: 0.98rem;
+    }
+
+    .card-info .item-date {
+        font-size: 0.78rem;
+    }
+
+    .card-cumulative-badge {
+        left: 14px;
+        bottom: -10px;
+        font-size: 0.72rem;
+        padding: 2px 10px;
+    }
+
+    .bottom-nav-bar {
+        bottom: 16px;
+        width: min(340px, 92vw);
+        height: 62px;
+        padding: 0 14px;
+        border-radius: var(--radius-pill);
+    }
+
+    .modal-card {
+        padding: 20px 16px;
+        border-radius: var(--radius-xl);
     }
 
     .input-row {
         grid-template-columns: 1fr;
-    }
-
-    .card-cumulative-badge {
-        left: 20px;
     }
 }

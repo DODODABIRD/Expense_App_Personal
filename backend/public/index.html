@@ -16,31 +16,80 @@
 </head>
 
 <body id="top">
-    <header class="site-header">
-        <a class="brand" href="/" aria-label="Orlando Diamond Prasetyo home">
-            <img class="brand-avatar" src="asset/myface.jpg" alt="Orlando Diamond Prasetyo">
-            <div class="brand-text">
-                <strong>ORLANDO D. PRASETYO</strong>
-                <small>SOFTWARE & PRODUCT BUILDER</small>
-            </div>
-        </a>
-        <nav class="site-nav" aria-label="Primary navigation">
-            <a href="#about">About</a>
-            <details class="nav-dropdown">
-                <summary>Projects <span aria-hidden="true">▾</span></summary>
-                <div class="dropdown-menu">
-                    <a href="/expenses"><strong>Unmurce App</strong><small>Expense tracking web app</small></a>
-                    <a href="/docs"><strong>Technical Docs</strong><small>Unmurce documentation</small></a>
-                    <a href="#work"><strong>Portfolio Gallery</strong><small>Selected projects</small></a>
-                    <a href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20discuss%20a%20project."
-                        target="_blank"><strong>Start a project</strong><small>Open WhatsApp chat</small></a>
+    <!-- Fancy Floating Header -->
+    <div class="site-header-wrapper" id="site-header-wrapper">
+        <header class="site-header">
+            <a class="brand" href="/" aria-label="Orlando Diamond Prasetyo home">
+                <img class="brand-avatar" src="asset/myface.jpg" alt="Orlando Diamond Prasetyo">
+                <div class="brand-text">
+                    <strong>ORLANDO D. PRASETYO</strong>
+                    <small>SOFTWARE & PRODUCT BUILDER</small>
                 </div>
-            </details>
-            <a href="/docs">Docs</a>
-            <a href="#contact">Contact</a>
-        </nav>
-        <a class="header-action button-aqua" href="/expenses">Open Unmurce <span aria-hidden="true">↗</span></a>
-    </header>
+            </a>
+            <nav class="site-nav" aria-label="Primary navigation">
+                <a href="#about">About</a>
+                <details class="nav-dropdown">
+                    <summary>Projects <span aria-hidden="true">▾</span></summary>
+                    <div class="dropdown-menu">
+                        <a href="/expenses"><strong>Unmurce App</strong><small>Expense tracking web app</small></a>
+                        <a href="/docs"><strong>Technical Docs</strong><small>Unmurce documentation</small></a>
+                        <a href="#work"><strong>Portfolio Gallery</strong><small>Selected projects</small></a>
+                        <a href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20discuss%20a%20project."
+                            target="_blank"><strong>Start a project</strong><small>Open WhatsApp chat</small></a>
+                    </div>
+                </details>
+                <a href="/docs">Docs</a>
+                <a href="#contact">Contact</a>
+            </nav>
+            <div class="header-actions-group">
+                <a class="header-action button-aqua" href="/expenses">Open Unmurce <span aria-hidden="true">↗</span></a>
+                <button class="mobile-hamburger" id="mobile-menu-toggle" type="button" aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
+        </header>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div class="mobile-drawer" id="mobile-drawer" aria-hidden="true">
+        <div class="mobile-drawer-content">
+            <div class="mobile-drawer-header">
+                <div class="drawer-user-info">
+                    <img class="drawer-avatar" src="asset/myface.jpg" alt="Orlando Diamond Prasetyo">
+                    <div>
+                        <strong>Orlando D. Prasetyo</strong>
+                        <span class="status-indicator"><i class="status-dot"></i> Available</span>
+                    </div>
+                </div>
+                <button class="drawer-close-btn" id="close-mobile-drawer" type="button" aria-label="Close menu">✕</button>
+            </div>
+
+            <nav class="mobile-drawer-nav">
+                <a class="mobile-drawer-link" href="#about">
+                    <span>01</span> About Orlando
+                </a>
+                <a class="mobile-drawer-link" href="#work">
+                    <span>02</span> Selected Work
+                </a>
+                <a class="mobile-drawer-link" href="/expenses">
+                    <span>03</span> Unmurce App <small class="badge-mini aqua">LIVE</small>
+                </a>
+                <a class="mobile-drawer-link" href="/docs">
+                    <span>04</span> Technical Docs <small class="badge-mini yellow">DOCS</small>
+                </a>
+                <a class="mobile-drawer-link" href="#contact">
+                    <span>05</span> Get In Touch
+                </a>
+            </nav>
+
+            <div class="mobile-drawer-footer">
+                <a class="button button-aqua drawer-cta" href="/expenses">Open Unmurce App ↗</a>
+                <a class="button button-yellow drawer-cta" href="https://wa.me/6285810008115" target="_blank">Chat on WhatsApp 💬</a>
+            </div>
+        </div>
+    </div>
 
     <main>
         <!-- Hero Section -->
@@ -70,18 +119,39 @@
                 <!-- Quick Contact Pills -->
                 <div class="hero-social-pills" aria-label="Social links">
                     <a class="social-pill" href="mailto:orlandodiamondprasetyo@gmail.com" title="Email me">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg> Email
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
+                            </path>
+                            <polyline points="22,6 12,13 2,6"></polyline>
+                        </svg> Email
                     </a>
                     <a class="social-pill" href="https://wa.me/6285810008115" target="_blank" title="WhatsApp">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg> WhatsApp
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path
+                                d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z">
+                            </path>
+                        </svg> WhatsApp
                     </a>
                     <a class="social-pill" href="https://www.linkedin.com/in/orlando-diamond-prasetyo-6b3bb5362/"
                         target="_blank" title="LinkedIn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg> LinkedIn
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z">
+                            </path>
+                            <rect x="2" y="9" width="4" height="12"></rect>
+                            <circle cx="4" cy="4" r="2"></circle>
+                        </svg> LinkedIn
                     </a>
                     <a class="social-pill" href="https://www.instagram.com/prasetyoorlando/?hl=en" target="_blank"
                         title="Instagram">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg> Instagram
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                        </svg> Instagram
                     </a>
                 </div>
             </div>
@@ -223,65 +293,114 @@
                 <div class="carousel-header">
                     <div>
                         <p class="section-index">GALLERY CAROUSEL</p>
-                        <h2>Explore App Screens & Work</h2>
+                        <h2>Explore App Screens & Features</h2>
                     </div>
                     <div class="carousel-controls">
-                        <button id="carousel-prev" class="btn-neo btn-white btn-sm" type="button"
+                        <button id="carousel-prev" class="carousel-nav-btn btn-aqua" type="button"
                             aria-label="Previous Slide">← Prev</button>
-                        <button id="carousel-next" class="btn-neo btn-white btn-sm" type="button"
+                        <button id="carousel-next" class="carousel-nav-btn btn-yellow" type="button"
                             aria-label="Next Slide">Next →</button>
                     </div>
                 </div>
 
-                <div class="carousel-viewport">
-                    <div class="carousel-track" id="carousel-track">
-                        <!-- Slide 1 -->
-                        <div class="carousel-slide neo-card">
-                            <div class="slide-image-box">
-                                <img src="asset/main.jpg" alt="Expense List Dashboard">
+                <div class="carousel-container neo-card">
+                    <div class="carousel-track-wrapper">
+                        <div class="carousel-track" id="carousel-track">
+                            <!-- Slide 1: Main Dashboard -->
+                            <div class="carousel-slide">
+                                <div class="slide-mockup-wrapper">
+                                    <div class="phone-mockup-frame">
+                                        <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                        <div class="phone-mockup-screen">
+                                            <img src="asset/main.jpg" alt="Unmurce Expense Dashboard Screenshot">
+                                        </div>
+                                        <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
+                                    </div>
+                                </div>
+                                <div class="slide-details">
+                                    <span class="slide-badge">SCREEN 01</span>
+                                    <h3>Expense Dashboard View</h3>
+                                    <p>Lists transactions in sunny yellow Neo-Brutalist cards with cumulative balance
+                                        calculations, icons, and filter badges.</p>
+                                    <div class="slide-tags">
+                                        <span>Neo-Brutalist UI</span>
+                                        <span>Realtime Sync</span>
+                                        <span>Category Icons</span>
+                                    </div>
+                                    <a class="button button-aqua slide-cta" href="/expenses">Open App Live ↗</a>
+                                </div>
                             </div>
-                            <div class="slide-caption">
-                                <strong>Expense Dashboard Screen</strong>
-                                <p>Lists recent transactions in sunny yellow Neo-Brutalist cards with cumulative
-                                    balances.</p>
-                            </div>
-                        </div>
 
-                        <!-- Slide 2 -->
-                        <div class="carousel-slide neo-card">
-                            <div class="slide-image-box">
-                                <img src="asset/ae_1.jpg" alt="Add Expense Modal Screen">
+                            <!-- Slide 2: Add Expense Form -->
+                            <div class="carousel-slide">
+                                <div class="slide-mockup-wrapper">
+                                    <div class="phone-mockup-frame">
+                                        <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                        <div class="phone-mockup-screen">
+                                            <img src="asset/ae_1.jpg" alt="Unmurce Add Expense Form Screenshot">
+                                        </div>
+                                        <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
+                                    </div>
+                                </div>
+                                <div class="slide-details">
+                                    <span class="slide-badge">SCREEN 02</span>
+                                    <h3>Add Expense Screen</h3>
+                                    <p>Quick transaction entry with title, amount in IDR, category selector, transaction
+                                        type (Expected/Unexpected), and date picker.</p>
+                                    <div class="slide-tags">
+                                        <span>Fast Entry</span>
+                                        <span>Category Selector</span>
+                                        <span>Date Picker</span>
+                                    </div>
+                                    <a class="button button-yellow slide-cta" href="/expenses">Try Add Expense ↗</a>
+                                </div>
                             </div>
-                            <div class="slide-caption">
-                                <strong>Add Expense Form</strong>
-                                <p>Fast transaction entry with category pickers, date selection, and transaction types.
-                                </p>
-                            </div>
-                        </div>
 
-                        <!-- Slide 3 -->
-                        <div class="carousel-slide neo-card neo-card-yellow">
-                            <div class="slide-image-box slide-placeholder-box">
-                                <div class="slide-big-icon">🧾</div>
-                                <h3>Receipt OCR Engine</h3>
+                            <!-- Slide 3: Receipt OCR -->
+                            <div class="carousel-slide">
+                                <div class="slide-mockup-wrapper">
+                                    <div class="feature-graphic-box graphic-yellow">
+                                        <div class="graphic-icon">🧾</div>
+                                        <strong>AI Receipt OCR</strong>
+                                        <span class="graphic-sub">Gemini 3.6 & Azure</span>
+                                    </div>
+                                </div>
+                                <div class="slide-details">
+                                    <span class="slide-badge">FEATURE 03</span>
+                                    <h3>Automated Receipt Parsing</h3>
+                                    <p>Snap a photo of any receipt to automatically extract line items, prices, and tax
+                                        distribution using Gemini 3.6 Flash and Azure Document Intelligence.</p>
+                                    <div class="slide-tags">
+                                        <span>Gemini 3.6 Flash</span>
+                                        <span>Azure AI</span>
+                                        <span>Auto Tax Split</span>
+                                    </div>
+                                    <a class="button button-aqua slide-cta" href="/docs#ocr">Read OCR Tech Docs ↗</a>
+                                </div>
                             </div>
-                            <div class="slide-caption">
-                                <strong>Automated Receipt Parsing</strong>
-                                <p>Integrated Gemini 3.6 Flash & Azure Document Intelligence to automatically split
-                                    line-item receipts.</p>
-                            </div>
-                        </div>
 
-                        <!-- Slide 4 -->
-                        <div class="carousel-slide neo-card neo-card-aqua">
-                            <div class="slide-image-box slide-placeholder-box">
-                                <div class="slide-big-icon">🔒</div>
-                                <h3>Firebase Security & MongoDB</h3>
-                            </div>
-                            <div class="slide-caption">
-                                <strong>Private Data Isolation</strong>
-                                <p>Authenticated REST API backend enforcing user owner ID validation on every
-                                    transaction query.</p>
+                            <!-- Slide 4: Firebase Auth & MongoDB -->
+                            <div class="carousel-slide">
+                                <div class="slide-mockup-wrapper">
+                                    <div class="feature-graphic-box graphic-aqua">
+                                        <div class="graphic-icon">🔒</div>
+                                        <strong>Security & Database</strong>
+                                        <span class="graphic-sub">Firebase & MongoDB</span>
+                                    </div>
+                                </div>
+                                <div class="slide-details">
+                                    <span class="slide-badge">ARCHITECTURE 04</span>
+                                    <h3>Private Data Isolation</h3>
+                                    <p>Every transaction query is authenticated via Firebase Bearer ID Tokens and
+                                        enforced against MongoDB Atlas collection schemas.</p>
+                                    <div class="slide-tags">
+                                        <span>Firebase Auth</span>
+                                        <span>MongoDB Atlas</span>
+                                        <span>REST Security</span>
+                                    </div>
+                                    <a class="button button-yellow slide-cta" href="/docs#architecture">View
+                                        Architecture ↗</a>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -308,18 +427,19 @@
                     </div>
 
                     <!-- Direct WhatsApp Button -->
-                    <a class="contact-link button-yellow"
-                        href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20discuss%20a%20project."
-                        target="_blank">
-                        Chat on WhatsApp 💬
-                    </a>
+
                 </div>
 
                 <!-- Comprehensive Social Contact Buttons Grid -->
                 <div class="contact-buttons-grid">
                     <a class="contact-btn-card btn-email" href="mailto:orlandodiamondprasetyo@gmail.com">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
+                                </path>
+                                <polyline points="22,6 12,13 2,6"></polyline>
+                            </svg>
                         </div>
                         <div class="contact-detail">
                             <span>EMAIL</span>
@@ -330,7 +450,12 @@
 
                     <a class="contact-btn-card btn-whatsapp" href="https://wa.me/6285810008115" target="_blank">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z">
+                                </path>
+                            </svg>
                         </div>
                         <div class="contact-detail">
                             <span>WHATSAPP / PHONE</span>
@@ -342,7 +467,14 @@
                     <a class="contact-btn-card btn-linkedin"
                         href="https://www.linkedin.com/in/orlando-diamond-prasetyo-6b3bb5362/" target="_blank">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z">
+                                </path>
+                                <rect x="2" y="9" width="4" height="12"></rect>
+                                <circle cx="4" cy="4" r="2"></circle>
+                            </svg>
                         </div>
                         <div class="contact-detail">
                             <span>LINKEDIN</span>
@@ -354,7 +486,12 @@
                     <a class="contact-btn-card btn-instagram" href="https://www.instagram.com/prasetyoorlando/?hl=en"
                         target="_blank">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+                                <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+                                <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+                            </svg>
                         </div>
                         <div class="contact-detail">
                             <span>INSTAGRAM</span>
@@ -365,7 +502,12 @@
 
                     <a class="contact-btn-card btn-line" href="https://line.me/ti/p/~orlandoprasetyo" target="_blank">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5C21 7.36 16.97 4 12 4S3 7.36 3 11.5c0 3.7 3.23 6.8 7.6 7.36.3.06.7.2.8.46.1.28.06.72.03 1.01l-.14.86c-.04.26-.2.98.86.54 1.06-.44 5.73-3.38 7.82-5.78C20.6 14.5 21 13.06 21 11.5z"></path></svg>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path
+                                    d="M21 11.5C21 7.36 16.97 4 12 4S3 7.36 3 11.5c0 3.7 3.23 6.8 7.6 7.36.3.06.7.2.8.46.1.28.06.72.03 1.01l-.14.86c-.04.26-.2.98.86.54 1.06-.44 5.73-3.38 7.82-5.78C20.6 14.5 21 13.06 21 11.5z">
+                                </path>
+                            </svg>
                         </div>
                         <div class="contact-detail">
                             <span>LINE ID</span>
@@ -383,11 +525,15 @@
             <strong>Orlando Diamond Prasetyo</strong>
             <span>Made with intent • Neo-Brutalist UI</span>
             <small class="flaticon-credits">
-                Icons: 
-                <a href="https://www.flaticon.com/free-icons/linkedin" title="linkedin icons" target="_blank">Linkedin (riajulislam)</a> • 
-                <a href="https://www.flaticon.com/free-icons/zip-line" title="zip line icons" target="_blank">Line (Pixel perfect)</a> • 
-                <a href="https://www.flaticon.com/free-icons/whatsapp" title="whatsapp icons" target="_blank">Whatsapp (Fathema Khanom)</a> • 
-                <a href="https://www.flaticon.com/free-icons/instagram" title="instagram icons" target="_blank">Instagram (Magnific)</a>
+                Icons:
+                <a href="https://www.flaticon.com/free-icons/linkedin" title="linkedin icons" target="_blank">Linkedin
+                    (riajulislam)</a> •
+                <a href="https://www.flaticon.com/free-icons/zip-line" title="zip line icons" target="_blank">Line
+                    (Pixel perfect)</a> •
+                <a href="https://www.flaticon.com/free-icons/whatsapp" title="whatsapp icons" target="_blank">Whatsapp
+                    (Fathema Khanom)</a> •
+                <a href="https://www.flaticon.com/free-icons/instagram" title="instagram icons"
+                    target="_blank">Instagram (Magnific)</a>
             </small>
         </div>
         <div class="footer-links">
@@ -422,11 +568,60 @@
             if (prevBtn) prevBtn.addEventListener('click', () => updateCarousel(currentIndex - 1));
             if (nextBtn) nextBtn.addEventListener('click', () => updateCarousel(currentIndex + 1));
             dots.forEach(dot => {
-                dot.addEventListener('click', () => {
-                    const idx = parseInt(dot.getAttribute('data-index') || '0', 10);
+                dot.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.getAttribute('data-index'), 10);
                     updateCarousel(idx);
                 });
             });
+
+            // Smart Floating Navbar Scroll Handler (Hide on scroll down, Show on scroll up)
+            let lastScrollY = window.scrollY;
+            const headerWrapper = document.getElementById('site-header-wrapper');
+
+            window.addEventListener('scroll', () => {
+                const currentScrollY = window.scrollY;
+                if (currentScrollY <= 80) {
+                    headerWrapper.classList.remove('nav-hidden');
+                } else if (currentScrollY > lastScrollY && currentScrollY > 120) {
+                    headerWrapper.classList.add('nav-hidden');
+                } else if (currentScrollY < lastScrollY) {
+                    headerWrapper.classList.remove('nav-hidden');
+                }
+                lastScrollY = currentScrollY;
+            }, { passive: true });
+
+            // Mobile Navigation Drawer Toggle
+            const menuToggleBtn = document.getElementById('mobile-menu-toggle');
+            const closeDrawerBtn = document.getElementById('close-mobile-drawer');
+            const mobileDrawer = document.getElementById('mobile-drawer');
+            const drawerLinks = document.querySelectorAll('.mobile-drawer-link');
+
+            function openDrawer() {
+                if (mobileDrawer) {
+                    mobileDrawer.classList.add('active');
+                    mobileDrawer.setAttribute('aria-hidden', 'false');
+                }
+                if (menuToggleBtn) menuToggleBtn.setAttribute('aria-expanded', 'true');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeDrawer() {
+                if (mobileDrawer) {
+                    mobileDrawer.classList.remove('active');
+                    mobileDrawer.setAttribute('aria-hidden', 'true');
+                }
+                if (menuToggleBtn) menuToggleBtn.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+            }
+
+            if (menuToggleBtn) menuToggleBtn.addEventListener('click', openDrawer);
+            if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', closeDrawer);
+            if (mobileDrawer) {
+                mobileDrawer.addEventListener('click', (e) => {
+                    if (e.target === mobileDrawer) closeDrawer();
+                });
+            }
+            drawerLinks.forEach(link => link.addEventListener('click', closeDrawer));
         });
     </script>
 </body>
