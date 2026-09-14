@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Unmurce Personal Finance App - Technical Documentation by Orlando Diamond Prasetyo.">
+    <meta name="description"
+        content="Unmurce Personal Finance App - Technical Documentation by Orlando Diamond Prasetyo.">
     <title>Unmurce Technical Documentation | Orlando Diamond Prasetyo</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;600&display=swap"
+        rel="stylesheet">
     <style>
         :root {
             --bg: #f3f5f8;
@@ -29,9 +33,23 @@
             --font-code: 'Fira Code', monospace;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: var(--font); background: var(--bg); color: var(--ink); line-height: 1.6; }
-        a { color: inherit; text-decoration: none; }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--ink);
+            line-height: 1.6;
+        }
+
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
 
         /* Header */
         .docs-header {
@@ -44,19 +62,54 @@
             border-bottom: var(--border-thin);
         }
 
-        .docs-brand { display: flex; align-items: center; gap: 12px; font-weight: 800; font-size: 1.1rem; }
-        .docs-brand img { width: 40px; height: 40px; border-radius: 50%; border: var(--border-thin); object-fit: cover; }
-        .docs-nav-btns { display: flex; gap: 12px; }
+        .docs-brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+
+        .docs-brand img {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: var(--border-thin);
+            object-fit: cover;
+        }
+
+        .docs-nav-btns {
+            display: flex;
+            gap: 12px;
+        }
 
         .btn-neo {
-            display: inline-flex; align-items: center; gap: 8px; padding: 8px 18px;
-            border: var(--border-thin); border-radius: var(--radius-pill); background: var(--card-white);
-            font-weight: 800; font-size: 0.85rem; cursor: pointer; box-shadow: var(--shadow-sm);
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 18px;
+            border: var(--border-thin);
+            border-radius: var(--radius-pill);
+            background: var(--card-white);
+            font-weight: 800;
+            font-size: 0.85rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
             transition: transform 0.12s ease;
         }
-        .btn-neo:hover { transform: translate(-2px, -2px); box-shadow: var(--shadow); }
-        .btn-aqua { background: var(--card-aqua); }
-        .btn-yellow { background: var(--card-yellow); }
+
+        .btn-neo:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: var(--shadow);
+        }
+
+        .btn-aqua {
+            background: var(--card-aqua);
+        }
+
+        .btn-yellow {
+            background: var(--card-yellow);
+        }
 
         /* Layout */
         .docs-container {
@@ -82,69 +135,182 @@
             box-shadow: var(--shadow);
         }
 
-        .sidebar-title { font-weight: 800; font-size: 0.8rem; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 8px; }
+        .sidebar-title {
+            font-weight: 800;
+            font-size: 0.8rem;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            margin-bottom: 8px;
+        }
+
         .sidebar-link {
-            padding: 10px 14px; border-radius: 12px; font-weight: 700; font-size: 0.9rem;
+            padding: 10px 14px;
+            border-radius: 12px;
+            font-weight: 700;
+            font-size: 0.9rem;
             transition: background 0.15s ease, transform 0.15s ease;
         }
-        .sidebar-link:hover, .sidebar-link.active {
-            background: var(--card-yellow); border: var(--border-thin); transform: translateX(4px);
+
+        .sidebar-link:hover,
+        .sidebar-link.active {
+            background: var(--card-yellow);
+            border: var(--border-thin);
+            transform: translateX(4px);
         }
 
         /* Content */
-        .docs-content { display: flex; flex-direction: column; gap: 36px; }
-        .docs-card {
-            padding: 36px; border: var(--border); border-radius: var(--radius-lg);
-            background: var(--card-white); box-shadow: var(--shadow);
+        .docs-content {
+            display: flex;
+            flex-direction: column;
+            gap: 36px;
         }
 
-        .docs-card-yellow { background: var(--card-yellow); }
+        .docs-card {
+            padding: 36px;
+            border: var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--card-white);
+            box-shadow: var(--shadow);
+        }
+
+        .docs-card-yellow {
+            background: var(--card-yellow);
+        }
 
         .tag-badge {
-            display: inline-block; padding: 4px 12px; border: var(--border-thin);
-            border-radius: var(--radius-pill); background: var(--card-white);
-            font-weight: 800; font-size: 0.72rem; letter-spacing: 0.08em; margin-bottom: 12px;
+            display: inline-block;
+            padding: 4px 12px;
+            border: var(--border-thin);
+            border-radius: var(--radius-pill);
+            background: var(--card-white);
+            font-weight: 800;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            margin-bottom: 12px;
         }
 
-        h1 { font-size: 2.6rem; font-weight: 800; margin-bottom: 10px; line-height: 1.1; }
-        h2 { font-size: 1.6rem; font-weight: 800; margin: 24px 0 12px; border-bottom: 2px solid #000; padding-bottom: 6px; }
-        h3 { font-size: 1.2rem; font-weight: 800; margin: 16px 0 8px; }
-        p { color: var(--muted); font-size: 1.02rem; font-weight: 500; margin-bottom: 16px; }
+        h1 {
+            font-size: 2.6rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+            line-height: 1.1;
+        }
+
+        h2 {
+            font-size: 1.6rem;
+            font-weight: 800;
+            margin: 24px 0 12px;
+            border-bottom: 2px solid #000;
+            padding-bottom: 6px;
+        }
+
+        h3 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            margin: 16px 0 8px;
+        }
+
+        p {
+            color: var(--muted);
+            font-size: 1.02rem;
+            font-weight: 500;
+            margin-bottom: 16px;
+        }
 
         /* Code Blocks */
         pre {
-            background: #1e293b; color: #f8fafc; padding: 20px; border-radius: 16px;
-            border: var(--border-thin); box-shadow: var(--shadow-sm); font-family: var(--font-code);
-            font-size: 0.9rem; overflow-x: auto; margin: 16px 0;
+            background: #1e293b;
+            color: #f8fafc;
+            padding: 20px;
+            border-radius: 16px;
+            border: var(--border-thin);
+            box-shadow: var(--shadow-sm);
+            font-family: var(--font-code);
+            font-size: 0.9rem;
+            overflow-x: auto;
+            margin: 16px 0;
         }
-        code { font-family: var(--font-code); font-size: 0.88rem; background: #e2e8f0; padding: 2px 6px; border-radius: 6px; }
-        pre code { background: transparent; padding: 0; }
+
+        code {
+            font-family: var(--font-code);
+            font-size: 0.88rem;
+            background: #e2e8f0;
+            padding: 2px 6px;
+            border-radius: 6px;
+        }
+
+        pre code {
+            background: transparent;
+            padding: 0;
+        }
 
         /* Method Badges */
         .method-badge {
-            display: inline-block; padding: 4px 10px; border: var(--border-thin);
-            border-radius: 8px; font-weight: 800; font-size: 0.78rem; font-family: var(--font-code);
+            display: inline-block;
+            padding: 4px 10px;
+            border: var(--border-thin);
+            border-radius: 8px;
+            font-weight: 800;
+            font-size: 0.78rem;
+            font-family: var(--font-code);
         }
-        .method-get { background: #60a5fa; color: #000; }
-        .method-post { background: #4ade80; color: #000; }
-        .method-delete { background: #f87171; color: #000; }
+
+        .method-get {
+            background: #60a5fa;
+            color: #000;
+        }
+
+        .method-post {
+            background: #4ade80;
+            color: #000;
+        }
+
+        .method-delete {
+            background: #f87171;
+            color: #000;
+        }
 
         /* Table */
-        table { width: 100%; border-collapse: collapse; margin: 16px 0; }
-        th, td { padding: 12px; border: var(--border-thin); text-align: left; font-size: 0.9rem; }
-        th { background: var(--card-yellow); font-weight: 800; }
-        td { background: var(--card-white); font-weight: 600; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 16px 0;
+        }
+
+        th,
+        td {
+            padding: 12px;
+            border: var(--border-thin);
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th {
+            background: var(--card-yellow);
+            font-weight: 800;
+        }
+
+        td {
+            background: var(--card-white);
+            font-weight: 600;
+        }
 
         @media (max-width: 840px) {
-            .docs-container { grid-template-columns: 1fr; }
-            .docs-sidebar { position: static; }
+            .docs-container {
+                grid-template-columns: 1fr;
+            }
+
+            .docs-sidebar {
+                position: static;
+            }
         }
     </style>
 </head>
+
 <body>
     <header class="docs-header">
         <a class="docs-brand" href="/">
-            <img src="assets/myface.jpg" alt="Orlando Diamond Prasetyo">
+            <img src="asset/myface.jpg" alt="Orlando Diamond Prasetyo">
             <span>UNMURCE / TECHNICAL DOCS</span>
         </a>
         <div class="docs-nav-btns">
@@ -172,7 +338,9 @@
             <section id="overview" class="docs-card docs-card-yellow">
                 <span class="tag-badge">SYSTEM OVERVIEW</span>
                 <h1>Unmurce Architecture & Technical Specification</h1>
-                <p><strong>Unmurce</strong> is a personal finance management application created by <strong>Orlando Diamond Prasetyo</strong>. It provides secure transaction tracking, automated receipt parsing via Google Gemini 3.6 & Azure AI, and real-time monthly spending breakdowns.</p>
+                <p><strong>Unmurce</strong> is a personal finance management application created by <strong>Orlando
+                        Diamond Prasetyo</strong>. It provides secure transaction tracking, automated receipt parsing
+                    via Google Gemini 3.6 & Azure AI, and real-time monthly spending breakdowns.</p>
                 <div style="display: flex; gap: 12px; margin-top: 16px;">
                     <span class="tag-badge" style="background: #fff;">AUTHOR: ORLANDO D. PRASETYO</span>
                     <span class="tag-badge" style="background: #fff;">VERSION: 1.0.0</span>
@@ -184,9 +352,10 @@
             <section id="architecture" class="docs-card">
                 <span class="tag-badge">SYSTEM DESIGN</span>
                 <h2>02. Architecture & Data Flow</h2>
-                <p>The application follows a decoupled client-server architecture deployed on Vercel Node.js Serverless runtime:</p>
+                <p>The application follows a decoupled client-server architecture deployed on Vercel Node.js Serverless
+                    runtime:</p>
 
-<pre>
+                <pre>
 ┌───────────────────────────┐      Firebase Bearer Token      ┌───────────────────────────┐
 │                           │ ──────────────────────────────> │                           │
 │   Web / Frontend Client   │                                 │   Express.js API Engine   │
@@ -208,7 +377,7 @@
                 <h2>03. Mongoose Expense Schema</h2>
                 <p>Each transaction record is isolated per user using the Firebase <code>ownerId</code> claim:</p>
 
-<pre><code>const ExpenseSchema = new mongoose.Schema(
+                <pre><code>const ExpenseSchema = new mongoose.Schema(
   {
     ownerId: { type: String, required: true, index: true },
     localId: { type: String, required: true },
@@ -230,7 +399,7 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
                 <span class="tag-badge">SECURITY</span>
                 <h2>04. Firebase Authentication Middleware</h2>
                 <p>All incoming REST requests are verified using Firebase Admin SDK idToken verification:</p>
-<pre><code>async function requireAuth(req, res, next) {
+                <pre><code>async function requireAuth(req, res, next) {
   try {
     const header = req.headers.authorization || "";
     if (!header.startsWith("Bearer ")) {
@@ -249,7 +418,9 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
             <section id="ocr" class="docs-card">
                 <span class="tag-badge">AI INTEGRATION</span>
                 <h2>05. Receipt OCR Parsing (Gemini & Azure Fallback)</h2>
-                <p>Users can snap photos of printed receipts. The backend automatically parses tax, item names, prices, and categories using <strong>Gemini 3.6 Flash</strong> with fallback to <strong>Azure Document Intelligence</strong>.</p>
+                <p>Users can snap photos of printed receipts. The backend automatically parses tax, item names, prices,
+                    and categories using <strong>Gemini 3.6 Flash</strong> with fallback to <strong>Azure Document
+                        Intelligence</strong>.</p>
             </section>
 
             <!-- 06. API Endpoints -->
@@ -294,7 +465,7 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
                 <span class="tag-badge">DEVELOPMENT</span>
                 <h2>07. Local Environment Setup</h2>
                 <p>To run the application locally:</p>
-<pre><code># 1. Clone repository & install dependencies
+                <pre><code># 1. Clone repository & install dependencies
 npm install
 
 # 2. Configure environment variables in .env
@@ -309,4 +480,5 @@ npm start
         </main>
     </div>
 </body>
+
 </html>
