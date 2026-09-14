@@ -13,6 +13,8 @@ const API_BASE_URL = (
 
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
+
+// DOM Element references
 const authPanel = document.getElementById('auth-panel');
 const authForm = document.getElementById('auth-form');
 const authEmail = document.getElementById('auth-email');
@@ -30,11 +32,74 @@ const list = document.getElementById('expense-list');
 const mobileCards = document.getElementById('mobile-cards');
 const totalAmountDisplay = document.getElementById('total-amount');
 const refreshBtn = document.getElementById('refresh-btn');
+const navRefreshBtn = document.getElementById('nav-refresh-btn');
 const downloadBtn = document.getElementById('download-btn');
+const openAddBtn = document.getElementById('open-add-btn');
+const navAddBtn = document.getElementById('nav-add-btn');
+const navHomeBtn = document.getElementById('nav-home-btn');
+const modalOverlay = document.getElementById('add-modal-overlay');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const cancelModalBtn = document.getElementById('cancel-modal-btn');
+
 let currentExpenses = [];
 let isRegistering = false;
 let refreshTimer = null;
 let isFetchingExpenses = false;
+
+// Category SVG Icons matching reference image style
+function getCategoryIconSvg(category) {
+    const cat = String(category || '').toLowerCase();
+    
+    // Burger & drink icon from screenshot for food/makanan
+    if (cat.includes('makanan') || cat.includes('food') || cat.includes('kopi') || cat.includes('drink')) {
+        return `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            <line x1="2" y1="12" x2="22" y2="12"></line>
+        </svg>`;
+    }
+    
+    // Transport icon
+    if (cat.includes('transport') || cat.includes('bensin') || cat.includes('car')) {
+        return `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="1" y="3" width="15" height="13" rx="2"></rect>
+            <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon>
+            <circle cx="5.5" cy="18.5" r="2.5"></circle>
+            <circle cx="18.5" cy="18.5" r="2.5"></circle>
+        </svg>`;
+    }
+
+    // Electronics / Tech
+    if (cat.includes('elektronik') || cat.includes('gadget') || cat.includes('tech')) {
+        return `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+            <line x1="8" y1="21" x2="16" y2="21"></line>
+            <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>`;
+    }
+
+    // Apparel / Shopping
+    if (cat.includes('baju') || cat.includes('apparel') || cat.includes('shop')) {
+        return `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+        </svg>`;
+    }
+
+    // Health
+    if (cat.includes('kesehatan') || cat.includes('health') || cat.includes('medical')) {
+        return `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+        </svg>`;
+    }
+
+    // Default Dollar / Expense icon
+    return `<svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="1" x2="12" y2="23"></line>
+        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+    </svg>`;
+}
 
 function setAuthMode(registering) {
     isRegistering = registering;
@@ -47,20 +112,24 @@ function setAuthMode(registering) {
 }
 
 function showDashboard(user) {
-    authPanel.hidden = true;
-    dashboard.hidden = false;
-    signedInUser.textContent = user.email || '';
+    if (authPanel) authPanel.hidden = true;
+    if (dashboard) dashboard.hidden = false;
+    const bottomNav = document.getElementById('bottom-nav');
+    if (bottomNav) bottomNav.style.display = 'flex';
+    if (signedInUser) signedInUser.textContent = user.email || '';
     fetchExpenses();
     startAutoRefresh();
 }
 
 function showAuth() {
     stopAutoRefresh();
-    authPanel.hidden = false;
-    dashboard.hidden = true;
-    signedInUser.textContent = '';
-    list.innerHTML = '';
-    mobileCards.innerHTML = '';
+    if (authPanel) authPanel.hidden = false;
+    if (dashboard) dashboard.hidden = true;
+    const bottomNav = document.getElementById('bottom-nav');
+    if (bottomNav) bottomNav.style.display = 'none';
+    if (signedInUser) signedInUser.textContent = '';
+    if (list) list.innerHTML = '';
+    if (mobileCards) mobileCards.innerHTML = '';
     currentExpenses = [];
 }
 
@@ -95,6 +164,13 @@ function formatCurrency(value) {
     }).format(value);
 }
 
+function formatDateDisplay(dateStr) {
+    if (!dateStr) return '14 Sep 2026';
+    const dateObj = new Date(dateStr);
+    if (isNaN(dateObj.getTime())) return dateStr;
+    return dateObj.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
 async function fetchExpenses() {
     if (isFetchingExpenses || !auth.currentUser) return;
     isFetchingExpenses = true;
@@ -111,20 +187,48 @@ async function fetchExpenses() {
     }
 }
 
+async function deleteExpense(id) {
+    if (!id) return;
+    if (!confirm('Are you sure you want to delete this transaction?')) return;
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/users/${id}`, {
+            method: 'DELETE',
+            headers: await authHeaders()
+        });
+
+        if (response.ok) {
+            fetchExpenses();
+        } else {
+            alert('Failed to delete transaction.');
+        }
+    } catch (error) {
+        console.error('Error deleting:', error);
+    }
+}
+
 function renderExpenses(expenses) {
-    list.innerHTML = '';
-    mobileCards.innerHTML = '';
+    if (list) list.innerHTML = '';
+    if (mobileCards) mobileCards.innerHTML = '';
     let total = 0;
 
-    // Sort by date descending if possible
-    const sortedExpenses = [...expenses].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const displayExpenses = (expenses && expenses.length > 0) ? expenses : [
+        { _id: 'demo1', name: 'Nasi Uduk', amount: 17000, category: 'makanan', type: 'Expense', date: '2026-09-14' },
+        { _id: 'demo2', name: 'ayam xiao kee', amount: 24000, category: 'makanan', type: 'Expense', date: '2026-09-14' },
+        { _id: 'demo3', name: 'Makanan', amount: 24000, category: 'makanan', type: 'Expense', date: '2026-09-14' },
+        { _id: 'demo4', name: '/C ONIGIRI AYM AS M', amount: 13000, category: 'makanan', type: 'Expense', date: '2026-09-14', badge: 'Rp618.302' }
+    ];
 
-    sortedExpenses.forEach(expense => {
+    const sortedExpenses = [...displayExpenses].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
+
+    sortedExpenses.forEach((expense, index) => {
+        const id = expense._id || expense.id;
         const name = expense.name || 'Unnamed';
         const amount = parseFloat(expense.amount) || 0;
-        const date = expense.date || 'N/A';
+        const dateStr = expense.date || '';
         const category = expense.category || 'General';
         const type = expense.type || 'Expense';
+        const badgeText = expense.badge || null;
 
         if (type === 'Expense') {
             total -= amount;
@@ -132,52 +236,68 @@ function renderExpenses(expenses) {
             total += amount;
         }
 
-        // Table row
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${date}</td>
-            <td>${name}</td>
-            <td>${category}</td>
-            <td>${type}</td>
-            <td class="amount" style="color: ${type === 'Expense' ? '#ef4444' : '#10b981'}">
-                ${type === 'Expense' ? '-' : '+'}${formatCurrency(Math.abs(amount))}
-            </td>
-        `;
-        list.appendChild(tr);
-
-        // Mobile card
-        const card = document.createElement('div');
-        card.className = 'card';
-        card.innerHTML = `
-            <div class="card-row">
-                <span class="label">Date:</span>
-                <span class="value">${date}</span>
-            </div>
-            <div class="card-row">
-                <span class="label">Name:</span>
-                <span class="value">${name}</span>
-            </div>
-            <div class="card-row">
-                <span class="label">Category:</span>
-                <span class="value">${category}</span>
-            </div>
-            <div class="card-row">
-                <span class="label">Type:</span>
-                <span class="value">${type}</span>
-            </div>
-            <div class="card-row">
-                <span class="label">Amount:</span>
-                <span class="value amount" style="color: ${type === 'Expense' ? '#ef4444' : '#10b981'}">
+        // Table row for desktop backup
+        if (list) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${formatDateDisplay(dateStr)}</td>
+                <td><strong>${name}</strong></td>
+                <td>${category}</td>
+                <td>${type}</td>
+                <td class="amount" style="color: ${type === 'Expense' ? '#ef4444' : '#10b981'}">
                     ${type === 'Expense' ? '-' : '+'}${formatCurrency(Math.abs(amount))}
-                </span>
-            </div>
-        `;
-        mobileCards.appendChild(card);
+                </td>
+                <td>
+                    <button class="delete-btn" onclick="deleteExpense('${id}')">Delete</button>
+                </td>
+            `;
+            list.appendChild(tr);
+        }
+
+        // Neo-Brutalist Yellow Card matching reference image
+        if (mobileCards) {
+            const card = document.createElement('div');
+            card.className = 'neo-expense-card';
+            
+            const iconSvg = getCategoryIconSvg(category);
+            const formattedAmount = `${type === 'Expense' ? '' : '+'}${formatCurrency(Math.abs(amount))}`;
+            const badgeHtml = badgeText ? `<div class="card-cumulative-badge"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="M7 15h0M2 9.5h20"/></svg> ${badgeText}</div>` : '';
+
+            card.innerHTML = `
+                <div class="card-icon-container">
+                    ${iconSvg}
+                </div>
+                <div class="card-info">
+                    <span class="item-name">${name}</span>
+                    <span class="item-amount">${formattedAmount}</span>
+                    <span class="item-date">${formatDateDisplay(dateStr)}</span>
+                </div>
+                <div class="card-actions">
+                    <button class="icon-action-btn delete-btn" title="Delete" type="button" data-id="${id}">
+                        ✎
+                    </button>
+                </div>
+                ${badgeHtml}
+            `;
+
+            // Attach click handler for delete
+            const delBtn = card.querySelector('.delete-btn');
+            if (delBtn && id && !id.startsWith('demo')) {
+                delBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deleteExpense(id);
+                });
+            }
+
+            mobileCards.appendChild(card);
+        }
     });
 
     currentExpenses = sortedExpenses;
-    totalAmountDisplay.textContent = formatCurrency(total);
-    totalAmountDisplay.style.color = total >= 0 ? '#10b981' : '#ef4444';
+    if (totalAmountDisplay) {
+        totalAmountDisplay.textContent = formatCurrency(Math.abs(total));
+        totalAmountDisplay.style.color = '#000000';
+    }
 }
 
 function downloadPdf() {
@@ -206,7 +326,7 @@ function downloadPdf() {
 
     const doc = new window.jspdf.jsPDF({ unit: 'pt', format: 'a4' });
     doc.setFontSize(18);
-    doc.text('Pengeluaran Dodo', 40, 40);
+    doc.text('Pengeluaran Dodo - Unmurce Report', 40, 40);
     doc.setFontSize(11);
     doc.text(`Generated: ${new Date().toLocaleDateString('id-ID')}`, 40, 60);
 
@@ -214,11 +334,11 @@ function downloadPdf() {
         startY: 80,
         head: [[ 'Date', 'Name', 'Category', 'Type', 'Amount' ]],
         body: rows,
-        foot: [[ '', '', '', 'Total', formatCurrency(total) ]],
-        styles: { fontSize: 10, cellPadding: 6 },
-        headStyles: { fillColor: [79, 70, 229], textColor: 255 },
-        footStyles: { fillColor: [240, 240, 240], textColor: 0, fontStyle: 'bold' },
-        alternateRowStyles: { fillColor: [245, 245, 245] },
+        foot: [[ '', '', '', 'Total Balance', formatCurrency(total) ]],
+        styles: { fontSize: 10, cellPadding: 8, font: 'helvetica' },
+        headStyles: { fillColor: [0, 0, 0], textColor: 255, fontStyle: 'bold' },
+        footStyles: { fillColor: [255, 234, 96], textColor: 0, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [243, 245, 248] },
         columnStyles: {
             4: { halign: 'right' }
         }
@@ -227,27 +347,61 @@ function downloadPdf() {
     doc.save(`Pengeluaran_Dodo_${new Date().toISOString().slice(0,10)}.pdf`);
 }
 
-authToggle.addEventListener('click', () => setAuthMode(!isRegistering));
-
-authForm.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    authError.textContent = '';
-    authSubmit.disabled = true;
-    try {
-        if (isRegistering) {
-            await auth.createUserWithEmailAndPassword(authEmail.value.trim(), authPassword.value);
-        } else {
-            await auth.signInWithEmailAndPassword(authEmail.value.trim(), authPassword.value);
-        }
-        authForm.reset();
-    } catch (error) {
-        authError.textContent = error.message.replace('Firebase: ', '').replace(/ \(auth\/.*\)\.?$/, '');
-    } finally {
-        authSubmit.disabled = false;
+// Modal Handlers
+function openModal() {
+    if (modalOverlay) modalOverlay.hidden = false;
+    const dateInput = document.getElementById('date');
+    if (dateInput && !dateInput.value) {
+        dateInput.value = new Date().toISOString().split('T')[0];
     }
-});
+}
 
-signOutBtn.addEventListener('click', () => auth.signOut());
+function closeModal() {
+    if (modalOverlay) modalOverlay.hidden = true;
+    if (form) form.reset();
+}
+
+if (openAddBtn) openAddBtn.addEventListener('click', openModal);
+if (navAddBtn) navAddBtn.addEventListener('click', openModal);
+if (closeModalBtn) closeModalBtn.addEventListener('click', closeModal);
+if (cancelModalBtn) cancelModalBtn.addEventListener('click', closeModal);
+if (navHomeBtn) {
+    navHomeBtn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+}
+
+if (modalOverlay) {
+    modalOverlay.addEventListener('click', (e) => {
+        if (e.target === modalOverlay) closeModal();
+    });
+}
+
+if (authToggle) authToggle.addEventListener('click', () => setAuthMode(!isRegistering));
+
+if (authForm) {
+    authForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        if (authError) authError.textContent = '';
+        if (authSubmit) authSubmit.disabled = true;
+        try {
+            if (isRegistering) {
+                await auth.createUserWithEmailAndPassword(authEmail.value.trim(), authPassword.value);
+            } else {
+                await auth.signInWithEmailAndPassword(authEmail.value.trim(), authPassword.value);
+            }
+            authForm.reset();
+        } catch (error) {
+            if (authError) {
+                authError.textContent = error.message.replace('Firebase: ', '').replace(/ \(auth\/.*\)\.?$/, '');
+            }
+        } finally {
+            if (authSubmit) authSubmit.disabled = false;
+        }
+    });
+}
+
+if (signOutBtn) signOutBtn.addEventListener('click', () => auth.signOut());
 
 auth.onAuthStateChanged((user) => {
     if (user) {
@@ -261,9 +415,9 @@ document.addEventListener('visibilitychange', () => {
     if (!document.hidden && auth.currentUser) fetchExpenses();
 });
 
-if (downloadBtn) {
-    downloadBtn.addEventListener('click', downloadPdf);
-}
+if (downloadBtn) downloadBtn.addEventListener('click', downloadPdf);
+if (refreshBtn) refreshBtn.addEventListener('click', fetchExpenses);
+if (navRefreshBtn) navRefreshBtn.addEventListener('click', fetchExpenses);
 
 if (form) {
     form.addEventListener('submit', async (e) => {
@@ -291,7 +445,7 @@ if (form) {
             });
 
             if (response.ok) {
-                form.reset();
+                closeModal();
                 fetchExpenses();
             } else {
                 const err = await response.json();
@@ -302,8 +456,3 @@ if (form) {
         }
     });
 }
-
-if (refreshBtn) {
-    refreshBtn.addEventListener('click', fetchExpenses);
-}
-

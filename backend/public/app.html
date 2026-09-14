@@ -3,39 +3,171 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Unmurce | Expense Dashboard</title>
+    <title>Unmurce | Personal Expense Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 </head>
 <body>
+    <!-- Auth Screen Panel -->
     <section id="auth-panel" class="auth-panel">
         <div class="auth-copy">
-            <p class="eyebrow">UNMURCE / PERSONAL FINANCE</p>
-            <h1>Keep every expense in view.</h1>
-            <p>Sign in to access your private expense dashboard from any device.</p>
+            <div class="neo-badge-tag">UNMURCE / EXPENSE APP</div>
+            <h1>Keep every expense in clear view.</h1>
+            <p>Sign in to access your private, Neo-Brutalist personal finance tracker.</p>
         </div>
-        <form id="auth-form" class="auth-form">
-            <div class="auth-heading"><span id="auth-kicker">WELCOME BACK</span><h2 id="auth-title">Sign in</h2></div>
-            <label for="auth-email">Email</label>
-            <input id="auth-email" type="email" autocomplete="email" required>
-            <label for="auth-password">Password</label>
-            <input id="auth-password" type="password" autocomplete="current-password" minlength="6" required>
+        <form id="auth-form" class="auth-form neo-card">
+            <div class="auth-heading">
+                <span id="auth-kicker">WELCOME BACK</span>
+                <h2 id="auth-title">Sign in</h2>
+            </div>
+            <div class="input-group">
+                <label for="auth-email">Email Address</label>
+                <input id="auth-email" type="email" placeholder="you@domain.com" autocomplete="email" required>
+            </div>
+            <div class="input-group">
+                <label for="auth-password">Password</label>
+                <input id="auth-password" type="password" placeholder="••••••••" autocomplete="current-password" minlength="6" required>
+            </div>
             <p id="auth-error" class="auth-error" role="alert"></p>
-            <button id="auth-submit" class="btn-primary" type="submit">Sign in</button>
+            <button id="auth-submit" class="btn-neo btn-aqua" type="submit">Sign in</button>
             <button id="auth-toggle" class="auth-toggle" type="button">Create an account</button>
         </form>
     </section>
-    <div class="dashboard">
-        <header>
-            <div><p class="eyebrow">UNMURCE / PERSONAL FINANCE</p><h1>Pengeluaran Dodo</h1><p id="signed-in-user" class="signed-in-user"></p></div>
-            <div class="stats"><div class="stat-card"><span class="label">Total Expenses</span><span id="total-amount" class="value">Rp0</span></div><button id="sign-out-btn" class="btn-secondary" type="button">Sign out</button></div>
+
+    <!-- Main Dashboard Screen -->
+    <div class="dashboard" hidden>
+        <!-- Top App Navigation & Header -->
+        <header class="app-header">
+            <div class="header-left">
+                <div class="title-badge neo-card">Expenses</div>
+                <p id="signed-in-user" class="signed-in-user"></p>
+            </div>
+
+            <div class="header-right">
+                <div class="dropdown-filter-btn btn-neo btn-aqua">
+                    Newest <span aria-hidden="true">▾</span>
+                </div>
+                <button id="download-btn" class="btn-neo btn-white" type="button" title="Download PDF Report">
+                    PDF ↗
+                </button>
+                <button id="sign-out-btn" class="btn-neo btn-yellow" type="button">
+                    Sign out
+                </button>
+            </div>
         </header>
-        <main><section class="expense-list-container"><div class="list-header"><h2>Recent Transactions</h2><div><button id="download-btn" class="btn-secondary" type="button">Download PDF</button><button id="refresh-btn" class="btn-secondary" type="button">Refresh</button></div></div><div class="table-responsive"><table id="expense-table"><thead><tr><th>Date</th><th>Name</th><th>Category</th><th>Type</th><th>Amount</th></tr></thead><tbody id="expense-list"></tbody></table></div><div class="mobile-cards" id="mobile-cards"></div></section></main>
+
+        <!-- Balance Stat Banner -->
+        <div class="stat-banner neo-card neo-card-yellow">
+            <div class="stat-info">
+                <span class="stat-label">TOTAL MONTHLY BALANCE</span>
+                <span id="total-amount" class="stat-value">Rp0</span>
+            </div>
+            <button id="open-add-btn" class="btn-neo btn-aqua add-action-btn" type="button">
+                + Add Expense
+            </button>
+        </div>
+
+        <!-- Main Expense List Container -->
+        <main class="main-content">
+            <div class="list-section">
+                <div class="list-section-header">
+                    <h2>Transactions</h2>
+                    <button id="refresh-btn" class="btn-neo btn-white btn-sm" type="button">↻ Refresh</button>
+                </div>
+                
+                <!-- Neo Brutalist Expense Cards Grid -->
+                <div class="expense-cards-list" id="mobile-cards"></div>
+
+                <!-- Table View for Desktop Backup -->
+                <div class="table-responsive" style="display: none;">
+                    <table id="expense-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Name</th>
+                                <th>Category</th>
+                                <th>Type</th>
+                                <th>Amount</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expense-list"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
     </div>
+
+    <!-- Floating Capsule Bottom Navigation Bar (Matches screenshot!) -->
+    <nav class="bottom-nav-bar" id="bottom-nav">
+        <button class="nav-action-icon" id="nav-refresh-btn" title="Refresh Transactions" type="button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+        </button>
+        
+        <button class="nav-action-plus" id="nav-add-btn" title="Add New Expense" type="button">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+        </button>
+
+        <button class="nav-home-circle" id="nav-home-btn" title="Home Dashboard" type="button">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+        </button>
+    </nav>
+
+    <!-- Add Expense Modal Dialog -->
+    <div class="modal-overlay" id="add-modal-overlay" hidden>
+        <div class="modal-card neo-card">
+            <div class="modal-header">
+                <h3>Add Expense</h3>
+                <button class="close-modal-btn" id="close-modal-btn" type="button">✕</button>
+            </div>
+            <form id="expense-form" class="modal-form">
+                <div class="input-group">
+                    <label for="name">Expense Name</label>
+                    <input id="name" type="text" placeholder="e.g. Nasi Uduk, Kopi, Bensin" required>
+                </div>
+                <div class="input-group">
+                    <label for="amount">Amount (Rp)</label>
+                    <input id="amount" type="number" placeholder="17000" min="0" required>
+                </div>
+                <div class="input-row">
+                    <div class="input-group">
+                        <label for="category">Category</label>
+                        <select id="category" class="neo-select">
+                            <option value="makanan">Food & Drinks 🍔</option>
+                            <option value="transportasi">Transport 🚗</option>
+                            <option value="elektronik">Electronics 💻</option>
+                            <option value="baju">Apparel 👕</option>
+                            <option value="kesehatan">Health 🏥</option>
+                            <option value="hiburan">Entertainment 🎬</option>
+                            <option value="general">General 💡</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label for="type">Transaction Type</label>
+                        <select id="type" class="neo-select">
+                            <option value="Expense">Expense (-)</option>
+                            <option value="Income">Income (+)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label for="date">Date</label>
+                    <input id="date" type="date">
+                </div>
+                <div class="modal-actions">
+                    <button class="btn-neo btn-aqua" type="submit">Save Transaction</button>
+                    <button class="btn-neo btn-white" id="cancel-modal-btn" type="button">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="/script.js"></script>
 </body>
 </html>
