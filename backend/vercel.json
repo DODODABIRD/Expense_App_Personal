@@ -7,6 +7,7 @@
   "routes": [
     { "src": "^/api/(.*)", "dest": "/api/index.js" },
     { "src": "^/expenses/?$", "dest": "/public/app.html" },
+    { "src": "^/docs/?$", "dest": "/public/docs.html" },
     { "src": "^/$", "dest": "/public/index.html" },
     { "handle": "filesystem" },
     { "src": "^/(.*)$", "dest": "/public/$1" }

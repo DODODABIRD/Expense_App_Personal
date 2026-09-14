@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="Dodo Dabird - profile, portfolio, and Unmurce expense tracking.">
-    <title>Dodo Dabird | Builder & Designer</title>
+    <meta name="description" content="Orlando Diamond Prasetyo - Profile, portfolio, and Unmurce expense tracking web app.">
+    <title>Orlando Diamond Prasetyo | Builder & Designer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
@@ -12,127 +12,139 @@
 </head>
 <body id="top">
     <header class="site-header">
-        <a class="brand" href="/" aria-label="Dodo Dabird home">
-            <span class="brand-mark">DD</span>
-            <span>DODO DABIRD</span>
+        <a class="brand" href="/" aria-label="Orlando Diamond Prasetyo home">
+            <img class="brand-avatar" src="/assets/myface.jpg" alt="Orlando Diamond Prasetyo">
+            <div class="brand-text">
+                <strong>ORLANDO D. PRASETYO</strong>
+                <small>SOFTWARE & PRODUCT BUILDER</small>
+            </div>
         </a>
         <nav class="site-nav" aria-label="Primary navigation">
             <a href="#about">About</a>
             <details class="nav-dropdown">
                 <summary>Projects <span aria-hidden="true">▾</span></summary>
                 <div class="dropdown-menu">
-                    <a href="/expenses"><strong>Unmurce App</strong><small>Personal finance tracker</small></a>
-                    <a href="#work"><strong>Portfolio</strong><small>Selected experiments</small></a>
-                    <a href="#contact"><strong>Start a project</strong><small>Let's make something useful</small></a>
+                    <a href="/expenses"><strong>Unmurce App</strong><small>Expense tracking web app</small></a>
+                    <a href="/docs"><strong>Technical Docs</strong><small>Unmurce documentation</small></a>
+                    <a href="#work"><strong>Portfolio Gallery</strong><small>Selected projects</small></a>
+                    <a href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20discuss%20a%20project." target="_blank"><strong>Start a project</strong><small>Open WhatsApp chat</small></a>
                 </div>
             </details>
+            <a href="/docs">Docs</a>
             <a href="#contact">Contact</a>
         </nav>
         <a class="header-action button-aqua" href="/expenses">Open Unmurce <span aria-hidden="true">↗</span></a>
     </header>
 
     <main>
+        <!-- Hero Section -->
         <section class="hero page-section">
             <div class="hero-copy">
-                <p class="eyebrow-badge"><span class="status-dot"></span> Available for work</p>
-                <h1>Building simple & vivid digital tools.</h1>
-                <p class="hero-lede">Hey, I'm Dodo. This is my space for projects, design explorations, and <strong>Unmurce</strong> — a private expense tracker crafted with a bold Neo-Brutalist feel.</p>
+                <div class="profile-hero-badge">
+                    <img class="profile-face-img" src="/assets/myface.jpg" alt="Orlando Diamond Prasetyo">
+                    <div class="profile-badge-text">
+                        <strong>Orlando Diamond Prasetyo</strong>
+                        <span class="status-indicator"><i class="status-dot"></i> Available for work</span>
+                    </div>
+                </div>
+
+                <h1>Building bold, tactile & intuitive software.</h1>
+                <p class="hero-lede">Hey! I'm <strong>Orlando</strong>. Welcome to my personal portfolio and home of <strong>Unmurce</strong> — a private expense tracker built with modern web tech and Neo-Brutalist UI.</p>
+                
                 <div class="hero-actions">
                     <a class="button button-aqua" href="#work">See selected work <span aria-hidden="true">↓</span></a>
-                    <a class="button button-yellow" href="#contact">Say hello <span aria-hidden="true">↗</span></a>
+                    <a class="button button-yellow" href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20chat%20about%20a%20project." target="_blank">Chat on WhatsApp <span aria-hidden="true">💬</span></a>
                 </div>
-                <div class="hero-meta" aria-label="Profile highlights">
-                    <span class="meta-pill">Product Builder</span>
-                    <span class="meta-pill">Indonesia / Remote</span>
+
+                <!-- Quick Contact Pills -->
+                <div class="hero-social-pills" aria-label="Social links">
+                    <a class="social-pill" href="mailto:orlandodiamondprasetyo@gmail.com" title="Email me">
+                        ✉ Email
+                    </a>
+                    <a class="social-pill" href="https://wa.me/6285810008115" target="_blank" title="WhatsApp">
+                        💬 WhatsApp
+                    </a>
+                    <a class="social-pill" href="https://www.linkedin.com/in/orlando-diamond-prasetyo-6b3bb5362/" target="_blank" title="LinkedIn">
+                        💼 LinkedIn
+                    </a>
+                    <a class="social-pill" href="https://www.instagram.com/prasetyoorlando/?hl=en" target="_blank" title="Instagram">
+                        📷 Instagram
+                    </a>
                 </div>
             </div>
-            <div class="hero-art" aria-label="Unmurce app preview">
-                <div class="profile-stamp">DODO<br><span>2026</span></div>
-                <div class="app-preview neo-box">
-                    <div class="preview-header-bar">
-                        <div class="preview-title-badge">Expenses</div>
-                        <div class="preview-filter-badge">Newest ▾</div>
-                    </div>
-                    
-                    <div class="preview-card neo-card-yellow">
-                        <div class="card-icon-box">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+
+            <!-- Hero Art: Real App Preview Screenshots -->
+            <div class="hero-art" aria-label="Unmurce app preview screenshots">
+                <div class="stamp-tag neo-card">ORLANDO<br><span>2026</span></div>
+                
+                <div class="app-screenshots-wrapper">
+                    <!-- Main Screenshot -->
+                    <div class="app-frame main-frame neo-card">
+                        <div class="frame-bar">
+                            <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
+                            <span class="frame-title">Unmurce - Dashboard</span>
                         </div>
-                        <div class="card-details">
-                            <strong class="card-title">Nasi Uduk</strong>
-                            <span class="card-price">Rp17.000</span>
-                            <span class="card-date">14 Sep 2026</span>
-                        </div>
-                        <div class="card-edit-btn">✎</div>
+                        <img class="app-screen-img" src="/assets/main.jpg" alt="Unmurce Expense Dashboard Screenshot">
                     </div>
 
-                    <div class="preview-card neo-card-yellow">
-                        <div class="card-icon-box">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+                    <!-- Overlay Screenshot (Add Expense Screen) -->
+                    <div class="app-frame secondary-frame neo-card">
+                        <div class="frame-bar">
+                            <span class="frame-title">Add Expense</span>
                         </div>
-                        <div class="card-details">
-                            <strong class="card-title">Ayam Xiao Kee</strong>
-                            <span class="card-price">Rp24.000</span>
-                            <span class="card-date">14 Sep 2026</span>
-                        </div>
-                        <div class="card-edit-btn">✎</div>
-                        <div class="card-sub-pill">Rp618.302</div>
-                    </div>
-
-                    <!-- Mini capsule nav preview -->
-                    <div class="preview-bottom-nav">
-                        <span class="nav-icon">⚙</span>
-                        <span class="nav-icon">+</span>
-                        <div class="nav-home-btn">
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                        </div>
+                        <img class="app-screen-img" src="/assets/ae (1).jpg" alt="Unmurce Add Expense Screen Screenshot">
                     </div>
                 </div>
             </div>
         </section>
 
+        <!-- About Section -->
         <section id="about" class="intro-band page-section">
             <div class="neo-card intro-card">
-                <p class="section-index">01 / ABOUT</p>
-                <div>
-                    <h2>Designing tools that feel direct, tactile, and effortless.</h2>
-                    <p>I blend practical code with bold visual design. I believe software should be fun to look at and intuitive to use.</p>
+                <div class="intro-header">
+                    <p class="section-index">01 / ABOUT ME</p>
+                    <div class="profile-about-tag">
+                        <img src="/assets/myface.jpg" alt="Orlando Diamond Prasetyo avatar">
+                        <div>
+                            <h3>Orlando Diamond Prasetyo</h3>
+                            <p>Full-Stack Builder & UI Specialist</p>
+                        </div>
+                    </div>
                 </div>
+
+                <div>
+                    <h2>Turning complex ideas into sharp, delightful digital products.</h2>
+                    <p>I blend full-stack engineering with high-impact visual design systems. Specializing in responsive web apps, REST APIs, database architectures, and crisp Neo-Brutalist interfaces.</p>
+                </div>
+
                 <div class="about-facts">
                     <div class="fact-box"><span>LOCATION</span><strong>Indonesia</strong></div>
-                    <div class="fact-box"><span>FOCUS</span><strong>Web & Mobile</strong></div>
-                    <div class="fact-box"><span>CURRENTLY</span><strong>Building Unmurce</strong></div>
+                    <div class="fact-box"><span>FOCUS</span><strong>Web & Mobile Systems</strong></div>
+                    <div class="fact-box"><span>PRIMARY PROJECT</span><strong>Unmurce Expense App</strong></div>
+                    <div class="fact-box"><span>DOCUMENTATION</span><a href="/docs" style="text-decoration: underline; font-weight: 800;">View Tech Docs ↗</a></div>
                 </div>
             </div>
         </section>
 
+        <!-- Work Section -->
         <section id="work" class="work-section page-section">
             <div class="section-heading">
                 <div>
                     <p class="section-index">02 / SELECTED WORK</p>
                     <h2>Featured Projects</h2>
                 </div>
-                <p class="section-note">Crafted with high contrast, vibrant palettes, and tactile Neo-Brutalist layouts.</p>
+                <p class="section-note">High-contrast, high-performance web applications built for real usability.</p>
             </div>
+
+            <!-- Featured Cards Grid -->
             <div class="project-grid">
+                <!-- Project 01: Unmurce -->
                 <a class="project-card neo-card neo-card-yellow project-featured" href="/expenses">
                     <div class="project-visual unmurce-visual">
                         <span class="visual-tag">LIVE APP</span>
-                        <div class="visual-phone-mockup">
-                            <div class="phone-header-badge">Expenses</div>
-                            <div class="phone-item-card">
-                                <div class="phone-icon-box">☕</div>
-                                <div><strong>Nasi Uduk</strong><p>Rp17.000</p></div>
-                            </div>
-                            <div class="phone-item-card">
-                                <div class="phone-icon-box">🍔</div>
-                                <div><strong>Ayam Xiao Kee</strong><p>Rp24.000</p></div>
-                            </div>
-                            <div class="phone-nav-bar">
-                                <span>⚙</span>
-                                <span>+</span>
-                                <div class="phone-home-active">⌂</div>
-                            </div>
+                        <div class="visual-screenshots-combo">
+                            <img class="combo-img img-main" src="/assets/main.jpg" alt="Unmurce Main Screenshot">
+                            <img class="combo-img img-sub" src="/assets/ae (1).jpg" alt="Unmurce Add Expense Screenshot">
                         </div>
                         <span class="visual-caption">UNMURCE / EXPENSE TRACKER</span>
                     </div>
@@ -140,66 +152,234 @@
                         <div>
                             <p class="project-number">01</p>
                             <h3>Unmurce Expense Tracker</h3>
-                            <p>Private personal expense manager with OCR receipt scanning, Firebase auth, and instant monthly balance breakdowns.</p>
+                            <p>Private personal finance application with receipt scanning, Firebase auth, and instant monthly balance breakdowns.</p>
                         </div>
                         <span class="project-arrow" aria-hidden="true">↗</span>
                     </div>
                 </a>
-                <article class="project-card neo-card">
+
+                <!-- Project 02: Documentation -->
+                <a class="project-card neo-card" href="/docs">
                     <div class="project-visual placeholder-visual">
-                        <span class="visual-tag">IN DEVELOPMENT</span>
+                        <span class="visual-tag">DOCUMENTATION</span>
                         <div class="placeholder-content">
-                            <div class="badge-tag">EXPERIMENTAL</div>
-                            <h3>Next App Concept</h3>
+                            <div class="badge-tag">SYSTEM ARCHITECTURE</div>
+                            <h3>Unmurce Technical Docs</h3>
+                            <p class="preview-text">API endpoints, Firebase config, and Gemini OCR pipelines.</p>
                         </div>
                     </div>
                     <div class="project-info">
                         <div>
                             <p class="project-number">02</p>
-                            <h3>Smart Utility Studio</h3>
-                            <p>Upcoming web utility focusing on instant client-side data workflows and visual widgets.</p>
+                            <h3>Technical Documentation</h3>
+                            <p>Complete backend and frontend technical architecture guide for Unmurce.</p>
                         </div>
                         <span class="project-arrow" aria-hidden="true">↗</span>
                     </div>
-                </article>
-                <article class="project-card neo-card neo-card-aqua">
+                </a>
+
+                <!-- Project 03: Your Next Project (Opens WhatsApp) -->
+                <a class="project-card neo-card neo-card-aqua" href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20discuss%20a%20new%20project." target="_blank">
                     <div class="project-visual placeholder-visual placeholder-aqua">
                         <span class="visual-tag">COLLABORATION</span>
-                        <div class="placeholder-circle">?</div>
+                        <div class="placeholder-whatsapp">
+                            <div class="wa-icon">💬</div>
+                            <strong style="display: block; margin-top: 10px; font-size: 1.2rem;">Start a Chat</strong>
+                        </div>
                     </div>
                     <div class="project-info">
                         <div>
                             <p class="project-number">03</p>
                             <h3>Your Next Project</h3>
-                            <p>Looking for a custom web application or mobile interface? Let's build it together.</p>
+                            <p>Need a custom web application or mobile interface? Click to message me directly on WhatsApp.</p>
                         </div>
-                        <span class="project-arrow" aria-hidden="true">↗</span>
+                        <span class="project-arrow" aria-hidden="true">💬</span>
                     </div>
-                </article>
+                </a>
+            </div>
+
+            <!-- Project Carousel Component -->
+            <div class="carousel-section page-section-sm">
+                <div class="carousel-header">
+                    <div>
+                        <p class="section-index">GALLERY CAROUSEL</p>
+                        <h2>Explore App Screens & Work</h2>
+                    </div>
+                    <div class="carousel-controls">
+                        <button id="carousel-prev" class="btn-neo btn-white btn-sm" type="button" aria-label="Previous Slide">← Prev</button>
+                        <button id="carousel-next" class="btn-neo btn-white btn-sm" type="button" aria-label="Next Slide">Next →</button>
+                    </div>
+                </div>
+
+                <div class="carousel-viewport">
+                    <div class="carousel-track" id="carousel-track">
+                        <!-- Slide 1 -->
+                        <div class="carousel-slide neo-card">
+                            <div class="slide-image-box">
+                                <img src="/assets/main.jpg" alt="Expense List Dashboard">
+                            </div>
+                            <div class="slide-caption">
+                                <strong>Expense Dashboard Screen</strong>
+                                <p>Lists recent transactions in sunny yellow Neo-Brutalist cards with cumulative balances.</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 2 -->
+                        <div class="carousel-slide neo-card">
+                            <div class="slide-image-box">
+                                <img src="/assets/ae (1).jpg" alt="Add Expense Modal Screen">
+                            </div>
+                            <div class="slide-caption">
+                                <strong>Add Expense Form</strong>
+                                <p>Fast transaction entry with category pickers, date selection, and transaction types.</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 3 -->
+                        <div class="carousel-slide neo-card neo-card-yellow">
+                            <div class="slide-image-box slide-placeholder-box">
+                                <div class="slide-big-icon">🧾</div>
+                                <h3>Receipt OCR Engine</h3>
+                            </div>
+                            <div class="slide-caption">
+                                <strong>Automated Receipt Parsing</strong>
+                                <p>Integrated Gemini 3.6 Flash & Azure Document Intelligence to automatically split line-item receipts.</p>
+                            </div>
+                        </div>
+
+                        <!-- Slide 4 -->
+                        <div class="carousel-slide neo-card neo-card-aqua">
+                            <div class="slide-image-box slide-placeholder-box">
+                                <div class="slide-big-icon">🔒</div>
+                                <h3>Firebase Security & MongoDB</h3>
+                            </div>
+                            <div class="slide-caption">
+                                <strong>Private Data Isolation</strong>
+                                <p>Authenticated REST API backend enforcing user owner ID validation on every transaction query.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="carousel-dots" id="carousel-dots">
+                    <span class="dot active" data-index="0"></span>
+                    <span class="dot" data-index="1"></span>
+                    <span class="dot" data-index="2"></span>
+                    <span class="dot" data-index="3"></span>
+                </div>
             </div>
         </section>
 
+        <!-- Contact Section -->
         <section id="contact" class="contact-section page-section">
             <div class="neo-card contact-card">
-                <p class="section-index">03 / CONTACT</p>
+                <p class="section-index">03 / GET IN TOUCH</p>
                 <div class="contact-layout">
                     <div>
-                        <h2>Have an interesting idea?<br><em>Let's build it.</em></h2>
-                        <p class="contact-copy">For collaborations, feedback on Unmurce, or starting a new web project.</p>
+                        <h2>Let's build something great together.</h2>
+                        <p class="contact-copy">Have a project idea, feedback on Unmurce, or want to collaborate? Click any button below to connect with <strong>Orlando Diamond Prasetyo</strong>.</p>
                     </div>
-                    <a class="contact-link button-yellow" href="mailto:hello@dododabird.us">hello@dododabird.us <span aria-hidden="true">↗</span></a>
+
+                    <!-- Direct WhatsApp Button -->
+                    <a class="contact-link button-yellow" href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20discuss%20a%20project." target="_blank">
+                        Chat on WhatsApp 💬
+                    </a>
+                </div>
+
+                <!-- Comprehensive Social Contact Buttons Grid -->
+                <div class="contact-buttons-grid">
+                    <a class="contact-btn-card btn-email" href="mailto:orlandodiamondprasetyo@gmail.com">
+                        <div class="contact-icon">✉</div>
+                        <div class="contact-detail">
+                            <span>EMAIL</span>
+                            <strong>orlandodiamondprasetyo@gmail.com</strong>
+                        </div>
+                        <span class="btn-arrow">↗</span>
+                    </a>
+
+                    <a class="contact-btn-card btn-whatsapp" href="https://wa.me/6285810008115" target="_blank">
+                        <div class="contact-icon">💬</div>
+                        <div class="contact-detail">
+                            <span>WHATSAPP / PHONE</span>
+                            <strong>+62 85810008115</strong>
+                        </div>
+                        <span class="btn-arrow">↗</span>
+                    </a>
+
+                    <a class="contact-btn-card btn-linkedin" href="https://www.linkedin.com/in/orlando-diamond-prasetyo-6b3bb5362/" target="_blank">
+                        <div class="contact-icon">💼</div>
+                        <div class="contact-detail">
+                            <span>LINKEDIN</span>
+                            <strong>Orlando Diamond Prasetyo</strong>
+                        </div>
+                        <span class="btn-arrow">↗</span>
+                    </a>
+
+                    <a class="contact-btn-card btn-instagram" href="https://www.instagram.com/prasetyoorlando/?hl=en" target="_blank">
+                        <div class="contact-icon">📷</div>
+                        <div class="contact-detail">
+                            <span>INSTAGRAM</span>
+                            <strong>@prasetyoorlando</strong>
+                        </div>
+                        <span class="btn-arrow">↗</span>
+                    </a>
+
+                    <a class="contact-btn-card btn-line" href="https://line.me/ti/p/~orlandoprasetyo" target="_blank">
+                        <div class="contact-icon">🟢</div>
+                        <div class="contact-detail">
+                            <span>LINE ID</span>
+                            <strong>orlandoprasetyo</strong>
+                        </div>
+                        <span class="btn-arrow">↗</span>
+                    </a>
                 </div>
             </div>
         </section>
     </main>
 
     <footer class="site-footer">
-        <span>© 2026 Dodo Dabird</span>
-        <span>Made with intent • Neo-Brutalist UI</span>
-        <a class="back-to-top" href="#top">Back to top ↑</a>
+        <div class="footer-left">
+            <strong>Orlando Diamond Prasetyo</strong>
+            <span>Made with intent • Neo-Brutalist UI</span>
+        </div>
+        <div class="footer-links">
+            <a href="/expenses">Unmurce App</a>
+            <a href="/docs">Technical Docs</a>
+            <a href="https://wa.me/6285810008115" target="_blank">WhatsApp</a>
+            <a class="back-to-top" href="#top">Back to top ↑</a>
+        </div>
     </footer>
+
+    <!-- Carousel Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const track = document.getElementById('carousel-track');
+            const slides = document.querySelectorAll('.carousel-slide');
+            const prevBtn = document.getElementById('carousel-prev');
+            const nextBtn = document.getElementById('carousel-next');
+            const dots = document.querySelectorAll('#carousel-dots .dot');
+            let currentIndex = 0;
+
+            function updateCarousel(index) {
+                if (index < 0) index = slides.length - 1;
+                if (index >= slides.length) index = 0;
+                currentIndex = index;
+                const offset = -currentIndex * 100;
+                track.style.transform = `translateX(${offset}%)`;
+                dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === currentIndex);
+                });
+            }
+
+            if (prevBtn) prevBtn.addEventListener('click', () => updateCarousel(currentIndex - 1));
+            if (nextBtn) nextBtn.addEventListener('click', () => updateCarousel(currentIndex + 1));
+            dots.forEach(dot => {
+                dot.addEventListener('click', () => {
+                    const idx = parseInt(dot.getAttribute('data-index') || '0', 10);
+                    updateCarousel(idx);
+                });
+            });
+        });
+    </script>
 </body>
 </html>
-
-
-
