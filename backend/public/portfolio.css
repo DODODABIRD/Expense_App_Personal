@@ -287,6 +287,9 @@ h1 {
 }
 
 .social-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
     padding: 8px 16px;
     border: var(--border-thin);
     border-radius: var(--radius-pill);
@@ -295,6 +298,11 @@ h1 {
     font-weight: 800;
     font-size: 0.82rem;
     transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.pill-icon {
+    display: inline-block;
+    vertical-align: middle;
 }
 
 .social-pill:hover {
@@ -909,6 +917,18 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 4px;
+}
+
+.flaticon-credits {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 6px;
+    font-weight: 500;
+}
+
+.flaticon-credits a {
+    text-decoration: underline;
+    color: var(--muted);
 }
 
 .footer-links {
