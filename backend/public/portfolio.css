@@ -987,6 +987,7 @@ h1 {
 .carousel-track-wrapper {
     overflow: hidden;
     width: 100%;
+    touch-action: pan-y;
 }
 
 .carousel-track {

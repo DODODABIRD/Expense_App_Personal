@@ -629,7 +629,11 @@
             const prevBtn = document.getElementById('carousel-prev');
             const nextBtn = document.getElementById('carousel-next');
             const dots = document.querySelectorAll('#carousel-dots .dot');
+            const trackWrapper = document.querySelector('.carousel-track-wrapper');
             let currentIndex = 0;
+            let swipeStartX = 0;
+            let swipeStartY = 0;
+            let suppressClick = false;
 
             function updateCarousel(index) {
                 if (index < 0) index = slides.length - 1;
@@ -644,6 +648,38 @@
 
             if (prevBtn) prevBtn.addEventListener('click', () => updateCarousel(currentIndex - 1));
             if (nextBtn) nextBtn.addEventListener('click', () => updateCarousel(currentIndex + 1));
+            if (trackWrapper) {
+                trackWrapper.addEventListener('pointerdown', (event) => {
+                    swipeStartX = event.clientX;
+                    swipeStartY = event.clientY;
+                });
+
+                trackWrapper.addEventListener('pointerup', (event) => {
+                    const deltaX = event.clientX - swipeStartX;
+                    const deltaY = event.clientY - swipeStartY;
+                    const isHorizontalSwipe = Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY);
+
+                    if (!isHorizontalSwipe) return;
+
+                    suppressClick = true;
+                    updateCarousel(currentIndex + (deltaX < 0 ? 1 : -1));
+                    window.setTimeout(() => {
+                        suppressClick = false;
+                    }, 0);
+                });
+
+                trackWrapper.addEventListener('pointercancel', () => {
+                    swipeStartX = 0;
+                    swipeStartY = 0;
+                });
+
+                trackWrapper.addEventListener('click', (event) => {
+                    if (!suppressClick) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    suppressClick = false;
+                }, true);
+            }
             dots.forEach(dot => {
                 dot.addEventListener('click', (e) => {
                     const idx = parseInt(e.target.getAttribute('data-index'), 10);
