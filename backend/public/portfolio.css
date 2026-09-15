@@ -394,6 +394,12 @@ a {
     color: #000;
 }
 
+.whatsapp-button-icon {
+    width: 20px;
+    height: 20px;
+    object-fit: contain;
+}
+
 .button-white {
     background-color: var(--card-white);
     color: #000;
@@ -875,7 +881,20 @@ h1 {
 }
 
 .wa-icon {
-    font-size: 3rem;
+    display: grid;
+    place-items: center;
+}
+
+.wa-icon img {
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+
+.whatsapp-project-icon {
+    width: 22px;
+    height: 22px;
+    object-fit: contain;
 }
 
 .badge-tag {
