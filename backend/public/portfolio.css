@@ -1402,6 +1402,71 @@ h1 {
     }
 }
 
+@media (max-width: 768px) {
+    body {
+        overflow-x: hidden;
+    }
+
+    .button,
+    .header-action,
+    .carousel-nav-btn {
+        max-width: 100%;
+        min-width: 0;
+        white-space: normal;
+        text-align: center;
+    }
+
+    .hero-actions {
+        align-items: stretch;
+    }
+
+    .hero-actions .button {
+        flex: 1 1 220px;
+    }
+
+    .stamp-tag {
+        left: 0;
+    }
+
+    .secondary-frame {
+        right: 0;
+    }
+
+    .carousel-header {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .carousel-controls {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .carousel-nav-btn {
+        flex: 1 1 140px;
+    }
+
+    .contact-buttons-grid,
+    .contact-btn-card {
+        width: 100%;
+        min-width: 0;
+    }
+
+    .contact-btn-card {
+        overflow: hidden;
+    }
+
+    .contact-detail {
+        min-width: 0;
+    }
+
+    .contact-detail strong {
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+}
+
 @media (max-width: 580px) {
     .brand-text small {
         display: none;
