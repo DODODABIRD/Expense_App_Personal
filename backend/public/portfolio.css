@@ -509,8 +509,47 @@ h1 {
 
 .social-pill:hover {
     transform: translate(-2px, -2px);
-    background: var(--card-yellow);
     box-shadow: var(--shadow);
+}
+
+.social-pill.btn-email:hover {
+    background: #ea4335;
+    color: #ffffff;
+}
+
+.social-pill.btn-whatsapp:hover {
+    background: #25d366;
+    color: #000000;
+}
+
+.social-pill.btn-linkedin:hover {
+    background: #0a66c2;
+    color: #ffffff;
+}
+
+.social-pill.btn-instagram:hover {
+    background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    color: #ffffff;
+}
+
+.social-pill.btn-github:hover {
+    background: #24292f;
+    color: #ffffff;
+}
+
+.social-pill-icon {
+    display: grid;
+    place-items: center;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: #ffffff;
+}
+
+.social-pill-icon img {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
 }
 
 /* Hero Art - Real App Preview Screenshots */
@@ -1249,6 +1288,14 @@ h1 {
     color: #ffffff;
 }
 .contact-btn-card.btn-line:hover .contact-detail span {
+    color: rgba(255, 255, 255, 0.88);
+}
+
+.contact-btn-card.btn-github:hover {
+    background: #24292f;
+    color: #ffffff;
+}
+.contact-btn-card.btn-github:hover .contact-detail span {
     color: rgba(255, 255, 255, 0.88);
 }
 
