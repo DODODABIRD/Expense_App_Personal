@@ -170,6 +170,7 @@
             display: flex;
             flex-direction: column;
             gap: 36px;
+            min-width: 0;
         }
 
         .docs-card {
@@ -178,6 +179,7 @@
             border-radius: var(--radius-lg);
             background: var(--card-white);
             box-shadow: var(--shadow);
+            min-width: 0;
         }
 
         .docs-card-yellow {
@@ -306,10 +308,16 @@
 
         pre {
             max-width: 100%;
+            min-width: 0;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             white-space: pre;
             word-wrap: normal;
+        }
+
+        .table-responsive {
+            max-width: 100%;
+            min-width: 0;
         }
 
         @media (max-width: 840px) {
@@ -359,6 +367,16 @@
                 padding: 16px 0;
             }
 
+            .docs-brand {
+                min-width: 0;
+                max-width: 100%;
+            }
+
+            .docs-brand span {
+                min-width: 0;
+                overflow-wrap: anywhere;
+            }
+
             .docs-nav-btns {
                 width: 100%;
                 justify-content: space-between;
@@ -366,15 +384,26 @@
 
             .btn-neo {
                 flex: 1;
+                min-width: 0;
                 justify-content: center;
                 padding: 8px 12px;
                 font-size: 0.8rem;
+                text-align: center;
+                white-space: normal;
             }
         }
 
         @media (max-width: 580px) {
+            body {
+                overflow-x: hidden;
+            }
+
             .docs-card {
                 padding: 22px 18px;
+            }
+
+            .overview-meta {
+                flex-wrap: wrap;
             }
 
             h1 {
@@ -427,7 +456,7 @@
                 <p><strong>Unmurce</strong> is a personal finance management application created by <strong>Orlando
                         Diamond Prasetyo</strong>. It provides secure transaction tracking, automated receipt parsing
                     via Google Gemini 3.6 & Azure AI, and real-time monthly spending breakdowns.</p>
-                <div style="display: flex; gap: 12px; margin-top: 16px;">
+                <div class="overview-meta" style="display: flex; gap: 12px; margin-top: 16px;">
                     <span class="tag-badge" style="background: #fff;">AUTHOR: ORLANDO D. PRASETYO</span>
                     <span class="tag-badge" style="background: #fff;">VERSION: 1.0.0</span>
                     <span class="tag-badge" style="background: #fff;">STACK: EXPRESS / MONGODB / FIREBASE</span>
