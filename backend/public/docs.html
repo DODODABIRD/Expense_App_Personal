@@ -452,14 +452,88 @@
             <!-- 01. Overview -->
             <section id="overview" class="docs-card docs-card-yellow">
                 <span class="tag-badge">SYSTEM OVERVIEW</span>
-                <h1>Unmurce Architecture & Technical Specification</h1>
-                <p><strong>Unmurce</strong> is a personal finance management application created by <strong>Orlando
-                        Diamond Prasetyo</strong>. It provides secure transaction tracking, automated receipt parsing
-                    via Google Gemini 3.6 & Azure AI, and real-time monthly spending breakdowns.</p>
-                <div class="overview-meta" style="display: flex; gap: 12px; margin-top: 16px;">
+                <h1>Unmurce Technical Specification & Tech Stack</h1>
+                <p><strong>Unmurce</strong> is a multi-platform personal finance management system created by <strong>Orlando Diamond Prasetyo</strong>. It features real-time expense tracking, automated receipt split-parsing via <strong>Google AI (Gemini 3.6 Flash)</strong> and <strong>Azure Document Intelligence</strong>, combined with secure cross-device authentication.</p>
+
+                <h2>Complete Tech Stack Matrix</h2>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Technology</th>
+                                <th>Category</th>
+                                <th>Role & Implementation Details</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Flutter</strong></td>
+                                <td>Mobile UI Framework</td>
+                                <td>Cross-platform native mobile application UI for Android and iOS.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Kotlin</strong></td>
+                                <td>Android Platform</td>
+                                <td>Native Android runtime bridge, system notification listeners, and background task hooks.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Gradle</strong></td>
+                                <td>Build Tooling</td>
+                                <td>Automated Android APK/AAB build automation and dependency resolution.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>NextJs</strong></td>
+                                <td>Web Frontend</td>
+                                <td>Modern server-rendered & static client web interface for desktop and mobile web browsers.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>ExpressJS</strong></td>
+                                <td>Backend Server</td>
+                                <td>Node.js web framework handling REST API routing, authentication middleware, and AI proxying.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>RestAPI</strong></td>
+                                <td>Protocol & Specs</td>
+                                <td>JSON REST contracts for stateless CRUD operations and real-time transaction syncing.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>MongoDB</strong></td>
+                                <td>Database</td>
+                                <td>MongoDB Atlas document database providing schema-validated persistent transaction storage.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Firebase</strong></td>
+                                <td>Auth & Security</td>
+                                <td>Identity verification, Google/Email sign-in, and Bearer ID token validation middleware.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Google AI API</strong></td>
+                                <td>Multimodal AI Engine</td>
+                                <td>Gemini 3.6 Flash model for intelligent photo receipt parsing and natural language expense extraction.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Azure AI</strong></td>
+                                <td>Enterprise OCR</td>
+                                <td>Azure Document Intelligence prebuilt receipt model serving as fallback for receipt text recognition.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Vercel</strong></td>
+                                <td>Serverless Cloud</td>
+                                <td>High-availability serverless Node.js execution runtime for the backend Express API.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Cloudflare</strong></td>
+                                <td>Edge & Security</td>
+                                <td>DNS management, SSL/TLS termination, DDoS protection, and CDN asset caching.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="overview-meta" style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
                     <span class="tag-badge" style="background: #fff;">AUTHOR: ORLANDO D. PRASETYO</span>
                     <span class="tag-badge" style="background: #fff;">VERSION: 1.0.0</span>
-                    <span class="tag-badge" style="background: #fff;">STACK: EXPRESS / MONGODB / FIREBASE</span>
+                    <span class="tag-badge" style="background: #fff;">ECOSYSTEM: FLUTTER + NEXTJS + EXPRESS + MONGODB</span>
                 </div>
             </section>
 
@@ -467,22 +541,38 @@
             <section id="architecture" class="docs-card">
                 <span class="tag-badge">SYSTEM DESIGN</span>
                 <h2>02. Architecture & Data Flow</h2>
-                <p>The application follows a decoupled client-server architecture deployed on Vercel Node.js Serverless
-                    runtime:</p>
+                <p>The application follows a decoupled multi-client serverless architecture connected through Cloudflare Edge DNS to Vercel Serverless Node.js hosting:</p>
 
                 <pre>
-┌───────────────────────────┐      Firebase Bearer Token      ┌───────────────────────────┐
-│                           │ ──────────────────────────────> │                           │
-│   Web / Frontend Client   │                                 │   Express.js API Engine   │
-│   (HTML5, Neo-Brutalist)  │ <────────────────────────────── │   (api/index.js)          │
-└───────────────────────────┘    JSON Transactions Payload    └─────────────┬─────────────┘
-                                                                            │
-                                                       Mongoose Connection │
-                                                                            ▼
-                                                              ┌───────────────────────────┐
-                                                              │   MongoDB Atlas Database  │
-                                                              │   (Expenses Collection)   │
-                                                              └───────────────────────────┘
+┌─────────────────────────────────┐       ┌─────────────────────────────────┐
+│     Flutter (Kotlin/Gradle)     │       │        NextJs / Web Client       │
+│        Android App Client       │       │       (Neo-Brutalist HTML5)     │
+└────────────────┬────────────────┘       └────────────────┬────────────────┘
+                 │                                         │
+                 └───────────────────┬─────────────────────┘
+                                     │ Bearer ID Token / REST API
+                                     ▼
+                      ┌──────────────────────────────┐
+                      │    Cloudflare Edge & Security │
+                      └──────────────┬───────────────┘
+                                     │ HTTPS
+                                     ▼
+                      ┌──────────────────────────────┐
+                      │     Vercel Serverless Host   │
+                      │    (ExpressJS Engine API)    │
+                      └──────┬───────────────┬───────┘
+                             │               │
+         Firebase Admin Auth │               │ Mongoose Connection
+                             ▼               ▼
+                      ┌──────────────┐ ┌─────────────────────────────┐
+                      │ Firebase Auth│ │    MongoDB Atlas Database   │
+                      └──────────────┘ └─────────────────────────────┘
+                             │
+          AI OCR Fallback    ├──────────────────────────────┐
+                             ▼                              ▼
+                 ┌───────────────────────┐      ┌─────────────────────────┐
+                 │ Google AI API (Gemini)│ ────>│ Azure Document Intel    │
+                 └───────────────────────┘      └─────────────────────────┘
 </pre>
             </section>
 
@@ -499,7 +589,7 @@
     name: { type: String, required: true },
     amount: { type: Number, required: true },
     category: { type: String, required: true },
-    type: { type: String, required: true }, // 'Expense' | 'Income'
+    type: { type: String, required: true }, // 'expected' | 'unexpected' | 'others'
     date: { type: String, required: true },
   },
   { timestamps: true }
@@ -513,7 +603,7 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
             <section id="auth" class="docs-card">
                 <span class="tag-badge">SECURITY</span>
                 <h2>04. Firebase Authentication Middleware</h2>
-                <p>All incoming REST requests are verified using Firebase Admin SDK idToken verification:</p>
+                <p>All incoming REST API requests are authenticated using Firebase Admin SDK idToken verification:</p>
                 <pre><code>async function requireAuth(req, res, next) {
   try {
     const header = req.headers.authorization || "";
@@ -523,7 +613,7 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
     req.user = await admin.auth().verifyIdToken(header.substring(7));
     next();
   } catch (err) {
-    res.status(401).json({ error: "Invalid token" });
+    res.status(401).json({ error: "Invalid or expired token" });
   }
 }
 </code></pre>
@@ -532,10 +622,13 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
             <!-- 05. OCR -->
             <section id="ocr" class="docs-card">
                 <span class="tag-badge">AI INTEGRATION</span>
-                <h2>05. Receipt OCR Parsing (Gemini & Azure Fallback)</h2>
-                <p>Users can snap photos of printed receipts. The backend automatically parses tax, item names, prices,
-                    and categories using <strong>Gemini 3.6 Flash</strong> with fallback to <strong>Azure Document
-                        Intelligence</strong>.</p>
+                <h2>05. Receipt OCR Parsing (Google AI & Azure Fallback)</h2>
+                <p>When a photo of a receipt is uploaded to <code>/api/parse-receipt</code>, the backend executes an automated AI vision extraction pipeline:</p>
+                <ol style="margin-left: 20px; font-weight: 600; color: var(--muted); margin-bottom: 16px;">
+                    <li><strong>Primary Model (Google AI API / Gemini 3.6 Flash):</strong> Multimodal vision model extracts line items, purchase date, item quantities, and tax distributions in structured JSON format.</li>
+                    <li><strong>Fallback Model (Azure Document Intelligence):</strong> If Gemini encounters rate limits (HTTP 429) or service degradation, the request automatically falls back to Azure Document Intelligence prebuilt receipt model.</li>
+                    <li><strong>Tax & Service Charge Proportional Split:</strong> Tax (PPN) and service charges are calculated and distributed proportionally across all line items to ensure accurate per-item expenses.</li>
+                </ol>
             </section>
 
             <!-- 06. API Endpoints -->
@@ -569,8 +662,23 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
                             </tr>
                             <tr>
                                 <td><span class="method-badge method-post">POST</span></td>
+                                <td><code>/api/users/delete-all</code></td>
+                                <td>Bulk delete all expenses owned by authenticated user</td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge method-post">POST</span></td>
                                 <td><code>/api/parse-receipt</code></td>
-                                <td>Upload base64 image & parse line-item breakdown</td>
+                                <td>Upload base64 image & parse line-item breakdown via Google AI / Azure AI</td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge method-post">POST</span></td>
+                                <td><code>/api/parse-notification</code></td>
+                                <td>Parse Android notification text into structured expense item</td>
+                            </tr>
+                            <tr>
+                                <td><span class="method-badge method-get">GET</span></td>
+                                <td><code>/api/exchange-rates</code></td>
+                                <td>Fetch live currency exchange rates (base IDR)</td>
                             </tr>
                         </tbody>
                     </table>
@@ -579,19 +687,35 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
 
             <!-- 07. Setup -->
             <section id="setup" class="docs-card">
-                <span class="tag-badge">DEVELOPMENT</span>
-                <h2>07. Local Environment Setup</h2>
-                <p>To run the application locally:</p>
-                <pre><code># 1. Clone repository & install dependencies
+                <span class="tag-badge">DEVELOPMENT & BUILD</span>
+                <h2>07. Setup & Build Guide</h2>
+
+                <h3>Backend (ExpressJS, MongoDB, Vercel)</h3>
+                <pre><code># 1. Install dependencies
 npm install
 
-# 2. Configure environment variables in .env
+# 2. Configure environment in .env
 MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/unmurce
-FIREBASE_SERVICE_ACCOUNT_JSON={...}
+FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 GEMINI_KEY=AIzaSy...
+AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://your-instance.cognitiveservices.azure.com/
+AZURE_DOCUMENT_INTELLIGENCE_KEY=your-key
 
-# 3. Start development server
+# 3. Run development server
 npm start
+</code></pre>
+
+                <h3>Mobile Application (Flutter, Kotlin, Gradle)</h3>
+                <pre><code># 1. Get Flutter dependencies
+flutter pub get
+
+# 2. Build Android APK using Gradle
+flutter build apk --split-per-abi --release
+</code></pre>
+
+                <h3>Web Frontend (NextJs / HTML5)</h3>
+                <pre><code># Serve static web frontend with live reload
+npm run dev
 </code></pre>
             </section>
         </main>
