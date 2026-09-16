@@ -83,6 +83,27 @@
 </head>
 
 <body id="top">
+    <!-- Fancy Neo-Brutalist Loading Screen Preloader -->
+    <div id="page-preloader" class="page-preloader">
+        <div class="preloader-card neo-card">
+            <div class="preloader-logo-wrapper">
+                <div class="logo-pulse-ring"></div>
+                <img src="asset/webicon1.png" alt="Orlando D. Prasetyo Webicon Logo" class="preloader-logo">
+            </div>
+            <div class="preloader-brand">
+                <strong>ORLANDO D. PRASETYO</strong>
+                <small>LOADING EXPERIENCE...</small>
+            </div>
+            <div class="preloader-progress-track">
+                <div id="preloader-bar" class="preloader-bar"></div>
+            </div>
+            <div class="preloader-percent-row">
+                <span id="preloader-percent">0%</span>
+                <span class="status-indicator"><i class="status-dot"></i> Initializing</span>
+            </div>
+        </div>
+    </div>
+
     <!-- Fancy Floating Header -->
     <div class="site-header-wrapper" id="site-header-wrapper">
         <header class="site-header">
@@ -207,13 +228,10 @@
                             <polyline points="22,6 12,13 2,6"></polyline>
                         </svg> Email
                     </a>
-                    <a class="social-pill btn-whatsapp" href="https://wa.me/6285810008115" target="_blank" title="WhatsApp">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
-                            stroke-linecap="round" stroke-linejoin="round">
-                            <path
-                                d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z">
-                            </path>
-                        </svg> WhatsApp
+                    <a class="social-pill btn-line" href="https://line.me/ti/p/~orlandoprasetyo" target="_blank" title="Line">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M19.365 9.863c.349 0 .63.285.63.631 0 .345-.281.63-.63.63h-1.625v1.147h1.625c.349 0 .63.284.63.63 0 .347-.281.63-.63.63h-2.256c-.347 0-.63-.283-.63-.63V8.106c0-.347.283-.63.63-.63h2.256c.349 0 .63.283.63.63 0 .347-.281.63-.63.63h-1.625v1.157h1.625zm-3.72-2.387c.348 0 .63.283.63.63v4.523c0 .347-.282.63-.63.63a.628.628 0 0 1-.63-.63V8.106c0-.347.282-.63.63-.63zM10.825 12.63V8.106c0-.347.283-.63.63-.63.349 0 .63.283.63.63v3.298l2.128-3.755c.089-.158.258-.256.44-.256.096 0 .19.027.27.078.297.185.39.574.205.871l-2.617 4.607a.629.629 0 0 1-.54.321h-.516a.628.628 0 0 1-.63-.63zm-3.666-.63H5.534V8.106c0-.347.283-.63.63-.63.349 0 .63.283.63.63v3.264h1.365c.349 0 .63.284.63.63 0 .347-.281.63-.63.63zM24 10.314C24 4.943 18.615.572 12 .572S0 4.943 0 10.314c0 4.811 4.27 8.842 10.035 9.608.391.082.923.258 1.058.59.12.301.079.766.038 1.08-.085.643-.388 2.508-.426 2.744-.06.368.27.3.435.19 1.77-1.189 4.685-3.415 6.395-5.842C21.906 16.295 24 13.514 24 10.314z"/>
+                        </svg> Line
                     </a>
                     <a class="social-pill btn-linkedin" href="https://www.linkedin.com/in/orlando-diamond-prasetyo-6b3bb5362/"
                         target="_blank" title="LinkedIn">
@@ -315,10 +333,38 @@
                 <!-- Project 01: Unmurce -->
                 <a class="project-card neo-card neo-card-yellow project-featured" href="/expenses">
                     <div class="project-visual unmurce-visual">
-                        <span class="visual-tag">LIVE APP</span>
+                        <div class="visual-tag-group">
+                            <span class="visual-tag">LIVE APP</span>
+                            <div class="app-logo-pill neo-card">
+                                <img src="asset/android_app_logo.png" alt="Unmurce App Logo">
+                                <span>Unmurce App</span>
+                            </div>
+                        </div>
                         <div class="visual-screenshots-combo">
-                            <img class="combo-img img-main" src="asset/main.jpg" alt="Unmurce Main Screenshot">
-                            <img class="combo-img img-sub" src="asset/ae_1.jpg" alt="Unmurce Add Expense Screenshot">
+                            <div class="app-frame combo-frame-main neo-card">
+                                <div class="frame-bar">
+                                    <span class="frame-title">Dashboard</span>
+                                </div>
+                                <img class="app-screen-img" src="asset/main.jpg" alt="Unmurce Main Screenshot">
+                            </div>
+                            <div class="app-frame combo-frame-sub neo-card">
+                                <div class="frame-bar">
+                                    <span class="frame-title">Add Expense</span>
+                                </div>
+                                <img class="app-screen-img" src="asset/ae_1.jpg" alt="Unmurce Add Expense Screenshot">
+                            </div>
+                            <div class="app-frame combo-frame-third neo-card">
+                                <div class="frame-bar">
+                                    <span class="frame-title">Receipt OCR</span>
+                                </div>
+                                <img class="app-screen-img" src="asset/reciptscan.jpg" alt="Unmurce Receipt Scan Screenshot">
+                            </div>
+                            <div class="app-frame combo-frame-fourth neo-card">
+                                <div class="frame-bar">
+                                    <span class="frame-title">Settings</span>
+                                </div>
+                                <img class="app-screen-img" src="asset/settings.jpg" alt="Unmurce Settings Screenshot">
+                            </div>
                         </div>
                         <span class="visual-caption">UNMURCE / EXPENSE TRACKER</span>
                     </div>
@@ -444,17 +490,43 @@
                                 </div>
                             </div>
 
-                            <!-- Slide 3: Receipt OCR -->
+                            <!-- Slide 3: Settings Screen -->
                             <div class="carousel-slide">
                                 <div class="slide-mockup-wrapper">
-                                    <div class="feature-graphic-box graphic-yellow">
-                                        <div class="graphic-icon">🧾</div>
-                                        <strong>AI Receipt OCR</strong>
-                                        <span class="graphic-sub">Gemini 3.6 & Azure</span>
+                                    <div class="phone-mockup-frame">
+                                        <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                        <div class="phone-mockup-screen">
+                                            <img src="asset/settings.jpg" alt="Unmurce Settings Screen Screenshot">
+                                        </div>
+                                        <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
                                     </div>
                                 </div>
                                 <div class="slide-details">
-                                    <span class="slide-badge">FEATURE 03</span>
+                                    <span class="slide-badge">SCREEN 03</span>
+                                    <h3>App Settings & Profile View</h3>
+                                    <p>Configure personal account details, Firebase security tokens, display preferences, and instant data reset actions.</p>
+                                    <div class="slide-tags">
+                                        <span>Account Preferences</span>
+                                        <span>Firebase Security</span>
+                                        <span>Data Control</span>
+                                    </div>
+                                    <a class="button button-aqua slide-cta" href="/expenses">Open App Live ↗</a>
+                                </div>
+                            </div>
+
+                            <!-- Slide 4: Receipt OCR -->
+                            <div class="carousel-slide">
+                                <div class="slide-mockup-wrapper">
+                                    <div class="phone-mockup-frame">
+                                        <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                        <div class="phone-mockup-screen">
+                                            <img src="asset/reciptscan.jpg" alt="Unmurce Receipt Scan Screenshot">
+                                        </div>
+                                        <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
+                                    </div>
+                                </div>
+                                <div class="slide-details">
+                                    <span class="slide-badge">FEATURE 04</span>
                                     <h3>Automated Receipt Parsing</h3>
                                     <p>Snap a photo of any receipt to automatically extract line items, prices, and tax
                                         distribution using Gemini 3.6 Flash and Azure Document Intelligence.</p>
@@ -467,7 +539,7 @@
                                 </div>
                             </div>
 
-                            <!-- Slide 4: Firebase Auth & MongoDB -->
+                            <!-- Slide 5: Firebase Auth & MongoDB -->
                             <div class="carousel-slide">
                                 <div class="slide-mockup-wrapper">
                                     <div class="feature-graphic-box graphic-aqua">
@@ -477,7 +549,7 @@
                                     </div>
                                 </div>
                                 <div class="slide-details">
-                                    <span class="slide-badge">ARCHITECTURE 04</span>
+                                    <span class="slide-badge">ARCHITECTURE 05</span>
                                     <h3>Private Data Isolation</h3>
                                     <p>Every transaction query is authenticated via Firebase Bearer ID Tokens and
                                         enforced against MongoDB Atlas collection schemas.</p>
@@ -499,6 +571,7 @@
                     <span class="dot" data-index="1"></span>
                     <span class="dot" data-index="2"></span>
                     <span class="dot" data-index="3"></span>
+                    <span class="dot" data-index="4"></span>
                 </div>
             </div>
         </section>
@@ -538,11 +611,9 @@
 
                     <a class="contact-btn-card btn-whatsapp" href="https://wa.me/6285810008115" target="_blank">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
-                                stroke-linecap="round" stroke-linejoin="round">
-                                <path
-                                    d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z">
-                                </path>
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414-.074-.124-.272-.198-.57-.347z"/>
+                                <path d="M12 2C6.477 2 2 6.477 2 12c0 2.14.673 4.12 1.82 5.75L2 22l4.4-1.76A9.95 9.95 0 0 0 12 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18c-1.66 0-3.21-.44-4.55-1.21l-.33-.19-2.61 1.04.8-2.54-.21-.35A7.95 7.95 0 0 1 4 12c0-4.41 3.59-8 8-8s8 3.59 8 8-3.59 8-8 8z"/>
                             </svg>
                         </div>
                         <div class="contact-detail">
@@ -710,12 +781,40 @@
                 });
             });
 
+            // Dropdown Navbar Handler (One at a time, Close on click outside, Close on scroll)
+            const navDropdowns = document.querySelectorAll('.nav-dropdown');
+
+            function closeAllDropdowns() {
+                navDropdowns.forEach(dropdown => {
+                    if (dropdown.open) dropdown.open = false;
+                });
+            }
+
+            navDropdowns.forEach(dropdown => {
+                dropdown.addEventListener('toggle', () => {
+                    if (dropdown.open) {
+                        navDropdowns.forEach(other => {
+                            if (other !== dropdown && other.open) {
+                                other.open = false;
+                            }
+                        });
+                    }
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.nav-dropdown')) {
+                    closeAllDropdowns();
+                }
+            });
+
             // Smart Floating Navbar Scroll Handler (Hide on scroll down, Show on scroll up)
             let lastScrollY = window.scrollY;
             const headerWrapper = document.getElementById('site-header-wrapper');
 
             window.addEventListener('scroll', () => {
                 const currentScrollY = window.scrollY;
+                closeAllDropdowns();
                 if (currentScrollY <= 80) {
                     headerWrapper.classList.remove('nav-hidden');
                 } else if (currentScrollY > lastScrollY && currentScrollY > 120) {
@@ -758,6 +857,48 @@
                 });
             }
             drawerLinks.forEach(link => link.addEventListener('click', closeDrawer));
+
+            // Fancy Loading Screen Preloader Controller
+            const preloader = document.getElementById('page-preloader');
+            const preloaderBar = document.getElementById('preloader-bar');
+            const preloaderPercent = document.getElementById('preloader-percent');
+
+            if (preloader && preloaderBar && preloaderPercent) {
+                let currentProgress = 0;
+                const startTime = Date.now();
+                const minDuration = 1000;
+
+                const progressInterval = setInterval(() => {
+                    if (currentProgress < 92) {
+                        currentProgress += Math.floor(Math.random() * 14) + 5;
+                        if (currentProgress > 92) currentProgress = 92;
+                        preloaderBar.style.width = currentProgress + '%';
+                        preloaderPercent.textContent = currentProgress + '%';
+                    }
+                }, 40);
+
+                function hidePreloader() {
+                    const elapsedTime = Date.now() - startTime;
+                    const remainingTime = Math.max(0, minDuration - elapsedTime);
+
+                    setTimeout(() => {
+                        clearInterval(progressInterval);
+                        preloaderBar.style.width = '100%';
+                        preloaderPercent.textContent = '100%';
+                        
+                        setTimeout(() => {
+                            preloader.classList.add('loaded');
+                        }, 220);
+                    }, remainingTime);
+                }
+
+                if (document.readyState === 'complete') {
+                    hidePreloader();
+                } else {
+                    window.addEventListener('load', hidePreloader);
+                    setTimeout(hidePreloader, 3200);
+                }
+            }
         });
     </script>
 </body>
