@@ -1810,8 +1810,8 @@ h1 {
 /* Tech Stack Icons & Showcase Card */
 .tech-stack-visual {
     width: 100%;
-    height: 100%;
-    padding: 24px 20px;
+    min-height: 380px;
+    padding: 50px 20px 24px;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1892,21 +1892,3 @@ h1 {
 .tech-chip.chip-aqua { background: var(--card-aqua); }
 .tech-chip.chip-dark { background: #1e293b; color: #ffffff; }
 .tech-chip.chip-dark svg { fill: #ffffff; }
-
-.tech-badges-summary {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    margin-top: 10px;
-}
-
-.tech-tag-mini {
-    display: inline-block;
-    padding: 2px 8px;
-    border: 1.5px solid #000000;
-    border-radius: 6px;
-    font-size: 0.7rem;
-    font-weight: 800;
-    background: #ffffff;
-    box-shadow: 1.5px 1.5px 0px #000000;
-}
