@@ -111,23 +111,109 @@ function setAuthMode(registering) {
     authError.textContent = '';
 }
 
+let typewriterTimer = null;
+let typewriterState = {
+    phraseIndex: 0,
+    charIndex: 0,
+    isDeleting: false,
+    email: ''
+};
+
+const WELCOME_GREETINGS = [
+    { prefix: "Welcome back, ", suffix: "" },
+    { prefix: "Selamat datang kembali, ", suffix: "" },
+    { prefix: "Bienvenido de nuevo, ", suffix: "" },
+    { prefix: "おかえりなさい, ", suffix: "" },
+    { prefix: "Bon retour, ", suffix: "" },
+    { prefix: "Willkommen zurück, ", suffix: "" },
+    { prefix: "환영합니다, ", suffix: "" },
+    { prefix: "Bentornato, ", suffix: "" },
+    { prefix: "С возвращением, ", suffix: "" },
+    { prefix: "欢迎回来, ", suffix: "" }
+];
+
+function stopWelcomeTypewriter() {
+    if (typewriterTimer) {
+        clearTimeout(typewriterTimer);
+        typewriterTimer = null;
+    }
+    typewriterState = { phraseIndex: 0, charIndex: 0, isDeleting: false, email: '' };
+    if (signedInUser) signedInUser.innerHTML = '';
+}
+
+function escapeHtml(str) {
+    return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function startWelcomeTypewriter(userEmail) {
+    stopWelcomeTypewriter();
+    if (!signedInUser || !userEmail) return;
+
+    typewriterState.email = userEmail;
+    
+    function tick() {
+        if (!auth.currentUser) return;
+
+        const currentGreeting = WELCOME_GREETINGS[typewriterState.phraseIndex % WELCOME_GREETINGS.length];
+        const fullText = `${currentGreeting.prefix}${typewriterState.email}${currentGreeting.suffix}`;
+        
+        let targetText = '';
+        if (typewriterState.isDeleting) {
+            typewriterState.charIndex--;
+            targetText = fullText.substring(0, typewriterState.charIndex);
+        } else {
+            typewriterState.charIndex++;
+            targetText = fullText.substring(0, typewriterState.charIndex);
+        }
+
+        const prefixLen = currentGreeting.prefix.length;
+        if (targetText.length <= prefixLen) {
+            signedInUser.innerHTML = `<span class="typewriter-text">${escapeHtml(targetText)}</span><span class="typewriter-cursor"></span>`;
+        } else {
+            const prefixPart = targetText.substring(0, prefixLen);
+            const emailPart = targetText.substring(prefixLen);
+            signedInUser.innerHTML = `<span class="typewriter-text">${escapeHtml(prefixPart)}</span><span class="typewriter-email">${escapeHtml(emailPart)}</span><span class="typewriter-cursor"></span>`;
+        }
+
+        let delay = typewriterState.isDeleting ? 30 : 55 + Math.floor(Math.random() * 35);
+
+        if (!typewriterState.isDeleting && targetText === fullText) {
+            delay = 2400;
+            typewriterState.isDeleting = true;
+        } else if (typewriterState.isDeleting && targetText === '') {
+            typewriterState.isDeleting = false;
+            typewriterState.phraseIndex = (typewriterState.phraseIndex + 1) % WELCOME_GREETINGS.length;
+            delay = 350;
+        }
+
+        typewriterTimer = setTimeout(tick, delay);
+    }
+
+    tick();
+}
+
 function showDashboard(user) {
     if (authPanel) authPanel.hidden = true;
     if (dashboard) dashboard.hidden = false;
     const bottomNav = document.getElementById('bottom-nav');
     if (bottomNav) bottomNav.style.display = 'flex';
-    if (signedInUser) signedInUser.textContent = user.email || '';
+    startWelcomeTypewriter(user.email || 'User');
     fetchExpenses();
     startAutoRefresh();
 }
 
 function showAuth() {
     stopAutoRefresh();
+    stopWelcomeTypewriter();
     if (authPanel) authPanel.hidden = false;
     if (dashboard) dashboard.hidden = true;
     const bottomNav = document.getElementById('bottom-nav');
     if (bottomNav) bottomNav.style.display = 'none';
-    if (signedInUser) signedInUser.textContent = '';
     if (list) list.innerHTML = '';
     if (mobileCards) mobileCards.innerHTML = '';
     currentExpenses = [];

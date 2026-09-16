@@ -248,8 +248,44 @@ input:focus, select:focus {
 
 .signed-in-user {
     color: var(--muted);
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 700;
+    min-height: 1.4em;
+    display: inline-flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.signed-in-user .typewriter-text {
+    color: #000000;
+    font-weight: 800;
+}
+
+.signed-in-user .typewriter-email {
+    color: #0284c7;
+    font-weight: 800;
+    background: #e0f2fe;
+    padding: 1px 6px;
+    border-radius: 6px;
+    border: 1.5px solid #000000;
+    box-shadow: 1px 1px 0px #000000;
+}
+
+.typewriter-cursor {
+    display: inline-block;
+    width: 7px;
+    height: 1.1em;
+    background-color: #000000;
+    margin-left: 2px;
+    border-radius: 1px;
+    animation: cursorBlink 0.75s infinite alternate cubic-bezier(0.4, 0, 0.6, 1);
+    vertical-align: middle;
+}
+
+@keyframes cursorBlink {
+    0% { opacity: 1; }
+    100% { opacity: 0; }
 }
 
 .header-right {
