@@ -83,23 +83,36 @@
 </head>
 
 <body id="top">
-    <!-- Fancy Neo-Brutalist Loading Screen Preloader -->
+    <!-- Fancy Neo-Brutalist Loading Screen Preloader with Live Terminal Console -->
     <div id="page-preloader" class="page-preloader">
         <div class="preloader-card neo-card">
-            <div class="preloader-logo-wrapper">
-                <div class="logo-pulse-ring"></div>
-                <img src="asset/webicon1.png" alt="Orlando D. Prasetyo Webicon Logo" class="preloader-logo">
+            <div class="preloader-header-row">
+                <div class="preloader-logo-wrapper">
+                    <div class="logo-pulse-ring"></div>
+                    <img src="asset/webicon1.png" alt="Orlando D. Prasetyo Logo" class="preloader-logo">
+                </div>
+                <div class="preloader-brand">
+                    <strong>ORLANDO D. PRASETYO</strong>
+                    <small>SYSTEM INITIALIZATION...</small>
+                </div>
             </div>
-            <div class="preloader-brand">
-                <strong>ORLANDO D. PRASETYO</strong>
-                <small>LOADING EXPERIENCE...</small>
+
+            <div class="preloader-terminal neo-card">
+                <div class="terminal-bar">
+                    <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
+                    <span class="terminal-title">ASSET_LOADER_CONSOLE.sh</span>
+                </div>
+                <div class="terminal-body" id="preloader-terminal-body">
+                    <div class="term-line log-info">> INITIALIZING ENGINE...</div>
+                </div>
             </div>
+
             <div class="preloader-progress-track">
                 <div id="preloader-bar" class="preloader-bar"></div>
             </div>
             <div class="preloader-percent-row">
                 <span id="preloader-percent">0%</span>
-                <span class="status-indicator"><i class="status-dot"></i> Initializing</span>
+                <span class="status-indicator" id="preloader-status-text"><i class="status-dot"></i> Preloading Images</span>
             </div>
         </div>
     </div>
@@ -515,11 +528,46 @@
                 <a class="project-card neo-card neo-card-aqua"
                     href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20discuss%20a%20new%20project."
                     target="_blank">
-                    <div class="project-visual placeholder-visual placeholder-aqua">
+                    <div class="project-visual placeholder-visual placeholder-aqua service-stack-visual">
                         <span class="visual-tag">COLLABORATION</span>
-                        <div class="placeholder-whatsapp">
-                            <div class="wa-icon"><img src="asset/whatsapp.svg" alt=""></div>
-                            <strong style="display: block; margin-top: 10px; font-size: 1.2rem;">Start a Chat</strong>
+                        <div class="service-stack-header">
+                            <div class="badge-tag" style="background: var(--card-white);">ENGINEERING SERVICES</div>
+                            <h3>Services & Capabilities</h3>
+                            <p class="preview-text" style="color: #000;">Tailored digital solutions, full-stack architecture, and mobile engineering.</p>
+                        </div>
+                        <div class="service-stack-grid" aria-label="Orlando Engineering Services">
+                            <span class="service-chip chip-white" title="Custom Software Development">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                                Custom Software Development
+                            </span>
+                            <span class="service-chip chip-yellow" title="Web Design">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                                Web Design
+                            </span>
+                            <span class="service-chip chip-dark" title="Application Development">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                                Application Development
+                            </span>
+                            <span class="service-chip chip-white" title="Database Development">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                                Database Development
+                            </span>
+                            <span class="service-chip chip-yellow" title="Cloud Application Development">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                                Cloud Application Development
+                            </span>
+                            <span class="service-chip chip-dark" title="Web Development">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                Web Development
+                            </span>
+                            <span class="service-chip chip-white" title="Android Development">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a8 8 0 0 1 16 0v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7z"/><line x1="7" y1="4" x2="9" y2="7"/><line x1="17" y1="4" x2="15" y2="7"/></svg>
+                                Android Development
+                            </span>
+                            <span class="service-chip chip-yellow" title="Mobile Application Development">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                                Mobile Application Development
+                            </span>
                         </div>
                     </div>
                     <div class="project-info">
@@ -831,9 +879,97 @@
         </div>
     </footer>
 
-    <!-- Carousel Script -->
+    <!-- Interactive UI Scene Preview Lightbox Modal -->
+    <div id="ui-preview-lightbox" class="ui-lightbox-modal" aria-hidden="true" role="dialog">
+        <div class="ui-lightbox-backdrop"></div>
+        <div class="ui-lightbox-container neo-card">
+            <div class="ui-lightbox-header">
+                <div class="ui-lightbox-badge">
+                    <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
+                    <strong id="lightbox-title">UI Preview</strong>
+                </div>
+                <button id="close-lightbox-btn" class="lightbox-close-btn" type="button" aria-label="Close Preview">✕</button>
+            </div>
+            <div class="ui-lightbox-body">
+                <img id="lightbox-img" src="" alt="UI Screen Preview">
+            </div>
+            <div class="ui-lightbox-footer">
+                <button id="lightbox-prev-btn" class="lightbox-btn lightbox-btn-prev" type="button">← Prev</button>
+                <span id="lightbox-counter" class="lightbox-counter">1 / 4</span>
+                <button id="lightbox-next-btn" class="lightbox-btn lightbox-btn-next" type="button">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Carousel & Lightbox Script -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // UI Scene Preview Lightbox Modal Controller
+            const lightboxModal = document.getElementById('ui-preview-lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            const lightboxTitle = document.getElementById('lightbox-title');
+            const lightboxCounter = document.getElementById('lightbox-counter');
+            const lightboxCloseBtn = document.getElementById('close-lightbox-btn');
+            const lightboxPrevBtn = document.getElementById('lightbox-prev-btn');
+            const lightboxNextBtn = document.getElementById('lightbox-next-btn');
+            const lightboxBackdrop = document.querySelector('.ui-lightbox-backdrop');
+
+            const uiScenes = [
+                { title: 'Dashboard View', src: 'asset/main.jpg' },
+                { title: 'Add Expense Screen', src: 'asset/ae_1.jpg' },
+                { title: 'Receipt OCR Parser', src: 'asset/reciptscan.jpg' },
+                { title: 'App Settings & Profile', src: 'asset/settings.jpg' }
+            ];
+
+            let activeSceneIndex = 0;
+
+            function openLightbox(index) {
+                if (index < 0) index = uiScenes.length - 1;
+                if (index >= uiScenes.length) index = 0;
+                activeSceneIndex = index;
+
+                const scene = uiScenes[activeSceneIndex];
+                if (lightboxImg) lightboxImg.src = scene.src;
+                if (lightboxTitle) lightboxTitle.textContent = scene.title;
+                if (lightboxCounter) lightboxCounter.textContent = `${activeSceneIndex + 1} / ${uiScenes.length}`;
+
+                if (lightboxModal) {
+                    lightboxModal.classList.add('active');
+                    lightboxModal.setAttribute('aria-hidden', 'false');
+                }
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeLightbox() {
+                if (lightboxModal) {
+                    lightboxModal.classList.remove('active');
+                    lightboxModal.setAttribute('aria-hidden', 'true');
+                }
+                document.body.style.overflow = '';
+            }
+
+            // Attach click listeners to all 4 combo scene frames in Card 01
+            const comboFrames = document.querySelectorAll('.visual-screenshots-combo .app-frame');
+            comboFrames.forEach((frame, idx) => {
+                frame.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    openLightbox(idx);
+                });
+            });
+
+            if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
+            if (lightboxBackdrop) lightboxBackdrop.addEventListener('click', closeLightbox);
+            if (lightboxPrevBtn) lightboxPrevBtn.addEventListener('click', () => openLightbox(activeSceneIndex - 1));
+            if (lightboxNextBtn) lightboxNextBtn.addEventListener('click', () => openLightbox(activeSceneIndex + 1));
+
+            document.addEventListener('keydown', (e) => {
+                if (!lightboxModal || !lightboxModal.classList.contains('active')) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') openLightbox(activeSceneIndex - 1);
+                if (e.key === 'ArrowRight') openLightbox(activeSceneIndex + 1);
+            });
+
             const track = document.getElementById('carousel-track');
             const slides = document.querySelectorAll('.carousel-slide');
             const prevBtn = document.getElementById('carousel-prev');
@@ -974,47 +1110,85 @@
             }
             drawerLinks.forEach(link => link.addEventListener('click', closeDrawer));
 
-            // Fancy Loading Screen Preloader Controller
+            // Real Image Preloader & Live Terminal Console Controller
             const preloader = document.getElementById('page-preloader');
             const preloaderBar = document.getElementById('preloader-bar');
             const preloaderPercent = document.getElementById('preloader-percent');
+            const preloaderTerminal = document.getElementById('preloader-terminal-body');
+            const preloaderStatusText = document.getElementById('preloader-status-text');
 
-            if (preloader && preloaderBar && preloaderPercent) {
-                let currentProgress = 0;
-                const startTime = Date.now();
-                const minDuration = 1000;
+            const imageAssets = [
+                'asset/webicon1.png',
+                'asset/myface.jpg',
+                'asset/main.jpg',
+                'asset/ae_1.jpg',
+                'asset/reciptscan.jpg',
+                'asset/settings.jpg',
+                'asset/android_app_logo.png',
+                'asset/github-mark.png',
+                'asset/whatsapp.svg',
+                'asset/email.svg',
+                'asset/line.svg',
+                'asset/linkedin.svg',
+                'asset/instagram.svg'
+            ];
 
-                const progressInterval = setInterval(() => {
-                    if (currentProgress < 92) {
-                        currentProgress += Math.floor(Math.random() * 14) + 5;
-                        if (currentProgress > 92) currentProgress = 92;
-                        preloaderBar.style.width = currentProgress + '%';
-                        preloaderPercent.textContent = currentProgress + '%';
+            document.querySelectorAll('img[src]').forEach(img => {
+                const src = img.getAttribute('src');
+                if (src && !imageAssets.includes(src)) {
+                    imageAssets.push(src);
+                }
+            });
+
+            let loadedCount = 0;
+            const totalAssets = imageAssets.length;
+
+            function appendTerminalLog(msg, type = 'info') {
+                if (!preloaderTerminal) return;
+                const line = document.createElement('div');
+                line.className = `term-line log-${type}`;
+                line.textContent = `> ${msg}`;
+                preloaderTerminal.appendChild(line);
+                preloaderTerminal.scrollTop = preloaderTerminal.scrollHeight;
+            }
+
+            appendTerminalLog('INITIALIZING SYSTEM KERNEL...', 'info');
+            appendTerminalLog(`PRELOADING ${totalAssets} IMAGE ASSETS...`, 'info');
+
+            function updateProgress() {
+                loadedCount++;
+                const percent = Math.min(100, Math.floor((loadedCount / totalAssets) * 100));
+
+                if (preloaderBar) preloaderBar.style.width = percent + '%';
+                if (preloaderPercent) preloaderPercent.textContent = percent + '%';
+
+                if (loadedCount >= totalAssets) {
+                    appendTerminalLog('ALL ASSETS LOADED SUCCESSFULLY.', 'done');
+                    appendTerminalLog('MOUNTING NEO-BRUTALIST UI ENGINE...', 'done');
+                    if (preloaderStatusText) {
+                        preloaderStatusText.innerHTML = '<i class="status-dot" style="background:#10b981;"></i> System Ready';
                     }
-                }, 40);
-
-                function hidePreloader() {
-                    const elapsedTime = Date.now() - startTime;
-                    const remainingTime = Math.max(0, minDuration - elapsedTime);
 
                     setTimeout(() => {
-                        clearInterval(progressInterval);
-                        preloaderBar.style.width = '100%';
-                        preloaderPercent.textContent = '100%';
-
-                        setTimeout(() => {
-                            preloader.classList.add('loaded');
-                        }, 220);
-                    }, remainingTime);
-                }
-
-                if (document.readyState === 'complete') {
-                    hidePreloader();
-                } else {
-                    window.addEventListener('load', hidePreloader);
-                    setTimeout(hidePreloader, 3200);
+                        if (preloader) preloader.classList.add('loaded');
+                    }, 450);
                 }
             }
+
+            imageAssets.forEach((src) => {
+                const img = new Image();
+                img.onload = () => {
+                    const filename = src.split('/').pop();
+                    appendTerminalLog(`LOADED ${filename} [OK]`, 'ok');
+                    updateProgress();
+                };
+                img.onerror = () => {
+                    const filename = src.split('/').pop();
+                    appendTerminalLog(`FETCHED ${filename} [CACHED]`, 'info');
+                    updateProgress();
+                };
+                img.src = src;
+            });
         });
     </script>
 </body>
