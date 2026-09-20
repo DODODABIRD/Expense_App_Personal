@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -576,6 +577,35 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
     );
   }
 
+  void _openImagePreview(BuildContext context) {
+    if (_imageFile == null) return;
+    Navigator.push(
+      context,
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.transparent,
+        transitionDuration: const Duration(milliseconds: 320),
+        reverseTransitionDuration: const Duration(milliseconds: 260),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return _ReceiptImagePreviewModal(
+            imageFile: _imageFile!,
+            animation: animation,
+          );
+        },
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+            ),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildImagePicker(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -589,21 +619,81 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
           if (_imageFile != null)
             Stack(
               children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(14),
+                GestureDetector(
+                  onTap: () => _openImagePreview(context),
                   child: Container(
                     decoration: BoxDecoration(
-                      border: Border.all(color: Colors.black, width: 2),
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.black, width: 2),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black,
+                          offset: Offset(3, 3),
+                          blurRadius: 0,
+                        ),
+                      ],
                     ),
-                    child: Image.file(
-                      _imageFile!,
-                      height: 190,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Hero(
+                        tag: 'receipt_image_preview_hero',
+                        child: Image.file(
+                          _imageFile!,
+                          height: 190,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
                   ),
                 ),
+                // Bottom-left inspection badge
+                Positioned(
+                  bottom: 8,
+                  left: 8,
+                  child: GestureDetector(
+                    onTap: () => _openImagePreview(context),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5DF9FF),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: Colors.black, width: 2),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black,
+                            offset: Offset(2, 2),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.zoom_in_rounded,
+                            size: 16,
+                            color: Colors.black,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Tap untuk Preview 🔍',
+                            style: GoogleFonts.itim(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                // Top-right close/remove button
                 Positioned(
                   top: 8,
                   right: 8,
@@ -1333,6 +1423,197 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
             fontSize: 16,
             backgroundColor: const Color(0xFF5DF9FF),
             onPressed: _saveSelectedItems,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ReceiptImagePreviewModal extends StatelessWidget {
+  final File imageFile;
+  final Animation<double> animation;
+
+  const _ReceiptImagePreviewModal({
+    required this.imageFile,
+    required this.animation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.transparent,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Blurred & Darkened Backdrop
+          GestureDetector(
+            onTap: () => Navigator.pop(context),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: Container(
+                color: Colors.black.withValues(alpha: 0.82),
+              ),
+            ),
+          ),
+
+          // Main Content
+          SafeArea(
+            child: Column(
+              children: [
+                // Top Navigation Bar
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // Badge Header
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5DF9FF),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.black, width: 2.2),
+                          boxShadow: const [
+                            BoxShadow(
+                              color: Colors.black,
+                              offset: Offset(3, 3),
+                              blurRadius: 0,
+                            ),
+                          ],
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.receipt_long_rounded,
+                              color: Colors.black,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'RECEIPT PREVIEW',
+                              style: GoogleFonts.itim(
+                                color: Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+
+                      // Red Neobrutalist Close Button ('X')
+                      NeoBouncy(
+                        scaleFactor: 0.88,
+                        onTap: () => Navigator.pop(context),
+                        child: Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFF5D5D),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.black, width: 2.5),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black,
+                                offset: Offset(3, 3),
+                                blurRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: const Center(
+                            child: Icon(
+                              Icons.close_rounded,
+                              color: Colors.white,
+                              size: 26,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Hero Zoomable Image Container
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      child: InteractiveViewer(
+                        minScale: 0.8,
+                        maxScale: 4.5,
+                        clipBehavior: Clip.none,
+                        child: Hero(
+                          tag: 'receipt_image_preview_hero',
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(color: Colors.black, width: 3),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black,
+                                  offset: Offset(6, 6),
+                                  blurRadius: 0,
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(17),
+                              child: Image.file(
+                                imageFile,
+                                fit: BoxFit.contain,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Bottom Hint Pill
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16, top: 8),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9EB5D),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.black, width: 2),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Colors.black,
+                          offset: Offset(2, 2),
+                          blurRadius: 0,
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.pinch_rounded,
+                          size: 18,
+                          color: Colors.black,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Pinch untuk zoom • Cek detail strukmu',
+                          style: GoogleFonts.itim(
+                            color: Colors.black,
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),

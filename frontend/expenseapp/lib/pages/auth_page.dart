@@ -487,7 +487,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(17),
                   child: Image.asset(
-                    'assets/app_icon.png',
+                    'assets/appiconv2.jpg',
                     fit: BoxFit.cover,
                   ),
                 ),

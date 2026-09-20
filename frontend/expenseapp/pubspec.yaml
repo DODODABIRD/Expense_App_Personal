@@ -44,15 +44,16 @@ flutter:
   uses-material-design: true
   assets:
     - assets/app_icon.png
+    - assets/appiconv2.jpg
     - assets/splash_logo.png
     - lib/asset/JOJO.jpeg
 
 flutter_launcher_icons:
   android: true
   ios: true
-  image_path: assets/app_icon.png
+  image_path: assets/appiconv2.jpg
   adaptive_icon_background: "#FFFFFF"
-  adaptive_icon_foreground: assets/app_icon.png
+  adaptive_icon_foreground: assets/appiconv2.jpg
 
 flutter_native_splash:
   color: "#FFFFFF"
