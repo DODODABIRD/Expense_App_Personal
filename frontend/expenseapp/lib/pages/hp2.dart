@@ -20,6 +20,7 @@ import '../services/ApiService.dart';
 import 'ExpenseEdit.dart';
 import '../services/auth_service.dart';
 import '../services/notification_expense_service.dart';
+import '../widgets/neo_animations.dart';
 
 // FIXME
 
@@ -121,16 +122,9 @@ class _HomePage2State extends State<HomePage2> {
                 onCancel: _goToHome,
                 onSaved: _goToHome,
               ),
-              ListWithCards(key: listKey),
+              _buildExpensesPage(),
             ],
           ),
-          if (_selectedIndex == 2)
-            Positioned(
-              top: 8,
-              left: 18,
-              right: 18,
-              child: SafeArea(bottom: false, child: _buildFloatingHomeHeader()),
-            ),
           Positioned(
             left: 24,
             right: 24,
@@ -146,31 +140,57 @@ class _HomePage2State extends State<HomePage2> {
     );
   }
 
-  Widget _buildFloatingHomeHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.black, width: 2),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black,
-                offset: Offset(4, 4),
-                blurRadius: 0,
+  Widget _buildExpensesPage() {
+    return SafeArea(
+      bottom: false,
+      child: Stack(
+        children: [
+          Positioned(
+            top: 28,
+            left: 0,
+            right: 0,
+            height: 135,
+            child: IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      const Color(0x40F9EB5D),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
               ),
+            ),
+          ),
+          Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(25, 12, 25, 0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Expenses',
+                      style: GoogleFonts.itim(
+                        fontSize: 38,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    _buildSortDropdown(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(child: ListWithCards(key: listKey)),
             ],
           ),
-          child: Text(
-            'Expenses',
-            style: GoogleFonts.itim(fontSize: 27, fontWeight: FontWeight.bold),
-          ),
-        ),
-        _buildSortDropdown(),
-      ],
+        ],
+      ),
     );
   }
 
@@ -205,68 +225,70 @@ class _HomePage2State extends State<HomePage2> {
   }
 
   Widget _buildSortDropdown() {
-    return Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(
-        color: const Color(0xFF5DF9FF),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.black, width: 2),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
-        ],
-      ),
-      child: Theme(
-        data: Theme.of(context).copyWith(
-          canvasColor: Theme.of(context).colorScheme.surfaceContainer,
-          highlightColor: const Color(0x335DF9FF),
-          splashColor: const Color(0x555DF9FF),
-          colorScheme: Theme.of(context).colorScheme.copyWith(
-            primary: Colors.black,
-            secondary: const Color(0xFF5DF9FF),
-          ),
+    return NeoBouncy(
+      child: Container(
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 7),
+        decoration: BoxDecoration(
+          color: const Color(0xFF5DF9FF),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.black, width: 2),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
+          ],
         ),
-        child: DropdownButtonHideUnderline(
-          child: DropdownButton<ExpenseSort>(
-            value: listKey.currentState?._sort ?? ExpenseSort.dateNewest,
-            isDense: true,
-            dropdownColor: Theme.of(context).colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(14),
-            focusColor: Colors.transparent,
-            style: const TextStyle(
-              color: Colors.black,
-              fontSize: 13,
-              fontWeight: FontWeight.w700,
+        child: Theme(
+          data: Theme.of(context).copyWith(
+            canvasColor: Theme.of(context).colorScheme.surfaceContainer,
+            highlightColor: const Color(0x335DF9FF),
+            splashColor: const Color(0x555DF9FF),
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: Colors.black,
+              secondary: const Color(0xFF5DF9FF),
             ),
-            icon: const Icon(
-              Icons.keyboard_arrow_down,
-              size: 20,
-              color: Colors.black,
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<ExpenseSort>(
+              value: listKey.currentState?._sort ?? ExpenseSort.dateNewest,
+              isDense: true,
+              dropdownColor: Theme.of(context).colorScheme.surfaceContainer,
+              borderRadius: BorderRadius.circular(14),
+              focusColor: Colors.transparent,
+              style: const TextStyle(
+                color: Colors.black,
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+              ),
+              icon: const Icon(
+                Icons.keyboard_arrow_down,
+                size: 20,
+                color: Colors.black,
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: ExpenseSort.dateNewest,
+                  child: Text('Newest'),
+                ),
+                DropdownMenuItem(
+                  value: ExpenseSort.dateOldest,
+                  child: Text('Oldest'),
+                ),
+                DropdownMenuItem(
+                  value: ExpenseSort.amountHighest,
+                  child: Text('Highest'),
+                ),
+                DropdownMenuItem(
+                  value: ExpenseSort.amountLowest,
+                  child: Text('Lowest'),
+                ),
+              ],
+              onChanged: (value) {
+                if (value != null) {
+                  listKey.currentState?._setSort(value);
+                  setState(() {});
+                }
+              },
             ),
-            items: const [
-              DropdownMenuItem(
-                value: ExpenseSort.dateNewest,
-                child: Text('Newest'),
-              ),
-              DropdownMenuItem(
-                value: ExpenseSort.dateOldest,
-                child: Text('Oldest'),
-              ),
-              DropdownMenuItem(
-                value: ExpenseSort.amountHighest,
-                child: Text('Highest'),
-              ),
-              DropdownMenuItem(
-                value: ExpenseSort.amountLowest,
-                child: Text('Lowest'),
-              ),
-            ],
-            onChanged: (value) {
-              if (value != null) {
-                listKey.currentState?._setSort(value);
-                setState(() {});
-              }
-            },
           ),
         ),
       ),
@@ -994,7 +1016,7 @@ class _SettingsPageState extends State<SettingsPage> {
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.info_outline),
           title: Text('Expense App'),
-          subtitle: Text('Version 0.1.2'),
+          subtitle: Text('Version 1.0.0'),
         ),
       ],
     );
@@ -1197,63 +1219,54 @@ class _SettingsAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: Theme.of(context).colorScheme.surfaceContainer,
-      borderRadius: BorderRadius.circular(18),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.black, width: 2),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black,
-                offset: Offset(4, 4),
-                blurRadius: 0,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                child: Icon(icon, color: Colors.black),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurface,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
+    return NeoBouncy(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainer,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: Colors.black, width: 2),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              child: Icon(icon, color: Colors.black),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurface,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              Icon(
-                Icons.chevron_right,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ],
-          ),
+            ),
+            Icon(
+              Icons.chevron_right,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ],
         ),
       ),
     );
@@ -1434,12 +1447,15 @@ class _ListWithCardsState extends State<ListWithCards>
         RefreshIndicator(
           onRefresh: _loadData,
           child: ListView.builder(
-            padding: const EdgeInsets.only(top: 92, bottom: 190),
+            padding: const EdgeInsets.only(bottom: 190),
             itemCount: _sortedExpenses.length,
             itemBuilder: (context, index) {
-              return CardList(
-                expense: _sortedExpenses[index],
-                onRefresh: _loadData,
+              return FadeSlideAnimation(
+                delay: Duration(milliseconds: (index * 35).clamp(0, 250)),
+                child: CardList(
+                  expense: _sortedExpenses[index],
+                  onRefresh: _loadData,
+                ),
               );
             },
           ),
@@ -1570,90 +1586,112 @@ class CardList extends StatelessWidget {
       symbol: _currencySymbol,
       decimalDigits: 0,
     );
-    return Container(
-      margin: const EdgeInsets.symmetric(vertical: 12, horizontal: 25),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: _getBackgroundColor(),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black, width: 3),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, blurRadius: 0, offset: Offset(8, 8)),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(right: 40),
-            child: Row(
-              children: [
-                Container(
-                  width: 70,
-                  height: 70,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: Colors.black, width: 2),
-                  ),
-                  child: Icon(
-                    _getCategoryIcon(),
+    return NeoBouncy(
+      onTap: () async {
+        await Navigator.push(
+          context,
+          SmoothPageRoute(page: ExpenseEdit(expenseId: expense.id)),
+        );
+        onRefresh();
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          color: _getBackgroundColor(),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.black, width: 2.5),
+          boxShadow: const [
+            BoxShadow(color: Colors.black, blurRadius: 0, offset: Offset(5, 5)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 58,
+              height: 58,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.black, width: 2),
+                boxShadow: const [
+                  BoxShadow(
                     color: Colors.black,
-                    size: 35,
+                    offset: Offset(2, 2),
+                    blurRadius: 0,
                   ),
-                ),
-                const SizedBox(width: 20),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        expense.name,
-                        style: GoogleFonts.itim(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Text(
-                        formatter.format(amountValue * appExchangeRate.value),
-                        style: GoogleFonts.itim(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black,
-                        ),
-                      ),
-                      Text(
-                        DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
-                        style: GoogleFonts.itim(
-                          fontSize: 16,
-                          color: Colors.black,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                ],
+              ),
+              child: Icon(_getCategoryIcon(), color: Colors.black, size: 30),
             ),
-          ),
-          Positioned(
-            right: -8,
-            bottom: -8,
-            child: IconButton(
-              tooltip: 'Edit expense',
-              icon: const Icon(Icons.edit, color: Colors.black),
-              onPressed: () async {
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    expense.name,
+                    style: GoogleFonts.itim(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    formatter.format(amountValue * appExchangeRate.value),
+                    style: GoogleFonts.itim(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.black,
+                    ),
+                  ),
+                  Text(
+                    DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
+                    style: GoogleFonts.itim(
+                      fontSize: 13,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            NeoBouncy(
+              onTap: () async {
                 await Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => ExpenseEdit(expenseId: expense.id),
-                  ),
+                  SmoothPageRoute(page: ExpenseEdit(expenseId: expense.id)),
                 );
-
                 onRefresh();
               },
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black, width: 2),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Colors.black,
+                      offset: Offset(2, 2),
+                      blurRadius: 0,
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.edit_rounded,
+                  size: 18,
+                  color: Colors.black,
+                ),
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1717,24 +1755,35 @@ class ExpenseBottomBar extends StatelessWidget {
 
   Widget _buildItem(BuildContext context, IconData icon, int index) {
     final isSelected = selectedIndex == index;
-    return GestureDetector(
+    return NeoBouncy(
       onTap: () => onSelected(index),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 220),
+        duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutBack,
-        width: isSelected ? 58 : 42,
-        height: isSelected ? 58 : 42,
+        width: isSelected ? 58 : 44,
+        height: isSelected ? 58 : 44,
         decoration: BoxDecoration(
           color: isSelected ? const Color(0xFF5DF9FF) : Colors.transparent,
           shape: BoxShape.circle,
-          border: isSelected ? Border.all(color: Colors.black, width: 2) : null,
+          border: isSelected
+              ? Border.all(color: Colors.black, width: 2.2)
+              : null,
+          boxShadow: isSelected
+              ? const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(2, 2),
+                    blurRadius: 0,
+                  ),
+                ]
+              : null,
         ),
         child: Icon(
           icon,
           color: isSelected
               ? Colors.black
               : Theme.of(context).colorScheme.onSurface,
-          size: isSelected ? 31 : 25,
+          size: isSelected ? 30 : 24,
           weight: isSelected ? 800 : 500,
         ),
       ),
