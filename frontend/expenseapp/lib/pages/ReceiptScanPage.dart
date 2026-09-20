@@ -114,6 +114,27 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
     }
   }
 
+  String get _currentCurrencyLocale {
+    switch (appCurrency.value) {
+      case 'USD':
+        return 'en_US';
+      case 'EUR':
+        return 'de_DE';
+      default:
+        return 'id_ID';
+    }
+  }
+
+  int get _currentCurrencyDecimalDigits {
+    switch (appCurrency.value) {
+      case 'USD':
+      case 'EUR':
+        return 2;
+      default:
+        return 0;
+    }
+  }
+
   BoxDecoration _neoBoxDecoration({
     Color color = Colors.white,
     double radius = 16,
@@ -1369,9 +1390,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
 
   Widget _buildSaveBar(bool isDark) {
     final formatter = NumberFormat.currency(
-      locale: 'id_ID',
+      locale: _currentCurrencyLocale,
       symbol: _currentCurrencySymbol,
-      decimalDigits: 0,
+      decimalDigits: _currentCurrencyDecimalDigits,
     );
     final count = _items.where((item) => item.checked).length;
 

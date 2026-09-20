@@ -18,6 +18,7 @@ import 'package:intl/intl.dart';
 import '../services/databaseHelper.dart';
 import '../services/ApiService.dart';
 import 'ExpenseEdit.dart';
+import 'ExpenseSumarry.dart';
 import '../services/auth_service.dart';
 import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
@@ -50,7 +51,8 @@ class HomePage2 extends StatefulWidget {
 class _HomePage2State extends State<HomePage2> {
   final listKey = GlobalKey<_ListWithCardsState>();
   late final PageController _pageController;
-  int _selectedIndex = 2;
+  final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0.0);
+  int _selectedIndex = 0;
   int _homeTapCount = 0;
   bool _isChangingCurrency = false;
 
@@ -65,6 +67,7 @@ class _HomePage2State extends State<HomePage2> {
   @override
   void dispose() {
     _pageController.dispose();
+    _scrollOffset.dispose();
     super.dispose();
   }
 
@@ -107,6 +110,8 @@ class _HomePage2State extends State<HomePage2> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       backgroundColor: colors.surface,
       body: Stack(
@@ -116,19 +121,19 @@ class _HomePage2State extends State<HomePage2> {
             physics: const BouncingScrollPhysics(),
             onPageChanged: _onPageChanged,
             children: [
-              _buildSettingsPage(),
+              _buildExpensesPage(),
               ExpenseAddPage(
                 embedded: true,
                 onCancel: _goToHome,
                 onSaved: _goToHome,
               ),
-              _buildExpensesPage(),
+              _buildSettingsPage(),
             ],
           ),
           Positioned(
-            left: 24,
-            right: 24,
-            bottom: 14,
+            left: 20,
+            right: 20,
+            bottom: bottomInset > 0 ? bottomInset + 6 : 16,
             child: ExpenseBottomBar(
               selectedIndex: _selectedIndex,
               onSelected: _onNavigationSelected,
@@ -143,51 +148,68 @@ class _HomePage2State extends State<HomePage2> {
   Widget _buildExpensesPage() {
     return SafeArea(
       bottom: false,
-      child: Stack(
+      child: Column(
         children: [
-          Positioned(
-            top: 28,
-            left: 0,
-            right: 0,
-            height: 135,
-            child: IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.transparent,
-                      const Color(0x40F9EB5D),
-                      Colors.transparent,
-                    ],
+          Padding(
+            padding: const EdgeInsets.fromLTRB(25, 12, 25, 0),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Expenses',
+                  style: GoogleFonts.itim(
+                    fontSize: 38,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
+                _buildSortDropdown(),
+              ],
             ),
           ),
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(25, 12, 25, 0),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Expenses',
-                      style: GoogleFonts.itim(
-                        fontSize: 38,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    _buildSortDropdown(),
-                  ],
-                ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (notification) {
+                if (notification is ScrollUpdateNotification ||
+                    notification is OverscrollNotification) {
+                  final offset = notification.metrics.pixels;
+                  if (_scrollOffset.value != offset) {
+                    _scrollOffset.value = offset;
+                  }
+                }
+                return false;
+              },
+              child: ValueListenableBuilder<double>(
+                valueListenable: _scrollOffset,
+                builder: (context, offset, child) {
+                  final fadeProgress = (offset / 20.0).clamp(0.0, 1.0);
+
+                  if (fadeProgress <= 0.001) {
+                    return child!;
+                  }
+
+                  return ShaderMask(
+                    shaderCallback: (Rect bounds) {
+                      final fadeHeight = 28.0 * fadeProgress;
+                      final stop = (fadeHeight / bounds.height).clamp(0.005, 0.15);
+                      return LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: const [
+                          Colors.transparent,
+                          Colors.black,
+                        ],
+                        stops: [0.0, stop],
+                      ).createShader(bounds);
+                    },
+                    blendMode: BlendMode.dstIn,
+                    child: child,
+                  );
+                },
+                child: ListWithCards(key: listKey),
               ),
-              const SizedBox(height: 8),
-              Expanded(child: ListWithCards(key: listKey)),
-            ],
+            ),
           ),
         ],
       ),
@@ -210,7 +232,7 @@ class _HomePage2State extends State<HomePage2> {
     if (!mounted) return;
     setState(() {
       _selectedIndex = index;
-      _homeTapCount = index == 2 ? _homeTapCount + 1 : 0;
+      _homeTapCount = index == 0 ? _homeTapCount + 1 : 0;
     });
   }
 
@@ -218,7 +240,7 @@ class _HomePage2State extends State<HomePage2> {
     if (!mounted) return;
     listKey.currentState?._loadData();
     await _pageController.animateToPage(
-      2,
+      0,
       duration: const Duration(milliseconds: 500),
       curve: Curves.easeOutCubic,
     );
@@ -297,7 +319,7 @@ class _HomePage2State extends State<HomePage2> {
 
   Future<void> _onNavigationSelected(int index) async {
     if (index == _selectedIndex) {
-      if (index == 2) {
+      if (index == 0) {
         _homeTapCount++;
         if (_homeTapCount == 10) {
           _homeTapCount = 0;
@@ -378,58 +400,578 @@ class _HomePage2State extends State<HomePage2> {
       final formatter = NumberFormat.currency(
         locale: _currencyLocale,
         symbol: _currencySymbol,
-        decimalDigits: 0,
+        decimalDigits: _currencyDecimalDigits,
       );
+      // Aggregations for summary section
+      double grandTotal = 0;
+      final Map<String, double> categoryAmounts = {};
+      final Map<String, int> categoryCounts = {};
+      final Map<String, double> typeAmounts = {
+        'expected': 0.0,
+        'unexpected': 0.0,
+        'others': 0.0,
+      };
+      final Map<String, int> typeCounts = {
+        'expected': 0,
+        'unexpected': 0,
+        'others': 0,
+      };
+
+      Map<String, dynamic>? highestExpenseItem;
+      double highestExpenseAmount = 0.0;
+
+      for (final expense in sortedExpenses) {
+        final amountIdr = expense['amount'] is int
+            ? expense['amount'] as int
+            : int.tryParse(expense['amount'].toString()) ?? 0;
+        final amount = amountIdr * appExchangeRate.value;
+        grandTotal += amount;
+
+        if (amount > highestExpenseAmount) {
+          highestExpenseAmount = amount;
+          highestExpenseItem = expense;
+        }
+
+        final cat = (expense['category']?.toString() ?? 'lainnya').trim().toLowerCase();
+        categoryAmounts[cat] = (categoryAmounts[cat] ?? 0.0) + amount;
+        categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
+
+        final t = (expense['type']?.toString() ?? 'others').trim().toLowerCase();
+        final key = typeAmounts.containsKey(t) ? t : 'others';
+        typeAmounts[key] = (typeAmounts[key] ?? 0.0) + amount;
+        typeCounts[key] = (typeCounts[key] ?? 0) + 1;
+      }
+
+      final sortedCategories = categoryAmounts.keys.toList()
+        ..sort((a, b) => categoryAmounts[b]!.compareTo(categoryAmounts[a]!));
+
+      final avgExpense = sortedExpenses.isNotEmpty ? grandTotal / sortedExpenses.length : 0.0;
+      final expectedPct = grandTotal > 0 ? (typeAmounts['expected']! / grandTotal) * 100 : 0.0;
+      final unexpectedPct = grandTotal > 0 ? (typeAmounts['unexpected']! / grandTotal) * 100 : 0.0;
+      final othersPct = grandTotal > 0 ? (typeAmounts['others']! / grandTotal) * 100 : 0.0;
+      final isHighUnexpected = unexpectedPct > 35;
+
       final document = pw.Document();
       document.addPage(
         pw.MultiPage(
           build: (context) => [
-            pw.Header(level: 0, child: pw.Text('Expense Report')),
-            pw.Text('Account: ${AuthService.currentUser?.email ?? 'Unknown'}'),
-            pw.Text(
-              'Generated: ${DateFormat('dd MMM yyyy').format(DateTime.now())}',
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: pw.BoxDecoration(
+                color: pdf.PdfColor.fromInt(0xFF5DF9FF),
+                border: pw.Border.all(color: pdf.PdfColors.black, width: 2),
+                borderRadius: pw.BorderRadius.circular(4),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'EXPENSE REPORT',
+                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: pw.BoxDecoration(
+                      color: pdf.PdfColor.fromInt(0xFFF9EB5D),
+                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      borderRadius: pw.BorderRadius.circular(3),
+                    ),
+                    child: pw.Text(
+                      appCurrency.value,
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            pw.SizedBox(height: 20),
+            pw.SizedBox(height: 6),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Account: ${AuthService.currentUser?.email ?? 'Unknown'}',
+                  style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
+                ),
+                pw.Text(
+                  'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
+                  style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 14),
+
+            // Transactions Table
             pw.Table(
-              border: pw.TableBorder.all(color: pdf.PdfColors.black),
+              border: pw.TableBorder(
+                top: const pw.BorderSide(color: pdf.PdfColors.black, width: 1.5),
+                bottom: const pw.BorderSide(color: pdf.PdfColors.black, width: 1.5),
+                left: const pw.BorderSide(color: pdf.PdfColors.black, width: 1.5),
+                right: const pw.BorderSide(color: pdf.PdfColors.black, width: 1.5),
+                horizontalInside: const pw.BorderSide(color: pdf.PdfColor.fromInt(0xFFE5E7EB), width: 0.8),
+              ),
               columnWidths: const {
-                0: pw.FlexColumnWidth(0.75),
-                1: pw.FixedColumnWidth(82),
+                0: pw.FlexColumnWidth(2.0),
+                1: pw.FixedColumnWidth(95),
+                2: pw.FixedColumnWidth(75),
+                3: pw.FixedColumnWidth(72),
+                4: pw.FixedColumnWidth(85),
               },
               children: [
-                _buildPdfRow(
-                  const ['Name', 'Amount', 'Category', 'Type', 'Date'],
-                  pdf.PdfColors.grey300,
-                  isHeader: true,
+                // Header Row
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(
+                    color: pdf.PdfColor.fromInt(0xFF5DF9FF), // Neo Cyan Header
+                    border: pw.Border(bottom: pw.BorderSide(color: pdf.PdfColors.black, width: 1.5)),
+                  ),
+                  children: [
+                    _buildPdfTableHeaderCell('NAMA TRANSAKSI'),
+                    _buildPdfTableHeaderCell('KATEGORI'),
+                    _buildPdfTableHeaderCell('TIPE', alignCenter: true),
+                    _buildPdfTableHeaderCell('TANGGAL'),
+                    _buildPdfTableHeaderCell('NOMINAL', alignRight: true),
+                  ],
                 ),
-                ...sortedExpenses.map((expense) {
+                ...sortedExpenses.asMap().entries.map((entry) {
+                  final index = entry.key;
+                  final expense = entry.value;
                   final amountIdr = expense['amount'] is int
                       ? expense['amount'] as int
                       : int.tryParse(expense['amount'].toString()) ?? 0;
                   final amount = amountIdr * appExchangeRate.value;
                   final type = expense['type']?.toString() ?? '';
-                  return _buildPdfRow([
-                    expense['name']?.toString() ?? '',
-                    formatter.format(amount).replaceAll(',', '.'),
-                    expense['category']?.toString() ?? '',
-                    type,
-                    expense['date']?.toString() ?? '',
-                  ], _pdfTypeColor(type));
+                  final name = expense['name']?.toString() ?? '';
+                  final category = expense['category']?.toString() ?? '';
+                  final rawDate = expense['date'];
+
+                  return _buildPdfTransactionRow(
+                    index: index,
+                    name: name,
+                    amount: formatter.format(amount),
+                    category: category,
+                    type: type,
+                    date: rawDate,
+                  );
                 }),
               ],
             ),
-            pw.SizedBox(height: 16),
+            pw.SizedBox(height: 10),
             pw.Align(
               alignment: pw.Alignment.centerRight,
-              child: pw.Text(
-                'Total expenses: ${formatter.format(expenses.fold<double>(0, (total, expense) {
-                  final amountIdr = expense['amount'] is int ? expense['amount'] as int : int.tryParse(expense['amount'].toString()) ?? 0;
-                  return total + amountIdr * appExchangeRate.value;
-                })).replaceAll(',', '.')}',
-                style: pw.TextStyle(
-                  fontWeight: pw.FontWeight.bold,
-                  fontSize: 14,
+              child: pw.Container(
+                padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: pw.BoxDecoration(
+                  color: pdf.PdfColor.fromInt(0xFFF9EB5D),
+                  border: pw.Border.all(color: pdf.PdfColors.black, width: 1.6),
+                  borderRadius: pw.BorderRadius.circular(4),
                 ),
+                child: pw.Row(
+                  mainAxisSize: pw.MainAxisSize.min,
+                  children: [
+                    pw.Text(
+                      'TOTAL PENGELUARAN: ',
+                      style: pw.TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: pdf.PdfColors.black,
+                      ),
+                    ),
+                    pw.Text(
+                      formatter.format(grandTotal),
+                      style: pw.TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: pw.FontWeight.bold,
+                        color: pdf.PdfColors.black,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+
+      // --- PAGE 2: EXPENSE SUMMARY & ANALYTICS ---
+      document.addPage(
+        pw.MultiPage(
+          build: (context) => [
+            pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: pw.BoxDecoration(
+                color: pdf.PdfColor.fromInt(0xFF5DF9FF),
+                border: pw.Border.all(color: pdf.PdfColors.black, width: 2),
+                borderRadius: pw.BorderRadius.circular(4),
+              ),
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'EXPENSE SUMMARY & ANALYTICS',
+                    style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: pw.BoxDecoration(
+                      color: pdf.PdfColor.fromInt(0xFFF9EB5D),
+                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      borderRadius: pw.BorderRadius.circular(3),
+                    ),
+                    child: pw.Text(
+                      appCurrency.value,
+                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 6),
+            pw.Row(
+              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+              children: [
+                pw.Text(
+                  'Account: ${AuthService.currentUser?.email ?? 'Unknown'}',
+                  style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
+                ),
+                pw.Text(
+                  'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
+                  style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 14),
+
+            // --- 3 KPI SUMMARY BOXES ---
+            pw.Row(
+              children: [
+                pw.Expanded(
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(8),
+                    decoration: pw.BoxDecoration(
+                      color: pdf.PdfColor.fromInt(0xFFE8FDFF),
+                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      borderRadius: pw.BorderRadius.circular(4),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('TOTAL EXPENSES', style: const pw.TextStyle(fontSize: 7.5, color: pdf.PdfColors.grey700)),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          formatter.format(grandTotal),
+                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                        ),
+                        pw.Text('${sortedExpenses.length} Total Transaksi', style: const pw.TextStyle(fontSize: 7.5)),
+                      ],
+                    ),
+                  ),
+                ),
+                pw.SizedBox(width: 8),
+                pw.Expanded(
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(8),
+                    decoration: pw.BoxDecoration(
+                      color: pdf.PdfColor.fromInt(0xFFF9FBFD),
+                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      borderRadius: pw.BorderRadius.circular(4),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('RATA-RATA / TRANSAKSI', style: const pw.TextStyle(fontSize: 7.5, color: pdf.PdfColors.grey700)),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          formatter.format(avgExpense),
+                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                        ),
+                        pw.Text('${sortedCategories.length} Kategori Aktif', style: const pw.TextStyle(fontSize: 7.5)),
+                      ],
+                    ),
+                  ),
+                ),
+                pw.SizedBox(width: 8),
+                pw.Expanded(
+                  child: pw.Container(
+                    padding: const pw.EdgeInsets.all(8),
+                    decoration: pw.BoxDecoration(
+                      color: pdf.PdfColor.fromInt(0xFFFFF9E6),
+                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      borderRadius: pw.BorderRadius.circular(4),
+                    ),
+                    child: pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text('TRANSAKSI TERTINGGI', style: const pw.TextStyle(fontSize: 7.5, color: pdf.PdfColors.grey700)),
+                        pw.SizedBox(height: 2),
+                        pw.Text(
+                          formatter.format(highestExpenseAmount),
+                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                        ),
+                        pw.Text(
+                          highestExpenseItem != null ? (highestExpenseItem['name']?.toString() ?? '-') : '-',
+                          maxLines: 1,
+                          style: const pw.TextStyle(fontSize: 7.5),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            pw.SizedBox(height: 14),
+
+            // --- CATEGORY BREAKDOWN ---
+            pw.Text(
+              'Distribusi Berdasarkan Kategori',
+              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+            ),
+            pw.SizedBox(height: 5),
+
+            // Multi-segment category color bar
+            if (sortedCategories.isNotEmpty) ...[
+              pw.Container(
+                height: 12,
+                decoration: pw.BoxDecoration(
+                  border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                  borderRadius: pw.BorderRadius.circular(3),
+                ),
+                child: pw.Row(
+                  children: sortedCategories.map((cat) {
+                    final amount = categoryAmounts[cat] ?? 0.0;
+                    final pct = grandTotal > 0 ? (amount / grandTotal) * 100 : 0.0;
+                    final flex = (pct * 10).round().clamp(1, 1000);
+                    return pw.Flexible(
+                      flex: flex,
+                      child: pw.Container(
+                        color: _pdfCategoryColor(cat),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+              pw.SizedBox(height: 8),
+            ],
+
+            // Category Breakdown Table
+            pw.Table(
+              border: pw.TableBorder.all(color: pdf.PdfColors.black, width: 0.8),
+              columnWidths: const {
+                0: pw.FlexColumnWidth(1.2),
+                1: pw.FixedColumnWidth(60),
+                2: pw.FixedColumnWidth(70),
+                3: pw.FixedColumnWidth(95),
+              },
+              children: [
+                pw.TableRow(
+                  decoration: const pw.BoxDecoration(color: pdf.PdfColors.grey200),
+                  children: [
+                    _buildPdfCell('Kategori', isHeader: true),
+                    _buildPdfCell('Jumlah Item', isHeader: true, alignRight: true),
+                    _buildPdfCell('Persentase', isHeader: true, alignRight: true),
+                    _buildPdfCell('Total Nominal', isHeader: true, alignRight: true),
+                  ],
+                ),
+                ...sortedCategories.map((cat) {
+                  final amount = categoryAmounts[cat] ?? 0.0;
+                  final count = categoryCounts[cat] ?? 0;
+                  final pct = grandTotal > 0 ? (amount / grandTotal) * 100 : 0.0;
+                  final color = _pdfCategoryColor(cat);
+
+                  return pw.TableRow(
+                    children: [
+                      pw.Padding(
+                        padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        child: pw.Row(
+                          children: [
+                            pw.Container(
+                              width: 8,
+                              height: 8,
+                              decoration: pw.BoxDecoration(
+                                color: color,
+                                border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+                                borderRadius: pw.BorderRadius.circular(2),
+                              ),
+                            ),
+                            pw.SizedBox(width: 5),
+                            pw.Text(
+                              cat.toUpperCase(),
+                              style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ),
+                      _buildPdfCell('$count item', alignRight: true),
+                      _buildPdfCell('${pct.toStringAsFixed(1)}%', alignRight: true),
+                      _buildPdfCell(
+                        formatter.format(amount),
+                        alignRight: true,
+                        isBold: true,
+                      ),
+                    ],
+                  );
+                }),
+              ],
+            ),
+            pw.SizedBox(height: 14),
+
+            // --- EXPENSE TYPE BREAKDOWN & FINANCIAL ADVICE (UNBREAKABLE BLOCK) ---
+            pw.Container(
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text(
+                    'Distribusi Tipe Pengeluaran',
+                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                  ),
+                  pw.SizedBox(height: 5),
+                  pw.Row(
+                    children: [
+                      pw.Expanded(
+                        child: pw.Container(
+                          padding: const pw.EdgeInsets.all(7),
+                          decoration: pw.BoxDecoration(
+                            color: pdf.PdfColor.fromInt(0xFFFFFDE7),
+                            border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                            borderRadius: pw.BorderRadius.circular(4),
+                          ),
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Row(
+                                children: [
+                                  pw.Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: pw.BoxDecoration(
+                                      color: pdf.PdfColor.fromInt(0xFFF9EB5D),
+                                      border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+                                      borderRadius: pw.BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  pw.SizedBox(width: 4),
+                                  pw.Text('TERENCANA', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                                ],
+                              ),
+                              pw.SizedBox(height: 3),
+                              pw.Text(
+                                '${expectedPct.toStringAsFixed(1)}%',
+                                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                              ),
+                              pw.Text(
+                                formatter.format(typeAmounts['expected']!),
+                                style: const pw.TextStyle(fontSize: 7.5),
+                              ),
+                              pw.Text('${typeCounts['expected']} item', style: const pw.TextStyle(fontSize: 7, color: pdf.PdfColors.grey700)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      pw.SizedBox(width: 8),
+                      pw.Expanded(
+                        child: pw.Container(
+                          padding: const pw.EdgeInsets.all(7),
+                          decoration: pw.BoxDecoration(
+                            color: pdf.PdfColor.fromInt(0xFFFFEBEE),
+                            border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                            borderRadius: pw.BorderRadius.circular(4),
+                          ),
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Row(
+                                children: [
+                                  pw.Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: pw.BoxDecoration(
+                                      color: pdf.PdfColor.fromInt(0xFFFF5D5D),
+                                      border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+                                      borderRadius: pw.BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  pw.SizedBox(width: 4),
+                                  pw.Text('TAK TERDUGA', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                                ],
+                              ),
+                              pw.SizedBox(height: 3),
+                              pw.Text(
+                                '${unexpectedPct.toStringAsFixed(1)}%',
+                                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                              ),
+                              pw.Text(
+                                formatter.format(typeAmounts['unexpected']!),
+                                style: const pw.TextStyle(fontSize: 7.5),
+                              ),
+                              pw.Text('${typeCounts['unexpected']} item', style: const pw.TextStyle(fontSize: 7, color: pdf.PdfColors.grey700)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      pw.SizedBox(width: 8),
+                      pw.Expanded(
+                        child: pw.Container(
+                          padding: const pw.EdgeInsets.all(7),
+                          decoration: pw.BoxDecoration(
+                            color: pdf.PdfColor.fromInt(0xFFE3F2FD),
+                            border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                            borderRadius: pw.BorderRadius.circular(4),
+                          ),
+                          child: pw.Column(
+                            crossAxisAlignment: pw.CrossAxisAlignment.start,
+                            children: [
+                              pw.Row(
+                                children: [
+                                  pw.Container(
+                                    width: 7,
+                                    height: 7,
+                                    decoration: pw.BoxDecoration(
+                                      color: pdf.PdfColor.fromInt(0xFF5D9BFF),
+                                      border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+                                      borderRadius: pw.BorderRadius.circular(2),
+                                    ),
+                                  ),
+                                  pw.SizedBox(width: 4),
+                                  pw.Text('LAINNYA', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                                ],
+                              ),
+                              pw.SizedBox(height: 3),
+                              pw.Text(
+                                '${othersPct.toStringAsFixed(1)}%',
+                                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                              ),
+                              pw.Text(
+                                formatter.format(typeAmounts['others']!),
+                                style: const pw.TextStyle(fontSize: 7.5),
+                              ),
+                              pw.Text('${typeCounts['others']} item', style: const pw.TextStyle(fontSize: 7, color: pdf.PdfColors.grey700)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  pw.SizedBox(height: 7),
+                  pw.Container(
+                    padding: const pw.EdgeInsets.all(7),
+                    decoration: pw.BoxDecoration(
+                      color: isHighUnexpected ? pdf.PdfColor.fromInt(0xFFFFEBEE) : pdf.PdfColor.fromInt(0xFFE8F5E9),
+                      border: pw.Border.all(
+                        color: isHighUnexpected ? pdf.PdfColor.fromInt(0xFFFF5D5D) : pdf.PdfColor.fromInt(0xFF06D6A0),
+                        width: 1.2,
+                      ),
+                      borderRadius: pw.BorderRadius.circular(4),
+                    ),
+                    child: pw.Text(
+                      isHighUnexpected
+                          ? 'Evaluasi Finansial: Pengeluaran tak terduga mencapai ${unexpectedPct.toStringAsFixed(1)}%! Alokasikan dana darurat lebih ketat untuk menjaga stabilitas keuangan.'
+                          : 'Evaluasi Finansial: Rasio terencana sehat! Pengeluaran tak terduga terkendali di bawah 35% (${unexpectedPct.toStringAsFixed(1)}%).',
+                      style: pw.TextStyle(
+                        fontSize: 8,
+                        fontWeight: pw.FontWeight.bold,
+                        color: isHighUnexpected ? pdf.PdfColor.fromInt(0xFFB71C1C) : pdf.PdfColor.fromInt(0xFF1B5E20),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -509,29 +1051,165 @@ class _HomePage2State extends State<HomePage2> {
     }
   }
 
-  pw.TableRow _buildPdfRow(
-    List<String> values,
-    pdf.PdfColor color, {
-    bool isHeader = false,
+  pw.Widget _buildPdfTableHeaderCell(
+    String text, {
+    bool alignRight = false,
+    bool alignCenter = false,
   }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
+      child: pw.Align(
+        alignment: alignRight
+            ? pw.Alignment.centerRight
+            : (alignCenter ? pw.Alignment.center : pw.Alignment.centerLeft),
+        child: pw.Text(
+          text,
+          style: pw.TextStyle(
+            fontSize: 8.5,
+            fontWeight: pw.FontWeight.bold,
+            color: pdf.PdfColors.black,
+          ),
+        ),
+      ),
+    );
+  }
+
+  pw.TableRow _buildPdfTransactionRow({
+    required int index,
+    required String name,
+    required String amount,
+    required String category,
+    required String type,
+    required dynamic date,
+  }) {
+    final isEven = index % 2 == 0;
+    final rowBg = isEven ? pdf.PdfColors.white : pdf.PdfColor.fromInt(0xFFF9FAFB);
+    final typeColor = _pdfTypeColor(type);
+    final catColor = _pdfCategoryColor(category);
+
     return pw.TableRow(
-      decoration: pw.BoxDecoration(color: color),
-      children: values
-          .map(
-            (value) => pw.Padding(
-              padding: const pw.EdgeInsets.all(6),
+      decoration: pw.BoxDecoration(
+        color: rowBg,
+      ),
+      children: [
+        // Name
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+          child: pw.Text(
+            name.trim().isNotEmpty ? name : 'Pengeluaran',
+            style: pw.TextStyle(
+              fontSize: 8.5,
+              fontWeight: pw.FontWeight.bold,
+              color: pdf.PdfColors.black,
+            ),
+          ),
+        ),
+
+        // Category with color dot
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+          child: pw.Row(
+            mainAxisSize: pw.MainAxisSize.min,
+            children: [
+              pw.Container(
+                width: 7,
+                height: 7,
+                decoration: pw.BoxDecoration(
+                  color: catColor,
+                  borderRadius: pw.BorderRadius.circular(2),
+                  border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+                ),
+              ),
+              pw.SizedBox(width: 4),
+              pw.Expanded(
+                child: pw.Text(
+                  _pdfCategoryLabel(category),
+                  maxLines: 1,
+                  style: const pw.TextStyle(fontSize: 8, color: pdf.PdfColors.grey800),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Type as Pill Badge with its respective color!
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          child: pw.Center(
+            child: pw.Container(
+              padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              decoration: pw.BoxDecoration(
+                color: typeColor,
+                borderRadius: pw.BorderRadius.circular(3),
+                border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+              ),
               child: pw.Text(
-                value,
+                _pdfTypeLabel(type),
                 style: pw.TextStyle(
-                  fontWeight: isHeader
-                      ? pw.FontWeight.bold
-                      : pw.FontWeight.normal,
+                  fontSize: 7.5,
+                  fontWeight: pw.FontWeight.bold,
+                  color: pdf.PdfColors.black,
                 ),
               ),
             ),
-          )
-          .toList(),
+          ),
+        ),
+
+        // Date
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+          child: pw.Text(
+            _formatPdfDate(date),
+            style: const pw.TextStyle(fontSize: 8, color: pdf.PdfColors.grey700),
+          ),
+        ),
+
+        // Amount (RIGHT-ALIGNED)
+        pw.Padding(
+          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
+          child: pw.Align(
+            alignment: pw.Alignment.centerRight,
+            child: pw.Text(
+              amount,
+              style: pw.TextStyle(
+                fontSize: 8.5,
+                fontWeight: pw.FontWeight.bold,
+                color: pdf.PdfColors.black,
+              ),
+            ),
+          ),
+        ),
+      ],
     );
+  }
+
+  String _formatPdfDate(dynamic rawDate) {
+    if (rawDate == null) return '-';
+    final str = rawDate.toString();
+    final parsed = DateTime.tryParse(str);
+    if (parsed != null) {
+      return DateFormat('dd MMM yyyy').format(parsed);
+    }
+    return str;
+  }
+
+  String _pdfTypeLabel(String type) {
+    switch (type.trim().toLowerCase()) {
+      case 'expected':
+        return 'Terencana';
+      case 'unexpected':
+        return 'Tak Terduga';
+      case 'others':
+        return 'Lainnya';
+      default:
+        return type.isEmpty ? '-' : type;
+    }
+  }
+
+  String _pdfCategoryLabel(String category) {
+    final cat = category.trim();
+    if (cat.isEmpty) return 'LAINNYA';
+    return cat.toUpperCase();
   }
 
   pdf.PdfColor _pdfTypeColor(String type) {
@@ -545,6 +1223,48 @@ class _HomePage2State extends State<HomePage2> {
       default:
         return pdf.PdfColors.white;
     }
+  }
+
+  pdf.PdfColor _pdfCategoryColor(String category) {
+    switch (category.trim().toLowerCase()) {
+      case 'makanan':
+        return pdf.PdfColor.fromInt(0xFFFFD166);
+      case 'school supply':
+        return pdf.PdfColor.fromInt(0xFFC77DFF);
+      case 'baju':
+        return pdf.PdfColor.fromInt(0xFFFF99C8);
+      case 'elektronik':
+        return pdf.PdfColor.fromInt(0xFF70D6FF);
+      case 'transportasi':
+        return pdf.PdfColor.fromInt(0xFF06D6A0);
+      case 'kesehatan':
+        return pdf.PdfColor.fromInt(0xFFFF70A6);
+      case 'hiburan':
+        return pdf.PdfColor.fromInt(0xFFB5E48C);
+      default:
+        return pdf.PdfColor.fromInt(0xFF5DF9FF);
+    }
+  }
+
+  pw.Widget _buildPdfCell(
+    String text, {
+    bool isHeader = false,
+    bool alignRight = false,
+    bool isBold = false,
+  }) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      child: pw.Align(
+        alignment: alignRight ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
+        child: pw.Text(
+          text,
+          style: pw.TextStyle(
+            fontSize: isHeader ? 9 : 8.5,
+            fontWeight: isHeader || isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+          ),
+        ),
+      ),
+    );
   }
 
   Future<void> _changeCurrency(String currency) async {
@@ -1434,38 +2154,56 @@ class _ListWithCardsState extends State<ListWithCards>
     }
 
     if (_expenses.isEmpty) {
-      return Stack(
-        children: [
-          const Center(child: Text('Data Kosong')),
-          Positioned(bottom: 104, left: 0, right: 0, child: _buildTotalCard()),
-        ],
+      return RefreshIndicator(
+        onRefresh: _loadData,
+        child: ListView(
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+          children: [
+            FadeSlideAnimation(
+              delay: const Duration(milliseconds: 50),
+              child: _buildHeroTotalCard(),
+            ),
+            const SizedBox(height: 36),
+            _buildEmptyState(),
+          ],
+        ),
       );
     }
 
-    return Stack(
-      children: [
-        RefreshIndicator(
-          onRefresh: _loadData,
-          child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 190),
-            itemCount: _sortedExpenses.length,
-            itemBuilder: (context, index) {
-              return FadeSlideAnimation(
-                delay: Duration(milliseconds: (index * 35).clamp(0, 250)),
-                child: CardList(
-                  expense: _sortedExpenses[index],
-                  onRefresh: _loadData,
-                ),
-              );
-            },
-          ),
-        ),
-        Positioned(bottom: 104, left: 0, right: 0, child: _buildTotalCard()),
-      ],
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: ListView.builder(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(20, 8, 20, 120),
+        itemCount: _sortedExpenses.length + 1,
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return FadeSlideAnimation(
+              delay: const Duration(milliseconds: 50),
+              child: Padding(
+                padding: const EdgeInsets.only(bottom: 14),
+                child: _buildHeroTotalCard(),
+              ),
+            );
+          }
+          final expenseIndex = index - 1;
+          return FadeSlideAnimation(
+            delay: Duration(milliseconds: (expenseIndex * 30).clamp(0, 250)),
+            child: CardList(
+              expense: _sortedExpenses[expenseIndex],
+              onRefresh: _loadData,
+            ),
+          );
+        },
+      ),
     );
   }
 
-  Widget _buildTotalCard() {
+  Widget _buildHeroTotalCard() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     final totalIdr = _expenses.fold<int>(
       0,
       (total, expense) => total + expense.amount,
@@ -1473,60 +2211,263 @@ class _ListWithCardsState extends State<ListWithCards>
     final formatter = NumberFormat.currency(
       locale: _currencyLocale,
       symbol: _currencySymbol,
-      decimalDigits: 0,
+      decimalDigits: _currencyDecimalDigits,
     );
+    final uniqueCategories = _expenses.map((e) => e.category).toSet().length;
 
-    return Align(
-      alignment: Alignment.center,
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 24),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minWidth: 100,
-            maxWidth: MediaQuery.sizeOf(context).width - 48,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E2830) : const Color(0xFFE8FDFF),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: Colors.black, width: 2.8),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(4, 4),
+            blurRadius: 0,
           ),
-          child: IntrinsicWidth(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                borderRadius: BorderRadius.circular(28),
-                border: Border.all(color: Colors.black, width: 2),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black,
-                    offset: Offset(4, 4),
-                    blurRadius: 0,
-                  ),
-                ],
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF5DF9FF),
+                  borderRadius: BorderRadius.circular(9),
+                  border: Border.all(color: Colors.black, width: 1.8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.account_balance_wallet_rounded,
+                      size: 15,
+                      color: Colors.black,
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      'TOTAL PENGELUARAN',
+                      style: GoogleFonts.itim(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-              child: Row(
+              Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    Icons.account_balance_wallet_outlined,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    size: 20,
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF9EB5D),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.black, width: 1.6),
+                    ),
+                    child: Text(
+                      appCurrency.value,
+                      style: GoogleFonts.itim(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black,
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
-                  Flexible(
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        formatter.format(totalIdr * appExchangeRate.value),
-                        maxLines: 1,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 14,
+                  NeoBouncy(
+                    scaleFactor: 0.90,
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        SmoothPageRoute(
+                          page: ExpenseSumarryPage(initialExpenses: _expenses),
                         ),
+                      );
+                      _loadData();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF5DF9FF),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.black, width: 1.8),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Colors.black,
+                            offset: Offset(2, 2),
+                            blurRadius: 0,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            'Details',
+                            style: GoogleFonts.itim(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.arrow_forward_rounded,
+                            size: 14,
+                            color: Colors.black,
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ],
               ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Text(
+              formatter.format(totalIdr * appExchangeRate.value),
+              style: GoogleFonts.itim(
+                fontSize: 34,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+                color: isDark ? Colors.white : Colors.black,
+              ),
             ),
           ),
+          const SizedBox(height: 14),
+          Wrap(
+            spacing: 8,
+            runSpacing: 6,
+            children: [
+              _buildHeroStatChip(
+                icon: Icons.receipt_long_rounded,
+                text: '${_expenses.length} Transaksi',
+                color: isDark ? const Color(0xFF27323C) : Colors.white,
+                isDark: isDark,
+              ),
+              if (_expenses.isNotEmpty)
+                _buildHeroStatChip(
+                  icon: Icons.category_rounded,
+                  text: '$uniqueCategories Kategori',
+                  color: isDark ? const Color(0xFF27323C) : Colors.white,
+                  isDark: isDark,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeroStatChip({
+    required IconData icon,
+    required String text,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: Colors.black, width: 1.6),
+        boxShadow: const [
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(1.5, 1.5),
+            blurRadius: 0,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            icon,
+            size: 14,
+            color: isDark ? const Color(0xFF5DF9FF) : Colors.black87,
+          ),
+          const SizedBox(width: 5),
+          Text(
+            text,
+            style: GoogleFonts.itim(
+              fontSize: 12,
+              fontWeight: FontWeight.bold,
+              color: isDark ? Colors.white : Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyState() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 10),
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF22262B) : Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.black, width: 2.5),
+          boxShadow: const [
+            BoxShadow(
+              color: Colors.black,
+              offset: Offset(4, 4),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF9EB5D),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black, width: 2),
+              ),
+              child: const Icon(
+                Icons.savings_outlined,
+                size: 34,
+                color: Colors.black,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Belum Ada Pengeluaran',
+              style: GoogleFonts.itim(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Tekan tombol + di bawah untuk mencatat pengeluaran pertamamu!',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? Colors.grey[400] : Colors.grey[600],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1582,9 +2523,9 @@ class CardList extends StatelessWidget {
   Widget build(BuildContext context) {
     final amountValue = expense.amount;
     final formatter = NumberFormat.currency(
-      locale: 'id_ID',
+      locale: _currencyLocale,
       symbol: _currencySymbol,
-      decimalDigits: 0,
+      decimalDigits: _currencyDecimalDigits,
     );
     return NeoBouncy(
       onTap: () async {
@@ -1595,14 +2536,14 @@ class CardList extends StatelessWidget {
         onRefresh();
       },
       child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 20),
+        margin: const EdgeInsets.symmetric(vertical: 7),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
           color: _getBackgroundColor(),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.black, width: 2.5),
           boxShadow: const [
-            BoxShadow(color: Colors.black, blurRadius: 0, offset: Offset(5, 5)),
+            BoxShadow(color: Colors.black, blurRadius: 0, offset: Offset(4, 4)),
           ],
         ),
         child: Row(
@@ -1719,6 +2660,16 @@ String get _currencyLocale {
   }
 }
 
+int get _currencyDecimalDigits {
+  switch (appCurrency.value) {
+    case 'USD':
+    case 'EUR':
+      return 2;
+    default:
+      return 0;
+  }
+}
+
 class ExpenseBottomBar extends StatelessWidget {
   final int selectedIndex;
   final ValueChanged<int> onSelected;
@@ -1731,43 +2682,90 @@ class ExpenseBottomBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final barBg = isDark ? const Color(0xFF22262B) : Colors.white;
+
     return Container(
-      height: 76,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+      height: 72,
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(38),
+        color: barBg,
+        borderRadius: BorderRadius.circular(36),
         border: Border.all(color: Colors.black, width: 3),
         boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(5, 5), blurRadius: 0),
+          BoxShadow(
+            color: Colors.black,
+            offset: Offset(4, 4),
+            blurRadius: 0,
+          ),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          _buildItem(context, Icons.settings_outlined, 0),
-          _buildItem(context, Icons.add, 1),
-          _buildItem(context, Icons.home_outlined, 2),
+          // Home Tab (Index 0)
+          Expanded(
+            child: _buildPillTab(
+              context: context,
+              index: 0,
+              label: 'Home',
+              activeIcon: Icons.home_rounded,
+              inactiveIcon: Icons.home_outlined,
+              activeColor: const Color(0xFF5DF9FF),
+              isDark: isDark,
+            ),
+          ),
+
+          const SizedBox(width: 8),
+
+          // Center Hero Add Action (Index 1)
+          _buildCenterHeroButton(context, isDark: isDark),
+
+          const SizedBox(width: 8),
+
+          // Settings Tab (Index 2)
+          Expanded(
+            child: _buildPillTab(
+              context: context,
+              index: 2,
+              label: 'Settings',
+              activeIcon: Icons.settings_rounded,
+              inactiveIcon: Icons.settings_outlined,
+              activeColor: const Color(0xFFC77DFF),
+              isDark: isDark,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildItem(BuildContext context, IconData icon, int index) {
+  Widget _buildPillTab({
+    required BuildContext context,
+    required int index,
+    required String label,
+    required IconData activeIcon,
+    required IconData inactiveIcon,
+    required Color activeColor,
+    required bool isDark,
+  }) {
     final isSelected = selectedIndex == index;
+
     return NeoBouncy(
+      scaleFactor: 0.92,
       onTap: () => onSelected(index),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 240),
-        curve: Curves.easeOutBack,
-        width: isSelected ? 58 : 44,
-        height: isSelected ? 58 : 44,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.symmetric(
+          horizontal: isSelected ? 12 : 8,
+          vertical: 9,
+        ),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF5DF9FF) : Colors.transparent,
-          shape: BoxShape.circle,
-          border: isSelected
-              ? Border.all(color: Colors.black, width: 2.2)
-              : null,
+          color: isSelected ? activeColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+          border: isSelected ? Border.all(color: Colors.black, width: 2) : null,
           boxShadow: isSelected
               ? const [
                   BoxShadow(
@@ -1778,13 +2776,74 @@ class ExpenseBottomBar extends StatelessWidget {
                 ]
               : null,
         ),
-        child: Icon(
-          icon,
-          color: isSelected
-              ? Colors.black
-              : Theme.of(context).colorScheme.onSurface,
-          size: isSelected ? 30 : 24,
-          weight: isSelected ? 800 : 500,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              isSelected ? activeIcon : inactiveIcon,
+              color: isSelected
+                  ? Colors.black
+                  : (isDark ? Colors.grey[400] : Colors.grey[600]),
+              size: 22,
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.itim(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCenterHeroButton(BuildContext context, {required bool isDark}) {
+    final isSelected = selectedIndex == 1;
+
+    return NeoBouncy(
+      scaleFactor: 0.90,
+      onTap: () => onSelected(1),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutBack,
+        width: isSelected ? 56 : 52,
+        height: isSelected ? 56 : 52,
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFFF5D5D) : const Color(0xFFF9EB5D),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.black, width: 2.8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black,
+              offset: isSelected ? const Offset(1, 1) : const Offset(3, 3),
+              blurRadius: 0,
+            ),
+          ],
+        ),
+        child: Center(
+          child: AnimatedRotation(
+            turns: isSelected ? 0.125 : 0.0,
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeOutBack,
+            child: Icon(
+              Icons.add_rounded,
+              color: Colors.black,
+              size: isSelected ? 32 : 30,
+              weight: 800,
+            ),
+          ),
         ),
       ),
     );
