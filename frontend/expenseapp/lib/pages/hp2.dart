@@ -192,14 +192,14 @@ class _HomePage2State extends State<HomePage2> {
                   return ShaderMask(
                     shaderCallback: (Rect bounds) {
                       final fadeHeight = 28.0 * fadeProgress;
-                      final stop = (fadeHeight / bounds.height).clamp(0.005, 0.15);
+                      final stop = (fadeHeight / bounds.height).clamp(
+                        0.005,
+                        0.15,
+                      );
                       return LinearGradient(
                         begin: Alignment.topCenter,
                         end: Alignment.bottomCenter,
-                        colors: const [
-                          Colors.transparent,
-                          Colors.black,
-                        ],
+                        colors: const [Colors.transparent, Colors.black],
                         stops: [0.0, stop],
                       ).createShader(bounds);
                     },
@@ -432,11 +432,15 @@ class _HomePage2State extends State<HomePage2> {
           highestExpenseItem = expense;
         }
 
-        final cat = (expense['category']?.toString() ?? 'lainnya').trim().toLowerCase();
+        final cat = (expense['category']?.toString() ?? 'lainnya')
+            .trim()
+            .toLowerCase();
         categoryAmounts[cat] = (categoryAmounts[cat] ?? 0.0) + amount;
         categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
 
-        final t = (expense['type']?.toString() ?? 'others').trim().toLowerCase();
+        final t = (expense['type']?.toString() ?? 'others')
+            .trim()
+            .toLowerCase();
         final key = typeAmounts.containsKey(t) ? t : 'others';
         typeAmounts[key] = (typeAmounts[key] ?? 0.0) + amount;
         typeCounts[key] = (typeCounts[key] ?? 0) + 1;
@@ -445,10 +449,18 @@ class _HomePage2State extends State<HomePage2> {
       final sortedCategories = categoryAmounts.keys.toList()
         ..sort((a, b) => categoryAmounts[b]!.compareTo(categoryAmounts[a]!));
 
-      final avgExpense = sortedExpenses.isNotEmpty ? grandTotal / sortedExpenses.length : 0.0;
-      final expectedPct = grandTotal > 0 ? (typeAmounts['expected']! / grandTotal) * 100 : 0.0;
-      final unexpectedPct = grandTotal > 0 ? (typeAmounts['unexpected']! / grandTotal) * 100 : 0.0;
-      final othersPct = grandTotal > 0 ? (typeAmounts['others']! / grandTotal) * 100 : 0.0;
+      final avgExpense = sortedExpenses.isNotEmpty
+          ? grandTotal / sortedExpenses.length
+          : 0.0;
+      final expectedPct = grandTotal > 0
+          ? (typeAmounts['expected']! / grandTotal) * 100
+          : 0.0;
+      final unexpectedPct = grandTotal > 0
+          ? (typeAmounts['unexpected']! / grandTotal) * 100
+          : 0.0;
+      final othersPct = grandTotal > 0
+          ? (typeAmounts['others']! / grandTotal) * 100
+          : 0.0;
       final isHighUnexpected = unexpectedPct > 35;
 
       final document = pw.Document();
@@ -456,7 +468,10 @@ class _HomePage2State extends State<HomePage2> {
         pw.MultiPage(
           build: (context) => [
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
               decoration: pw.BoxDecoration(
                 color: pdf.PdfColor.fromInt(0xFF5DF9FF),
                 border: pw.Border.all(color: pdf.PdfColors.black, width: 2),
@@ -467,18 +482,30 @@ class _HomePage2State extends State<HomePage2> {
                 children: [
                   pw.Text(
                     'EXPENSE REPORT',
-                    style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold),
+                    style: pw.TextStyle(
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
                   pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: pw.BoxDecoration(
                       color: pdf.PdfColor.fromInt(0xFFF9EB5D),
-                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      border: pw.Border.all(
+                        color: pdf.PdfColors.black,
+                        width: 1.2,
+                      ),
                       borderRadius: pw.BorderRadius.circular(3),
                     ),
                     child: pw.Text(
                       appCurrency.value,
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -490,11 +517,17 @@ class _HomePage2State extends State<HomePage2> {
               children: [
                 pw.Text(
                   'Account: ${AuthService.currentUser?.email ?? 'Unknown'}',
-                  style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
+                  style: const pw.TextStyle(
+                    fontSize: 9,
+                    color: pdf.PdfColors.grey700,
+                  ),
                 ),
                 pw.Text(
                   'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
-                  style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
+                  style: const pw.TextStyle(
+                    fontSize: 9,
+                    color: pdf.PdfColors.grey700,
+                  ),
                 ),
               ],
             ),
@@ -503,11 +536,26 @@ class _HomePage2State extends State<HomePage2> {
             // Transactions Table
             pw.Table(
               border: pw.TableBorder(
-                top: const pw.BorderSide(color: pdf.PdfColors.black, width: 1.5),
-                bottom: const pw.BorderSide(color: pdf.PdfColors.black, width: 1.5),
-                left: const pw.BorderSide(color: pdf.PdfColors.black, width: 1.5),
-                right: const pw.BorderSide(color: pdf.PdfColors.black, width: 1.5),
-                horizontalInside: const pw.BorderSide(color: pdf.PdfColor.fromInt(0xFFE5E7EB), width: 0.8),
+                top: const pw.BorderSide(
+                  color: pdf.PdfColors.black,
+                  width: 1.5,
+                ),
+                bottom: const pw.BorderSide(
+                  color: pdf.PdfColors.black,
+                  width: 1.5,
+                ),
+                left: const pw.BorderSide(
+                  color: pdf.PdfColors.black,
+                  width: 1.5,
+                ),
+                right: const pw.BorderSide(
+                  color: pdf.PdfColors.black,
+                  width: 1.5,
+                ),
+                horizontalInside: const pw.BorderSide(
+                  color: pdf.PdfColor.fromInt(0xFFE5E7EB),
+                  width: 0.8,
+                ),
               ),
               columnWidths: const {
                 0: pw.FlexColumnWidth(2.0),
@@ -521,7 +569,12 @@ class _HomePage2State extends State<HomePage2> {
                 pw.TableRow(
                   decoration: const pw.BoxDecoration(
                     color: pdf.PdfColor.fromInt(0xFF5DF9FF), // Neo Cyan Header
-                    border: pw.Border(bottom: pw.BorderSide(color: pdf.PdfColors.black, width: 1.5)),
+                    border: pw.Border(
+                      bottom: pw.BorderSide(
+                        color: pdf.PdfColors.black,
+                        width: 1.5,
+                      ),
+                    ),
                   ),
                   children: [
                     _buildPdfTableHeaderCell('NAMA TRANSAKSI'),
@@ -558,7 +611,10 @@ class _HomePage2State extends State<HomePage2> {
             pw.Align(
               alignment: pw.Alignment.centerRight,
               child: pw.Container(
-                padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const pw.EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: pw.BoxDecoration(
                   color: pdf.PdfColor.fromInt(0xFFF9EB5D),
                   border: pw.Border.all(color: pdf.PdfColors.black, width: 1.6),
@@ -596,7 +652,10 @@ class _HomePage2State extends State<HomePage2> {
         pw.MultiPage(
           build: (context) => [
             pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
               decoration: pw.BoxDecoration(
                 color: pdf.PdfColor.fromInt(0xFF5DF9FF),
                 border: pw.Border.all(color: pdf.PdfColors.black, width: 2),
@@ -607,18 +666,30 @@ class _HomePage2State extends State<HomePage2> {
                 children: [
                   pw.Text(
                     'EXPENSE SUMMARY & ANALYTICS',
-                    style: pw.TextStyle(fontSize: 15, fontWeight: pw.FontWeight.bold),
+                    style: pw.TextStyle(
+                      fontSize: 15,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
                   pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    padding: const pw.EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: pw.BoxDecoration(
                       color: pdf.PdfColor.fromInt(0xFFF9EB5D),
-                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      border: pw.Border.all(
+                        color: pdf.PdfColors.black,
+                        width: 1.2,
+                      ),
                       borderRadius: pw.BorderRadius.circular(3),
                     ),
                     child: pw.Text(
                       appCurrency.value,
-                      style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                      style: pw.TextStyle(
+                        fontSize: 10,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -630,11 +701,17 @@ class _HomePage2State extends State<HomePage2> {
               children: [
                 pw.Text(
                   'Account: ${AuthService.currentUser?.email ?? 'Unknown'}',
-                  style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
+                  style: const pw.TextStyle(
+                    fontSize: 9,
+                    color: pdf.PdfColors.grey700,
+                  ),
                 ),
                 pw.Text(
                   'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
-                  style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
+                  style: const pw.TextStyle(
+                    fontSize: 9,
+                    color: pdf.PdfColors.grey700,
+                  ),
                 ),
               ],
             ),
@@ -648,19 +725,34 @@ class _HomePage2State extends State<HomePage2> {
                     padding: const pw.EdgeInsets.all(8),
                     decoration: pw.BoxDecoration(
                       color: pdf.PdfColor.fromInt(0xFFE8FDFF),
-                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      border: pw.Border.all(
+                        color: pdf.PdfColors.black,
+                        width: 1.2,
+                      ),
                       borderRadius: pw.BorderRadius.circular(4),
                     ),
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text('TOTAL EXPENSES', style: const pw.TextStyle(fontSize: 7.5, color: pdf.PdfColors.grey700)),
+                        pw.Text(
+                          'TOTAL EXPENSES',
+                          style: const pw.TextStyle(
+                            fontSize: 7.5,
+                            color: pdf.PdfColors.grey700,
+                          ),
+                        ),
                         pw.SizedBox(height: 2),
                         pw.Text(
                           formatter.format(grandTotal),
-                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                          style: pw.TextStyle(
+                            fontSize: 11,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
                         ),
-                        pw.Text('${sortedExpenses.length} Total Transaksi', style: const pw.TextStyle(fontSize: 7.5)),
+                        pw.Text(
+                          '${sortedExpenses.length} Total Transaksi',
+                          style: const pw.TextStyle(fontSize: 7.5),
+                        ),
                       ],
                     ),
                   ),
@@ -671,19 +763,34 @@ class _HomePage2State extends State<HomePage2> {
                     padding: const pw.EdgeInsets.all(8),
                     decoration: pw.BoxDecoration(
                       color: pdf.PdfColor.fromInt(0xFFF9FBFD),
-                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      border: pw.Border.all(
+                        color: pdf.PdfColors.black,
+                        width: 1.2,
+                      ),
                       borderRadius: pw.BorderRadius.circular(4),
                     ),
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text('RATA-RATA / TRANSAKSI', style: const pw.TextStyle(fontSize: 7.5, color: pdf.PdfColors.grey700)),
+                        pw.Text(
+                          'RATA-RATA / TRANSAKSI',
+                          style: const pw.TextStyle(
+                            fontSize: 7.5,
+                            color: pdf.PdfColors.grey700,
+                          ),
+                        ),
                         pw.SizedBox(height: 2),
                         pw.Text(
                           formatter.format(avgExpense),
-                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                          style: pw.TextStyle(
+                            fontSize: 11,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
                         ),
-                        pw.Text('${sortedCategories.length} Kategori Aktif', style: const pw.TextStyle(fontSize: 7.5)),
+                        pw.Text(
+                          '${sortedCategories.length} Kategori Aktif',
+                          style: const pw.TextStyle(fontSize: 7.5),
+                        ),
                       ],
                     ),
                   ),
@@ -694,20 +801,34 @@ class _HomePage2State extends State<HomePage2> {
                     padding: const pw.EdgeInsets.all(8),
                     decoration: pw.BoxDecoration(
                       color: pdf.PdfColor.fromInt(0xFFFFF9E6),
-                      border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                      border: pw.Border.all(
+                        color: pdf.PdfColors.black,
+                        width: 1.2,
+                      ),
                       borderRadius: pw.BorderRadius.circular(4),
                     ),
                     child: pw.Column(
                       crossAxisAlignment: pw.CrossAxisAlignment.start,
                       children: [
-                        pw.Text('TRANSAKSI TERTINGGI', style: const pw.TextStyle(fontSize: 7.5, color: pdf.PdfColors.grey700)),
+                        pw.Text(
+                          'TRANSAKSI TERTINGGI',
+                          style: const pw.TextStyle(
+                            fontSize: 7.5,
+                            color: pdf.PdfColors.grey700,
+                          ),
+                        ),
                         pw.SizedBox(height: 2),
                         pw.Text(
                           formatter.format(highestExpenseAmount),
-                          style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold),
+                          style: pw.TextStyle(
+                            fontSize: 11,
+                            fontWeight: pw.FontWeight.bold,
+                          ),
                         ),
                         pw.Text(
-                          highestExpenseItem != null ? (highestExpenseItem['name']?.toString() ?? '-') : '-',
+                          highestExpenseItem != null
+                              ? (highestExpenseItem['name']?.toString() ?? '-')
+                              : '-',
                           maxLines: 1,
                           style: const pw.TextStyle(fontSize: 7.5),
                         ),
@@ -737,13 +858,13 @@ class _HomePage2State extends State<HomePage2> {
                 child: pw.Row(
                   children: sortedCategories.map((cat) {
                     final amount = categoryAmounts[cat] ?? 0.0;
-                    final pct = grandTotal > 0 ? (amount / grandTotal) * 100 : 0.0;
+                    final pct = grandTotal > 0
+                        ? (amount / grandTotal) * 100
+                        : 0.0;
                     final flex = (pct * 10).round().clamp(1, 1000);
                     return pw.Flexible(
                       flex: flex,
-                      child: pw.Container(
-                        color: _pdfCategoryColor(cat),
-                      ),
+                      child: pw.Container(color: _pdfCategoryColor(cat)),
                     );
                   }).toList(),
                 ),
@@ -753,7 +874,10 @@ class _HomePage2State extends State<HomePage2> {
 
             // Category Breakdown Table
             pw.Table(
-              border: pw.TableBorder.all(color: pdf.PdfColors.black, width: 0.8),
+              border: pw.TableBorder.all(
+                color: pdf.PdfColors.black,
+                width: 0.8,
+              ),
               columnWidths: const {
                 0: pw.FlexColumnWidth(1.2),
                 1: pw.FixedColumnWidth(60),
@@ -762,24 +886,43 @@ class _HomePage2State extends State<HomePage2> {
               },
               children: [
                 pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: pdf.PdfColors.grey200),
+                  decoration: const pw.BoxDecoration(
+                    color: pdf.PdfColors.grey200,
+                  ),
                   children: [
                     _buildPdfCell('Kategori', isHeader: true),
-                    _buildPdfCell('Jumlah Item', isHeader: true, alignRight: true),
-                    _buildPdfCell('Persentase', isHeader: true, alignRight: true),
-                    _buildPdfCell('Total Nominal', isHeader: true, alignRight: true),
+                    _buildPdfCell(
+                      'Jumlah Item',
+                      isHeader: true,
+                      alignRight: true,
+                    ),
+                    _buildPdfCell(
+                      'Persentase',
+                      isHeader: true,
+                      alignRight: true,
+                    ),
+                    _buildPdfCell(
+                      'Total Nominal',
+                      isHeader: true,
+                      alignRight: true,
+                    ),
                   ],
                 ),
                 ...sortedCategories.map((cat) {
                   final amount = categoryAmounts[cat] ?? 0.0;
                   final count = categoryCounts[cat] ?? 0;
-                  final pct = grandTotal > 0 ? (amount / grandTotal) * 100 : 0.0;
+                  final pct = grandTotal > 0
+                      ? (amount / grandTotal) * 100
+                      : 0.0;
                   final color = _pdfCategoryColor(cat);
 
                   return pw.TableRow(
                     children: [
                       pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                        padding: const pw.EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 3,
+                        ),
                         child: pw.Row(
                           children: [
                             pw.Container(
@@ -787,20 +930,29 @@ class _HomePage2State extends State<HomePage2> {
                               height: 8,
                               decoration: pw.BoxDecoration(
                                 color: color,
-                                border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+                                border: pw.Border.all(
+                                  color: pdf.PdfColors.black,
+                                  width: 0.8,
+                                ),
                                 borderRadius: pw.BorderRadius.circular(2),
                               ),
                             ),
                             pw.SizedBox(width: 5),
                             pw.Text(
                               cat.toUpperCase(),
-                              style: pw.TextStyle(fontSize: 8.5, fontWeight: pw.FontWeight.bold),
+                              style: pw.TextStyle(
+                                fontSize: 8.5,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
                       ),
                       _buildPdfCell('$count item', alignRight: true),
-                      _buildPdfCell('${pct.toStringAsFixed(1)}%', alignRight: true),
+                      _buildPdfCell(
+                        '${pct.toStringAsFixed(1)}%',
+                        alignRight: true,
+                      ),
                       _buildPdfCell(
                         formatter.format(amount),
                         alignRight: true,
@@ -820,7 +972,10 @@ class _HomePage2State extends State<HomePage2> {
                 children: [
                   pw.Text(
                     'Distribusi Tipe Pengeluaran',
-                    style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
+                    style: pw.TextStyle(
+                      fontSize: 10,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
                   ),
                   pw.SizedBox(height: 5),
                   pw.Row(
@@ -830,7 +985,10 @@ class _HomePage2State extends State<HomePage2> {
                           padding: const pw.EdgeInsets.all(7),
                           decoration: pw.BoxDecoration(
                             color: pdf.PdfColor.fromInt(0xFFFFFDE7),
-                            border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                            border: pw.Border.all(
+                              color: pdf.PdfColors.black,
+                              width: 1.2,
+                            ),
                             borderRadius: pw.BorderRadius.circular(4),
                           ),
                           child: pw.Column(
@@ -843,24 +1001,42 @@ class _HomePage2State extends State<HomePage2> {
                                     height: 7,
                                     decoration: pw.BoxDecoration(
                                       color: pdf.PdfColor.fromInt(0xFFF9EB5D),
-                                      border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+                                      border: pw.Border.all(
+                                        color: pdf.PdfColors.black,
+                                        width: 0.8,
+                                      ),
                                       borderRadius: pw.BorderRadius.circular(2),
                                     ),
                                   ),
                                   pw.SizedBox(width: 4),
-                                  pw.Text('TERENCANA', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                                  pw.Text(
+                                    'TERENCANA',
+                                    style: pw.TextStyle(
+                                      fontSize: 7.5,
+                                      fontWeight: pw.FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
                               pw.SizedBox(height: 3),
                               pw.Text(
                                 '${expectedPct.toStringAsFixed(1)}%',
-                                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                                style: pw.TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
                               ),
                               pw.Text(
                                 formatter.format(typeAmounts['expected']!),
                                 style: const pw.TextStyle(fontSize: 7.5),
                               ),
-                              pw.Text('${typeCounts['expected']} item', style: const pw.TextStyle(fontSize: 7, color: pdf.PdfColors.grey700)),
+                              pw.Text(
+                                '${typeCounts['expected']} item',
+                                style: const pw.TextStyle(
+                                  fontSize: 7,
+                                  color: pdf.PdfColors.grey700,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -871,7 +1047,10 @@ class _HomePage2State extends State<HomePage2> {
                           padding: const pw.EdgeInsets.all(7),
                           decoration: pw.BoxDecoration(
                             color: pdf.PdfColor.fromInt(0xFFFFEBEE),
-                            border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                            border: pw.Border.all(
+                              color: pdf.PdfColors.black,
+                              width: 1.2,
+                            ),
                             borderRadius: pw.BorderRadius.circular(4),
                           ),
                           child: pw.Column(
@@ -884,24 +1063,42 @@ class _HomePage2State extends State<HomePage2> {
                                     height: 7,
                                     decoration: pw.BoxDecoration(
                                       color: pdf.PdfColor.fromInt(0xFFFF5D5D),
-                                      border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+                                      border: pw.Border.all(
+                                        color: pdf.PdfColors.black,
+                                        width: 0.8,
+                                      ),
                                       borderRadius: pw.BorderRadius.circular(2),
                                     ),
                                   ),
                                   pw.SizedBox(width: 4),
-                                  pw.Text('TAK TERDUGA', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                                  pw.Text(
+                                    'TAK TERDUGA',
+                                    style: pw.TextStyle(
+                                      fontSize: 7.5,
+                                      fontWeight: pw.FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
                               pw.SizedBox(height: 3),
                               pw.Text(
                                 '${unexpectedPct.toStringAsFixed(1)}%',
-                                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                                style: pw.TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
                               ),
                               pw.Text(
                                 formatter.format(typeAmounts['unexpected']!),
                                 style: const pw.TextStyle(fontSize: 7.5),
                               ),
-                              pw.Text('${typeCounts['unexpected']} item', style: const pw.TextStyle(fontSize: 7, color: pdf.PdfColors.grey700)),
+                              pw.Text(
+                                '${typeCounts['unexpected']} item',
+                                style: const pw.TextStyle(
+                                  fontSize: 7,
+                                  color: pdf.PdfColors.grey700,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -912,7 +1109,10 @@ class _HomePage2State extends State<HomePage2> {
                           padding: const pw.EdgeInsets.all(7),
                           decoration: pw.BoxDecoration(
                             color: pdf.PdfColor.fromInt(0xFFE3F2FD),
-                            border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
+                            border: pw.Border.all(
+                              color: pdf.PdfColors.black,
+                              width: 1.2,
+                            ),
                             borderRadius: pw.BorderRadius.circular(4),
                           ),
                           child: pw.Column(
@@ -925,24 +1125,42 @@ class _HomePage2State extends State<HomePage2> {
                                     height: 7,
                                     decoration: pw.BoxDecoration(
                                       color: pdf.PdfColor.fromInt(0xFF5D9BFF),
-                                      border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
+                                      border: pw.Border.all(
+                                        color: pdf.PdfColors.black,
+                                        width: 0.8,
+                                      ),
                                       borderRadius: pw.BorderRadius.circular(2),
                                     ),
                                   ),
                                   pw.SizedBox(width: 4),
-                                  pw.Text('LAINNYA', style: pw.TextStyle(fontSize: 7.5, fontWeight: pw.FontWeight.bold)),
+                                  pw.Text(
+                                    'LAINNYA',
+                                    style: pw.TextStyle(
+                                      fontSize: 7.5,
+                                      fontWeight: pw.FontWeight.bold,
+                                    ),
+                                  ),
                                 ],
                               ),
                               pw.SizedBox(height: 3),
                               pw.Text(
                                 '${othersPct.toStringAsFixed(1)}%',
-                                style: pw.TextStyle(fontSize: 13, fontWeight: pw.FontWeight.bold),
+                                style: pw.TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
                               ),
                               pw.Text(
                                 formatter.format(typeAmounts['others']!),
                                 style: const pw.TextStyle(fontSize: 7.5),
                               ),
-                              pw.Text('${typeCounts['others']} item', style: const pw.TextStyle(fontSize: 7, color: pdf.PdfColors.grey700)),
+                              pw.Text(
+                                '${typeCounts['others']} item',
+                                style: const pw.TextStyle(
+                                  fontSize: 7,
+                                  color: pdf.PdfColors.grey700,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -953,9 +1171,13 @@ class _HomePage2State extends State<HomePage2> {
                   pw.Container(
                     padding: const pw.EdgeInsets.all(7),
                     decoration: pw.BoxDecoration(
-                      color: isHighUnexpected ? pdf.PdfColor.fromInt(0xFFFFEBEE) : pdf.PdfColor.fromInt(0xFFE8F5E9),
+                      color: isHighUnexpected
+                          ? pdf.PdfColor.fromInt(0xFFFFEBEE)
+                          : pdf.PdfColor.fromInt(0xFFE8F5E9),
                       border: pw.Border.all(
-                        color: isHighUnexpected ? pdf.PdfColor.fromInt(0xFFFF5D5D) : pdf.PdfColor.fromInt(0xFF06D6A0),
+                        color: isHighUnexpected
+                            ? pdf.PdfColor.fromInt(0xFFFF5D5D)
+                            : pdf.PdfColor.fromInt(0xFF06D6A0),
                         width: 1.2,
                       ),
                       borderRadius: pw.BorderRadius.circular(4),
@@ -967,7 +1189,9 @@ class _HomePage2State extends State<HomePage2> {
                       style: pw.TextStyle(
                         fontSize: 8,
                         fontWeight: pw.FontWeight.bold,
-                        color: isHighUnexpected ? pdf.PdfColor.fromInt(0xFFB71C1C) : pdf.PdfColor.fromInt(0xFF1B5E20),
+                        color: isHighUnexpected
+                            ? pdf.PdfColor.fromInt(0xFFB71C1C)
+                            : pdf.PdfColor.fromInt(0xFF1B5E20),
                       ),
                     ),
                   ),
@@ -1083,14 +1307,14 @@ class _HomePage2State extends State<HomePage2> {
     required dynamic date,
   }) {
     final isEven = index % 2 == 0;
-    final rowBg = isEven ? pdf.PdfColors.white : pdf.PdfColor.fromInt(0xFFF9FAFB);
+    final rowBg = isEven
+        ? pdf.PdfColors.white
+        : pdf.PdfColor.fromInt(0xFFF9FAFB);
     final typeColor = _pdfTypeColor(type);
     final catColor = _pdfCategoryColor(category);
 
     return pw.TableRow(
-      decoration: pw.BoxDecoration(
-        color: rowBg,
-      ),
+      decoration: pw.BoxDecoration(color: rowBg),
       children: [
         // Name
         pw.Padding(
@@ -1125,7 +1349,10 @@ class _HomePage2State extends State<HomePage2> {
                 child: pw.Text(
                   _pdfCategoryLabel(category),
                   maxLines: 1,
-                  style: const pw.TextStyle(fontSize: 8, color: pdf.PdfColors.grey800),
+                  style: const pw.TextStyle(
+                    fontSize: 8,
+                    color: pdf.PdfColors.grey800,
+                  ),
                 ),
               ),
             ],
@@ -1137,7 +1364,10 @@ class _HomePage2State extends State<HomePage2> {
           padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
           child: pw.Center(
             child: pw.Container(
-              padding: const pw.EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+              padding: const pw.EdgeInsets.symmetric(
+                horizontal: 5,
+                vertical: 2,
+              ),
               decoration: pw.BoxDecoration(
                 color: typeColor,
                 borderRadius: pw.BorderRadius.circular(3),
@@ -1160,7 +1390,10 @@ class _HomePage2State extends State<HomePage2> {
           padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
           child: pw.Text(
             _formatPdfDate(date),
-            style: const pw.TextStyle(fontSize: 8, color: pdf.PdfColors.grey700),
+            style: const pw.TextStyle(
+              fontSize: 8,
+              color: pdf.PdfColors.grey700,
+            ),
           ),
         ),
 
@@ -1255,12 +1488,16 @@ class _HomePage2State extends State<HomePage2> {
     return pw.Padding(
       padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       child: pw.Align(
-        alignment: alignRight ? pw.Alignment.centerRight : pw.Alignment.centerLeft,
+        alignment: alignRight
+            ? pw.Alignment.centerRight
+            : pw.Alignment.centerLeft,
         child: pw.Text(
           text,
           style: pw.TextStyle(
             fontSize: isHeader ? 9 : 8.5,
-            fontWeight: isHeader || isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+            fontWeight: isHeader || isBold
+                ? pw.FontWeight.bold
+                : pw.FontWeight.normal,
           ),
         ),
       ),
@@ -1736,7 +1973,7 @@ class _SettingsPageState extends State<SettingsPage> {
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.info_outline),
           title: Text('Expense App'),
-          subtitle: Text('Version 1.0.0'),
+          subtitle: Text('Version 1.5.0'),
         ),
       ],
     );
@@ -2223,11 +2460,7 @@ class _ListWithCardsState extends State<ListWithCards>
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: Colors.black, width: 2.8),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(4, 4),
-            blurRadius: 0,
-          ),
+          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
         ],
       ),
       child: Column(
@@ -2237,7 +2470,10 @@ class _ListWithCardsState extends State<ListWithCards>
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF5DF9FF),
                   borderRadius: BorderRadius.circular(9),
@@ -2268,7 +2504,10 @@ class _ListWithCardsState extends State<ListWithCards>
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF9EB5D),
                       borderRadius: BorderRadius.circular(8),
@@ -2296,7 +2535,10 @@ class _ListWithCardsState extends State<ListWithCards>
                       _loadData();
                     },
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFF5DF9FF),
                         borderRadius: BorderRadius.circular(8),
@@ -2426,11 +2668,7 @@ class _ListWithCardsState extends State<ListWithCards>
           borderRadius: BorderRadius.circular(20),
           border: Border.all(color: Colors.black, width: 2.5),
           boxShadow: const [
-            BoxShadow(
-              color: Colors.black,
-              offset: Offset(4, 4),
-              blurRadius: 0,
-            ),
+            BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
           ],
         ),
         child: Column(
@@ -2693,11 +2931,7 @@ class ExpenseBottomBar extends StatelessWidget {
         borderRadius: BorderRadius.circular(36),
         border: Border.all(color: Colors.black, width: 3),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(4, 4),
-            blurRadius: 0,
-          ),
+          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
         ],
       ),
       child: Row(
