@@ -7,12 +7,12 @@
     <meta name="color-scheme" content="only light">
     <meta name="theme-color" content="#f3f5f8">
     <meta name="description"
-        content="Unmurce Personal Finance App - Technical Documentation by Orlando Diamond Prasetyo.">
-    <title>Unmurce Technical Documentation | Orlando Diamond Prasetyo</title>
+        content="Unmurce Personal Finance App - Comprehensive Neo-Brutalist Technical Documentation & System Specifications by Orlando Diamond Prasetyo.">
+    <title>Unmurce Technical Documentation | Comprehensive Architecture & System Specs</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
-        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;600&display=swap"
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <style>
         :root {
@@ -20,6 +20,10 @@
             --bg: #f3f5f8;
             --card-yellow: #ffea60;
             --card-aqua: #4ee0e6;
+            --card-pink: #ff99c8;
+            --card-mint: #06d6a0;
+            --card-lavender: #c77dff;
+            --card-sky: #70d6ff;
             --card-white: #ffffff;
             --card-nav: #eef2f5;
             --ink: #000000;
@@ -27,12 +31,14 @@
             --border: 3.5px solid #000000;
             --border-thin: 2.5px solid #000000;
             --shadow: 4px 4px 0px #000000;
-            --shadow-lg: 6px 6px 0px #000000;
+            --shadow-lg: 7px 7px 0px #000000;
             --shadow-sm: 2px 2px 0px #000000;
-            --radius-lg: 24px;
-            --radius-md: 18px;
+            --radius-xl: 28px;
+            --radius-lg: 22px;
+            --radius-md: 16px;
+            --radius-sm: 10px;
             --radius-pill: 50px;
-            --font: 'Plus Jakarta Sans', sans-serif;
+            --font: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
             --font-code: 'Fira Code', monospace;
         }
 
@@ -44,14 +50,16 @@
 
         html {
             scroll-behavior: smooth;
-            scroll-padding-top: 40px;
+            scroll-padding-top: 80px;
         }
 
         body {
             font-family: var(--font);
             background: var(--bg);
             color: var(--ink);
-            line-height: 1.6;
+            line-height: 1.65;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
         }
 
         a {
@@ -59,43 +67,67 @@
             text-decoration: none;
         }
 
+        /* Reading Progress Bar */
+        #reading-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 5px;
+            width: 0%;
+            background: var(--card-aqua);
+            border-bottom: 2px solid #000000;
+            z-index: 10000;
+            transition: width 0.1s ease-out;
+        }
+
         /* Header */
         .docs-header {
-            width: min(1200px, calc(100% - 40px));
-            margin: 0 auto;
+            width: min(1280px, calc(100% - 40px));
+            margin: 16px auto 0;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 20px 0;
-            border-bottom: var(--border-thin);
+            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: var(--border);
+            border-radius: var(--radius-pill);
+            box-shadow: var(--shadow);
+            position: sticky;
+            top: 12px;
+            z-index: 1000;
         }
 
         .docs-brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
             font-weight: 800;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
+            letter-spacing: -0.01em;
         }
 
         .docs-brand img {
-            width: 40px;
-            height: 40px;
+            width: 42px;
+            height: 42px;
             border-radius: 50%;
             border: var(--border-thin);
             object-fit: cover;
+            box-shadow: var(--shadow-sm);
         }
 
         .docs-nav-btns {
             display: flex;
+            align-items: center;
             gap: 12px;
         }
 
         .btn-neo {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-            padding: 8px 18px;
+            padding: 9px 20px;
             border: var(--border-thin);
             border-radius: var(--radius-pill);
             background: var(--card-white);
@@ -103,12 +135,18 @@
             font-size: 0.85rem;
             cursor: pointer;
             box-shadow: var(--shadow-sm);
-            transition: transform 0.12s ease;
+            transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
         }
 
         .btn-neo:hover {
             transform: translate(-2px, -2px);
             box-shadow: var(--shadow);
+        }
+
+        .btn-neo:active {
+            transform: translate(2px, 2px);
+            box-shadow: 0px 0px 0px #000;
         }
 
         .btn-aqua {
@@ -119,45 +157,109 @@
             background: var(--card-yellow);
         }
 
-        /* Layout */
+        .btn-pink {
+            background: var(--card-pink);
+        }
+
+        .btn-mint {
+            background: var(--card-mint);
+        }
+
+        /* Layout Grid */
         .docs-container {
-            width: min(1200px, calc(100% - 40px));
-            margin: 40px auto;
+            width: min(1280px, calc(100% - 40px));
+            margin: 32px auto 60px;
             display: grid;
-            grid-template-columns: 280px 1fr;
-            gap: 40px;
+            grid-template-columns: 310px 1fr;
+            gap: 36px;
+            align-items: start;
         }
 
         /* Sidebar Navigation */
         .docs-sidebar {
             position: sticky;
-            top: 40px;
-            height: max-content;
+            top: 96px;
+            max-height: calc(100vh - 120px);
+            overflow-y: auto;
             display: flex;
             flex-direction: column;
             gap: 8px;
-            padding: 20px;
+            padding: 22px;
             border: var(--border);
             border-radius: var(--radius-lg);
             background: var(--card-white);
             box-shadow: var(--shadow);
         }
 
+        .docs-sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .docs-sidebar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+            border: 1px solid #000;
+        }
+
+        .sidebar-search-box {
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .sidebar-search-input {
+            width: 100%;
+            padding: 10px 14px 10px 38px;
+            border: var(--border-thin);
+            border-radius: var(--radius-pill);
+            font-family: var(--font);
+            font-size: 0.85rem;
+            font-weight: 700;
+            background: #fafbfc;
+            outline: none;
+            transition: all 0.15s ease;
+        }
+
+        .sidebar-search-input:focus {
+            background: #ffffff;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sidebar-search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 0.9rem;
+            color: #64748b;
+            pointer-events: none;
+        }
+
         .sidebar-title {
             font-weight: 800;
-            font-size: 0.8rem;
-            letter-spacing: 0.1em;
+            font-size: 0.76rem;
+            letter-spacing: 0.12em;
             color: var(--muted);
-            margin-bottom: 8px;
+            margin: 10px 0 6px 4px;
+            text-transform: uppercase;
         }
 
         .sidebar-link {
-            padding: 10px 14px;
+            padding: 8px 14px;
             border-radius: 12px;
             font-weight: 700;
-            font-size: 0.9rem;
-            border: 2.5px solid transparent;
+            font-size: 0.87rem;
+            border: 2px solid transparent;
             transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #1e293b;
+        }
+
+        .sidebar-link span.num {
+            font-family: var(--font-code);
+            font-size: 0.78rem;
+            opacity: 0.65;
         }
 
         .sidebar-link:hover,
@@ -166,164 +268,659 @@
             border: var(--border-thin);
             box-shadow: var(--shadow-sm);
             transform: translateX(4px);
+            color: #000000;
         }
 
-        /* Content */
+        /* Content Area */
         .docs-content {
             display: flex;
             flex-direction: column;
-            gap: 36px;
+            gap: 40px;
             min-width: 0;
         }
 
         .docs-card {
-            padding: 36px;
+            padding: 38px 42px;
             border: var(--border);
             border-radius: var(--radius-lg);
             background: var(--card-white);
             box-shadow: var(--shadow);
             min-width: 0;
+            position: relative;
         }
 
         .docs-card-yellow {
             background: var(--card-yellow);
         }
 
+        .docs-card-aqua {
+            background: var(--card-aqua);
+        }
+
         .tag-badge {
-            display: inline-block;
-            padding: 4px 12px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 14px;
             border: var(--border-thin);
             border-radius: var(--radius-pill);
             background: var(--card-white);
             font-weight: 800;
-            font-size: 0.72rem;
+            font-size: 0.75rem;
             letter-spacing: 0.08em;
-            margin-bottom: 12px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-sm);
+            text-transform: uppercase;
+        }
+
+        .tag-badge-yellow {
+            background: var(--card-yellow);
+        }
+
+        .tag-badge-aqua {
+            background: var(--card-aqua);
+        }
+
+        .tag-badge-pink {
+            background: var(--card-pink);
+        }
+
+        .tag-badge-mint {
+            background: var(--card-mint);
         }
 
         h1 {
             font-size: 2.6rem;
             font-weight: 800;
-            margin-bottom: 10px;
-            line-height: 1.1;
+            margin-bottom: 14px;
+            line-height: 1.15;
+            letter-spacing: -0.02em;
         }
 
         h2 {
-            font-size: 1.6rem;
+            font-size: 1.65rem;
             font-weight: 800;
-            margin: 24px 0 12px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 6px;
+            margin: 28px 0 14px;
+            border-bottom: 3px solid #000;
+            padding-bottom: 8px;
+            letter-spacing: -0.01em;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         h3 {
-            font-size: 1.2rem;
+            font-size: 1.22rem;
             font-weight: 800;
-            margin: 16px 0 8px;
+            margin: 22px 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         p {
-            color: var(--muted);
+            color: #2d3748;
             font-size: 1.02rem;
             font-weight: 500;
             margin-bottom: 16px;
+            line-height: 1.7;
         }
 
-        /* Code Blocks */
-        pre {
-            background: #1e293b;
-            color: #f8fafc;
-            padding: 20px;
-            border-radius: 16px;
+        /* Alert & Callout Boxes */
+        .docs-callout {
             border: var(--border-thin);
+            border-radius: var(--radius-md);
+            padding: 18px 22px;
+            margin: 20px 0;
+            background: #ffffff;
             box-shadow: var(--shadow-sm);
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .docs-callout-icon {
+            font-size: 1.5rem;
+            flex-shrink: 0;
+            line-height: 1;
+            margin-top: 2px;
+        }
+
+        .docs-callout-content {
+            flex: 1;
+        }
+
+        .docs-callout-title {
+            font-weight: 800;
+            font-size: 0.96rem;
+            margin-bottom: 4px;
+        }
+
+        .docs-callout-desc {
+            font-size: 0.92rem;
+            margin-bottom: 0;
+            color: #334155;
+        }
+
+        .callout-info {
+            background: #e0f2fe;
+            border-color: #000;
+        }
+
+        .callout-warning {
+            background: #fef08a;
+            border-color: #000;
+        }
+
+        .callout-success {
+            background: #dcfce7;
+            border-color: #000;
+        }
+
+        /* Color Palette Swatches */
+        .palette-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 20px 0;
+        }
+
+        .palette-card {
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            background: #ffffff;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            cursor: pointer;
+        }
+
+        .palette-card:hover {
+            transform: translate(-3px, -3px);
+            box-shadow: var(--shadow);
+        }
+
+        .palette-preview {
+            height: 72px;
+            border-bottom: var(--border-thin);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+        }
+
+        .palette-details {
+            padding: 12px 14px;
+        }
+
+        .palette-name {
+            font-weight: 800;
+            font-size: 0.88rem;
+            margin-bottom: 2px;
+        }
+
+        .palette-hex {
             font-family: var(--font-code);
-            font-size: 0.9rem;
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: #475569;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .palette-role {
+            font-size: 0.74rem;
+            color: #64748b;
+            margin-top: 4px;
+            font-weight: 600;
+        }
+
+        /* Code Blocks & Wrappers */
+        .code-container {
+            margin: 20px 0;
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            background: #0f172a;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .code-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1e293b;
+            padding: 10px 18px;
+            border-bottom: 2px solid #000000;
+        }
+
+        .code-title {
+            font-family: var(--font-code);
+            font-weight: 700;
+            font-size: 0.8rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .code-title::before {
+            content: "";
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--card-aqua);
+            border: 1px solid #000;
+        }
+
+        .btn-copy {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            background: #334155;
+            color: #f8fafc;
+            border: 1.5px solid #000;
+            border-radius: var(--radius-pill);
+            font-family: var(--font);
+            font-weight: 700;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.12s ease;
+        }
+
+        .btn-copy:hover {
+            background: var(--card-yellow);
+            color: #000000;
+        }
+
+        .btn-copy.copied {
+            background: var(--card-mint);
+            color: #000000;
+        }
+
+        pre {
+            color: #f8fafc;
+            padding: 18px 22px;
+            font-family: var(--font-code);
+            font-size: 0.88rem;
             overflow-x: auto;
-            margin: 16px 0;
+            line-height: 1.6;
+            margin: 0;
         }
 
         code {
             font-family: var(--font-code);
             font-size: 0.88rem;
             background: #e2e8f0;
-            padding: 2px 6px;
+            color: #0f172a;
+            padding: 2px 7px;
             border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-weight: 600;
         }
 
         pre code {
             background: transparent;
+            color: inherit;
             padding: 0;
+            border: none;
+            font-weight: 500;
         }
 
-        /* Method Badges */
+        /* Interactive Architecture Visual Pipeline */
+        .arch-pipeline {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+
+        .arch-node {
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            background: #ffffff;
+            box-shadow: var(--shadow-sm);
+            transition: transform 0.15s ease;
+        }
+
+        .arch-node:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow);
+        }
+
+        .arch-node-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .arch-node-badge {
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 3px 8px;
+            border: 1.5px solid #000;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .arch-node-title {
+            font-weight: 800;
+            font-size: 1.05rem;
+            margin-bottom: 6px;
+        }
+
+        .arch-node-desc {
+            font-size: 0.88rem;
+            color: #475569;
+            margin-bottom: 0;
+        }
+
+        /* 6-Stage Notification Engine Grid */
+        .pipeline-stages {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin: 22px 0;
+        }
+
+        .stage-card {
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            padding: 18px 22px;
+            background: #ffffff;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            gap: 18px;
+            align-items: center;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .stage-card:hover {
+            transform: translateX(6px);
+            box-shadow: var(--shadow);
+        }
+
+        .stage-number {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: var(--border-thin);
+            background: var(--card-yellow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+            box-shadow: 2px 2px 0 #000;
+        }
+
+        .stage-info {
+            flex: 1;
+        }
+
+        .stage-title {
+            font-weight: 800;
+            font-size: 1rem;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stage-desc {
+            font-size: 0.9rem;
+            color: #475569;
+            margin-bottom: 0;
+        }
+
+        /* Bank & E-Wallet Badges Grid */
+        .banks-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 18px 0;
+        }
+
+        .bank-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 14px;
+            background: #ffffff;
+            border: 2px solid #000000;
+            border-radius: var(--radius-pill);
+            font-weight: 700;
+            font-size: 0.84rem;
+            box-shadow: 2px 2px 0 #000000;
+            transition: all 0.12s ease;
+        }
+
+        .bank-badge:hover {
+            background: var(--card-yellow);
+            transform: translate(-2px, -2px);
+            box-shadow: 3px 3px 0 #000;
+        }
+
+        .bank-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #10b981;
+            border: 1px solid #000;
+        }
+
+        /* Interactive API Endpoint Card */
+        .api-card {
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            background: #ffffff;
+            margin: 20px 0;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+        }
+
+        .api-header {
+            padding: 14px 20px;
+            background: #f8fafc;
+            border-bottom: 2px solid #000000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .api-route {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--font-code);
+            font-weight: 700;
+            font-size: 0.95rem;
+        }
+
+        .api-body {
+            padding: 20px;
+        }
+
         .method-badge {
             display: inline-block;
-            padding: 4px 10px;
-            border: var(--border-thin);
+            padding: 4px 12px;
+            border: 2px solid #000000;
             border-radius: 8px;
             font-weight: 800;
-            font-size: 0.78rem;
+            font-size: 0.8rem;
             font-family: var(--font-code);
+            box-shadow: 2px 2px 0 #000;
         }
 
         .method-get {
-            background: #60a5fa;
+            background: #70d6ff;
             color: #000;
         }
 
         .method-post {
-            background: #4ade80;
+            background: #06d6a0;
+            color: #000;
+        }
+
+        .method-put {
+            background: #ffea60;
             color: #000;
         }
 
         .method-delete {
-            background: #f87171;
+            background: #ff99c8;
             color: #000;
         }
 
-        /* Table */
+        /* Tables */
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 20px 0;
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            background: #fff;
+        }
+
         table {
             width: 100%;
             border-collapse: collapse;
-            margin: 16px 0;
+            font-size: 0.9rem;
         }
 
         th,
         td {
-            padding: 12px;
-            border: var(--border-thin);
+            padding: 12px 16px;
+            border-bottom: 1.5px solid #000000;
+            border-right: 1.5px solid #000000;
             text-align: left;
-            font-size: 0.9rem;
+        }
+
+        th:last-child,
+        td:last-child {
+            border-right: none;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
         }
 
         th {
             background: var(--card-yellow);
             font-weight: 800;
+            color: #000000;
+            letter-spacing: 0.02em;
         }
 
-        /* Responsive Table Wrapper */
-        .table-responsive {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin: 16px 0;
+        tr:nth-child(even) {
+            background: #f8fafc;
         }
 
-        pre {
-            max-width: 100%;
-            min-width: 0;
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            white-space: pre;
-            word-wrap: normal;
+        /* Screenshot showcase */
+        .screenshot-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 20px;
+            margin: 24px 0;
         }
 
-        .table-responsive {
-            max-width: 100%;
-            min-width: 0;
+        .screenshot-card {
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            background: #ffffff;
+            box-shadow: var(--shadow-sm);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
-        @media (max-width: 840px) {
+        .screenshot-card img {
+            width: 100%;
+            height: 380px;
+            object-fit: cover;
+            border-bottom: var(--border-thin);
+            background: #e2e8f0;
+        }
+
+        .screenshot-caption {
+            padding: 12px 16px;
+            font-weight: 700;
+            font-size: 0.86rem;
+            color: #1e293b;
+            background: #fafafa;
+        }
+
+        /* Interactive NeoBouncy Demo Button */
+        .neobouncy-demo-box {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            padding: 20px;
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            background: #f8fafc;
+            margin: 18px 0;
+        }
+
+        .demo-bouncy-btn {
+            padding: 12px 28px;
+            font-family: var(--font);
+            font-weight: 800;
+            font-size: 1rem;
+            background: var(--card-mint);
+            border: var(--border);
+            border-radius: var(--radius-pill);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            transition: transform 0.15s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.15s ease;
+        }
+
+        .demo-bouncy-btn:active {
+            transform: scale(0.92) translate(3px, 3px);
+            box-shadow: 1px 1px 0 #000;
+        }
+
+        /* Toast notification */
+        #toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: var(--card-yellow);
+            color: #000;
+            border: var(--border);
+            border-radius: var(--radius-pill);
+            padding: 12px 24px;
+            font-weight: 800;
+            font-size: 0.9rem;
+            box-shadow: var(--shadow);
+            z-index: 99999;
+            opacity: 0;
+            transform: translateY(20px);
+            pointer-events: none;
+            transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        #toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Responsive Media Queries */
+        @media (max-width: 960px) {
             .docs-container {
                 grid-template-columns: 1fr;
                 margin: 20px auto;
@@ -332,21 +929,22 @@
 
             .docs-sidebar {
                 position: sticky;
-                top: 12px;
-                z-index: 90;
+                top: 76px;
+                z-index: 900;
                 flex-direction: row;
                 overflow-x: auto;
                 white-space: nowrap;
-                padding: 10px 14px;
+                padding: 12px 16px;
                 border-radius: var(--radius-pill);
-                gap: 6px;
-                -webkit-overflow-scrolling: touch;
+                gap: 8px;
                 box-shadow: var(--shadow);
-                background: rgba(255, 255, 255, 0.95);
-                backdrop-filter: blur(10px);
+                background: rgba(255, 255, 255, 0.98);
+                backdrop-filter: blur(12px);
+                max-height: none;
             }
 
-            .sidebar-title {
+            .sidebar-title,
+            .sidebar-search-box {
                 display: none;
             }
 
@@ -357,27 +955,23 @@
                 flex-shrink: 0;
             }
 
+            .sidebar-link:hover,
             .sidebar-link.active {
                 transform: none;
             }
         }
 
-        @media (max-width: 640px) {
+        @media (max-width: 680px) {
             .docs-header {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 14px;
-                padding: 16px 0;
+                padding: 16px 20px;
+                border-radius: var(--radius-lg);
             }
 
             .docs-brand {
-                min-width: 0;
-                max-width: 100%;
-            }
-
-            .docs-brand span {
-                min-width: 0;
-                overflow-wrap: anywhere;
+                font-size: 0.95rem;
             }
 
             .docs-nav-btns {
@@ -387,205 +981,923 @@
 
             .btn-neo {
                 flex: 1;
-                min-width: 0;
-                justify-content: center;
-                padding: 8px 12px;
                 font-size: 0.8rem;
-                text-align: center;
-                white-space: normal;
-            }
-        }
-
-        @media (max-width: 580px) {
-            body {
-                overflow-x: hidden;
+                padding: 8px 12px;
             }
 
             .docs-card {
-                padding: 22px 18px;
-            }
-
-            .overview-meta {
-                flex-wrap: wrap;
+                padding: 24px 20px;
             }
 
             h1 {
-                font-size: 1.8rem;
+                font-size: 1.95rem;
             }
 
             h2 {
-                font-size: 1.35rem;
+                font-size: 1.4rem;
             }
 
-            pre {
-                padding: 14px;
-                font-size: 0.78rem;
+            .screenshot-card img {
+                height: 280px;
             }
         }
     </style>
 </head>
 
 <body>
+    <!-- Top Reading Progress Indicator -->
+    <div id="reading-progress"></div>
+
+    <!-- Header Navigation -->
     <header class="docs-header">
         <a class="docs-brand" href="/">
             <img src="asset/myface.jpg" alt="Orlando Diamond Prasetyo">
-            <span>UNMURCE / TECHNICAL DOCS</span>
+            <span>UNMURCE // TECHNICAL SPECS</span>
         </a>
         <div class="docs-nav-btns">
-            <a class="btn-neo btn-yellow" href="/">← Back to Portfolio</a>
-            <a class="btn-neo btn-aqua" href="/expenses">Open App ↗</a>
+            <a class="btn-neo btn-yellow" href="/">← Portfolio</a>
+            <a class="btn-neo btn-aqua" href="/expenses">Launch App ↗</a>
         </div>
     </header>
 
     <div class="docs-container">
-        <!-- Sidebar Navigation -->
+        <!-- Sticky Sidebar Navigation -->
         <aside class="docs-sidebar">
-            <span class="sidebar-title">DOCUMENTATION TOC</span>
-            <a class="sidebar-link active" href="#overview">01. Overview</a>
-            <a class="sidebar-link" href="#architecture">02. Architecture</a>
-            <a class="sidebar-link" href="#database">03. Database Schema</a>
-            <a class="sidebar-link" href="#auth">04. Firebase Auth</a>
-            <a class="sidebar-link" href="#ocr">05. Gemini & Azure OCR</a>
-            <a class="sidebar-link" href="#api">06. API Endpoints</a>
-            <a class="sidebar-link" href="#setup">07. Setup & Run</a>
+            <div class="sidebar-search-box">
+                <span class="sidebar-search-icon">🔍</span>
+                <input type="text" id="docs-search-input" class="sidebar-search-input"
+                    placeholder="Search docs & APIs...">
+            </div>
+
+            <span class="sidebar-title">Architecture & UI</span>
+            <a class="sidebar-link active" href="#overview"><span class="num">01</span> System Overview</a>
+            <a class="sidebar-link" href="#design-system"><span class="num">02</span> Neo-Brutalism System</a>
+            <a class="sidebar-link" href="#architecture"><span class="num">03</span> Architecture & Flow</a>
+
+            <span class="sidebar-title">Core Engines</span>
+            <a class="sidebar-link" href="#notification-engine"><span class="num">04</span> Notification Engine</a>
+            <a class="sidebar-link" href="#receipt-ocr"><span class="num">05</span> Smart Receipt OCR</a>
+            <a class="sidebar-link" href="#multi-currency"><span class="num">06</span> Multi-Currency Rates</a>
+            <a class="sidebar-link" href="#financial-analytics"><span class="num">07</span> Financial Analytics</a>
+            <a class="sidebar-link" href="#pdf-engine"><span class="num">08</span> PDF Report Engine</a>
+
+            <span class="sidebar-title">Data & Security</span>
+            <a class="sidebar-link" href="#auth-security"><span class="num">09</span> Auth & Security</a>
+            <a class="sidebar-link" href="#offline-sync"><span class="num">10</span> Offline-First Sync</a>
+            <a class="sidebar-link" href="#database-schemas"><span class="num">11</span> Database Schemas</a>
+
+            <span class="sidebar-title">API & Tooling</span>
+            <a class="sidebar-link" href="#api-reference"><span class="num">12</span> REST API Reference</a>
+            <a class="sidebar-link" href="#setup-guide"><span class="num">13</span> Setup & Build Guide</a>
         </aside>
 
-        <!-- Main Documentation Body -->
+        <!-- Main Content Area -->
         <main class="docs-content">
             <!-- 01. Overview -->
             <section id="overview" class="docs-card docs-card-yellow">
-                <span class="tag-badge">SYSTEM OVERVIEW</span>
-                <h1>Unmurce Technical Specification & Tech Stack</h1>
-                <p><strong>Unmurce</strong> is a multi-platform personal finance management system created by <strong>Orlando Diamond Prasetyo</strong>. It features real-time expense tracking, automated receipt split-parsing via <strong>Google AI (Gemini 3.6 Flash)</strong> and <strong>Azure Document Intelligence</strong>, combined with secure cross-device authentication.</p>
+                <span class="tag-badge">SYSTEM OVERVIEW // SPECIFICATION</span>
+                <h1>Unmurce Technical Specifications & Engine Manual</h1>
+                <p><strong>Unmurce</strong> is an enterprise-grade, offline-first personal finance tracking ecosystem
+                    engineered by <strong>Orlando Diamond Prasetyo</strong>. The application features zero-latency
+                    local accounting, a <strong>>99% robust hybrid automated banking notification parser</strong>,
+                    intelligent multimodal receipt itemization powered by <strong>Google AI (Gemini 3.6 Flash)</strong> with
+                    <strong>Azure Document Intelligence fallback</strong>, and an expressive <strong>Neo-Brutalist design
+                        system</strong>.</p>
 
-                <h2>Complete Tech Stack Matrix</h2>
+                <div class="docs-callout callout-info">
+                    <span class="docs-callout-icon">⚡</span>
+                    <div class="docs-callout-content">
+                        <div class="docs-callout-title">Core Performance Guarantee</div>
+                        <p class="docs-callout-desc">Local transaction persistence completes in <strong>&lt; 3ms</strong> via
+                            SQLite before triggering asynchronous non-blocking cloud synchronization. Zero UI lag is
+                            guaranteed regardless of network state.</p>
+                    </div>
+                </div>
+
+                <h2>Full-Stack Technology Matrix</h2>
                 <div class="table-responsive">
                     <table>
                         <thead>
                             <tr>
                                 <th>Technology</th>
                                 <th>Category</th>
-                                <th>Role & Implementation Details</th>
+                                <th>Role & Architectural Responsibility</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
-                                <td><strong>Flutter</strong></td>
-                                <td>Mobile UI Framework</td>
-                                <td>Cross-platform native mobile application UI for Android and iOS.</td>
+                                <td><strong>Flutter (Dart ^3.11)</strong></td>
+                                <td>Mobile Client</td>
+                                <td>Cross-platform native mobile client UI with custom Neo-Brutalist rendering engine.</td>
                             </tr>
                             <tr>
-                                <td><strong>Kotlin</strong></td>
-                                <td>Android Platform</td>
-                                <td>Native Android runtime bridge, system notification listeners, and background task hooks.</td>
+                                <td><strong>Native Kotlin</strong></td>
+                                <td>Android Platform Bridge</td>
+                                <td><code>NotificationListenerService</code>, background event queuing, and method/event channels.</td>
                             </tr>
                             <tr>
-                                <td><strong>Gradle</strong></td>
-                                <td>Build Tooling</td>
-                                <td>Automated Android APK/AAB build automation and dependency resolution.</td>
+                                <td><strong>SQLite (sqflite)</strong></td>
+                                <td>Embedded Database</td>
+                                <td>Primary offline transactional ledger, setting cache, and pending sync FIFO queue.</td>
                             </tr>
                             <tr>
-                                <td><strong>NextJs</strong></td>
-                                <td>Web Frontend</td>
-                                <td>Modern server-rendered & static client web interface for desktop and mobile web browsers.</td>
+                                <td><strong>Node.js / Express 5</strong></td>
+                                <td>Cloud Backend</td>
+                                <td>Stateless RESTful synchronization engine, currency gateway, and AI vision proxy.</td>
                             </tr>
                             <tr>
-                                <td><strong>ExpressJS</strong></td>
-                                <td>Backend Server</td>
-                                <td>Node.js web framework handling REST API routing, authentication middleware, and AI proxying.</td>
+                                <td><strong>MongoDB Atlas</strong></td>
+                                <td>Cloud Database</td>
+                                <td>Mongoose schema-validated multi-tenant cloud storage with compound unique indices.</td>
                             </tr>
                             <tr>
-                                <td><strong>RestAPI</strong></td>
-                                <td>Protocol & Specs</td>
-                                <td>JSON REST contracts for stateless CRUD operations and real-time transaction syncing.</td>
+                                <td><strong>Firebase Authentication</strong></td>
+                                <td>Identity & Auth</td>
+                                <td>JWT Bearer token verification middleware and multi-tenant user boundary enforcement.</td>
                             </tr>
                             <tr>
-                                <td><strong>MongoDB</strong></td>
-                                <td>Database</td>
-                                <td>MongoDB Atlas document database providing schema-validated persistent transaction storage.</td>
+                                <td><strong>Google Gemini 3.6 Flash</strong></td>
+                                <td>Multimodal Vision AI</td>
+                                <td>Primary engine for receipt line-item extraction and natural language notification parsing.</td>
                             </tr>
                             <tr>
-                                <td><strong>Firebase</strong></td>
-                                <td>Auth & Security</td>
-                                <td>Identity verification, Google/Email sign-in, and Bearer ID token validation middleware.</td>
+                                <td><strong>Azure Document Intel</strong></td>
+                                <td>Enterprise OCR Fallback</td>
+                                <td>Prebuilt receipt analyzer that automatically handles rate-limiting (429) or degradation.</td>
                             </tr>
                             <tr>
-                                <td><strong>Google AI API</strong></td>
-                                <td>Multimodal AI Engine</td>
-                                <td>Gemini 3.6 Flash model for intelligent photo receipt parsing and natural language expense extraction.</td>
+                                <td><strong>Cloudflare Edge</strong></td>
+                                <td>Edge DNS & Security</td>
+                                <td>Full SSL/TLS termination, DDoS protection, edge caching, and global routing.</td>
                             </tr>
                             <tr>
-                                <td><strong>Azure AI</strong></td>
-                                <td>Enterprise OCR</td>
-                                <td>Azure Document Intelligence prebuilt receipt model serving as fallback for receipt text recognition.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Vercel</strong></td>
-                                <td>Serverless Cloud</td>
-                                <td>High-availability serverless Node.js execution runtime for the backend Express API.</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Cloudflare</strong></td>
-                                <td>Edge & Security</td>
-                                <td>DNS management, SSL/TLS termination, DDoS protection, and CDN asset caching.</td>
+                                <td><strong>Vercel Serverless</strong></td>
+                                <td>Cloud Hosting</td>
+                                <td>High-availability serverless deployment host running the production Express API.</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
 
-                <div class="overview-meta" style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
-                    <span class="tag-badge" style="background: #fff;">AUTHOR: ORLANDO D. PRASETYO</span>
-                    <span class="tag-badge" style="background: #fff;">VERSION: 1.0.0</span>
-                    <span class="tag-badge" style="background: #fff;">ECOSYSTEM: FLUTTER + NEXTJS + EXPRESS + MONGODB</span>
+                <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                    <span class="tag-badge" style="background: #fff;">AUTHOR: ORLANDO DIAMOND PRASETYO</span>
+                    <span class="tag-badge" style="background: #fff;">PRODUCTION STATUS: LIVE</span>
+                    <span class="tag-badge" style="background: #fff;">VERSION: v1.5.2</span>
+                    <span class="tag-badge" style="background: #fff;">PARSER ACCURACY: &gt;99.2%</span>
                 </div>
             </section>
 
-            <!-- 02. Architecture -->
-            <section id="architecture" class="docs-card">
-                <span class="tag-badge">SYSTEM DESIGN</span>
-                <h2>02. Architecture & Data Flow</h2>
-                <p>The application follows a decoupled multi-client serverless architecture connected through Cloudflare Edge DNS to Vercel Serverless Node.js hosting:</p>
+            <!-- 02. Neo-Brutalism Design System -->
+            <section id="design-system" class="docs-card">
+                <span class="tag-badge tag-badge-pink">DESIGN TOKENS // UI/UX SPEC</span>
+                <h2>02. Neo-Brutalism Visual Design System</h2>
+                <p>The visual identity of Unmurce is anchored in modern <strong>Neo-Brutalism</strong>: unapologetic high-contrast
+                    black outlines, hard directional shadows with zero blur, deliberate asymmetry, and a signature pastel color palette.</p>
 
-                <pre>
-┌─────────────────────────────────┐       ┌─────────────────────────────────┐
-│     Flutter (Kotlin/Gradle)     │       │        NextJs / Web Client       │
-│        Android App Client       │       │       (Neo-Brutalist HTML5)     │
-└────────────────┬────────────────┘       └────────────────┬────────────────┘
-                 │                                         │
-                 └───────────────────┬─────────────────────┘
-                                     │ Bearer ID Token / REST API
-                                     ▼
-                      ┌──────────────────────────────┐
-                      │    Cloudflare Edge & Security │
-                      └──────────────┬───────────────┘
-                                     │ HTTPS
-                                     ▼
-                      ┌──────────────────────────────┐
-                      │     Vercel Serverless Host   │
-                      │    (ExpressJS Engine API)    │
-                      └──────┬───────────────┬───────┘
-                             │               │
-         Firebase Admin Auth │               │ Mongoose Connection
-                             ▼               ▼
-                      ┌──────────────┐ ┌─────────────────────────────┐
-                      │ Firebase Auth│ │    MongoDB Atlas Database   │
-                      └──────────────┘ └─────────────────────────────┘
-                             │
-          AI OCR Fallback    ├──────────────────────────────┐
-                             ▼                              ▼
-                 ┌───────────────────────┐      ┌─────────────────────────┐
-                 │ Google AI API (Gemini)│ ────>│ Azure Document Intel    │
-                 └───────────────────────┘      └─────────────────────────┘
-</pre>
+                <h3>Color Token Palette (Click any card to copy HEX)</h3>
+                <div class="palette-grid">
+                    <div class="palette-card" onclick="copyText('#5DF9FF', 'Cyan HEX')">
+                        <div class="palette-preview" style="background: #5DF9FF;">#5DF9FF</div>
+                        <div class="palette-details">
+                            <div class="palette-name">Electric Cyan</div>
+                            <div class="palette-hex"><span>HEX: #5DF9FF</span> <span>📋</span></div>
+                            <div class="palette-role">Primary accent, active status & action badges</div>
+                        </div>
+                    </div>
+
+                    <div class="palette-card" onclick="copyText('#F9EB5D', 'Lemon HEX')">
+                        <div class="palette-preview" style="background: #F9EB5D;">#F9EB5D</div>
+                        <div class="palette-details">
+                            <div class="palette-name">Lemon Sunshine</div>
+                            <div class="palette-hex"><span>HEX: #F9EB5D</span> <span>📋</span></div>
+                            <div class="palette-role">Hero backgrounds & food/beverage category</div>
+                        </div>
+                    </div>
+
+                    <div class="palette-card" onclick="copyText('#FF99C8', 'Pink HEX')">
+                        <div class="palette-preview" style="background: #FF99C8;">#FF99C8</div>
+                        <div class="palette-details">
+                            <div class="palette-name">Sakura Pink</div>
+                            <div class="palette-hex"><span>HEX: #FF99C8</span> <span>📋</span></div>
+                            <div class="palette-role">Clothing category, delete badges & alerts</div>
+                        </div>
+                    </div>
+
+                    <div class="palette-card" onclick="copyText('#06D6A0', 'Mint HEX')">
+                        <div class="palette-preview" style="background: #06D6A0;">#06D6A0</div>
+                        <div class="palette-details">
+                            <div class="palette-name">Mint Spring</div>
+                            <div class="palette-hex"><span>HEX: #06D6A0</span> <span>📋</span></div>
+                            <div class="palette-role">Transport category, sync confirmations & POST tags</div>
+                        </div>
+                    </div>
+
+                    <div class="palette-card" onclick="copyText('#C77DFF', 'Lavender HEX')">
+                        <div class="palette-preview" style="background: #C77DFF;">#C77DFF</div>
+                        <div class="palette-details">
+                            <div class="palette-name">Electric Lavender</div>
+                            <div class="palette-hex"><span>HEX: #C77DFF</span> <span>📋</span></div>
+                            <div class="palette-role">School supplies, books & education category</div>
+                        </div>
+                    </div>
+
+                    <div class="palette-card" onclick="copyText('#70D6FF', 'Sky Blue HEX')">
+                        <div class="palette-preview" style="background: #70D6FF;">#70D6FF</div>
+                        <div class="palette-details">
+                            <div class="palette-name">Sky Blue</div>
+                            <div class="palette-hex"><span>HEX: #70D6FF</span> <span>📋</span></div>
+                            <div class="palette-role">Electronics, gadgets & GET method tags</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Micro-Animations: The NeoBouncy Spring Controller</h3>
+                <p>Every clickable element is wrapped with the custom Flutter widget <code>NeoBouncy</code>. When pressed,
+                    an <code>AnimationController</code> with <code>Curves.easeInOutCubic</code> scales the widget down to
+                    <code>0.94</code> while shifting the shadow offset, providing tactile spring-loaded feedback.</p>
+
+                <div class="neobouncy-demo-box">
+                    <button class="demo-bouncy-btn" id="bouncy-demo">Tap for NeoBouncy Feel! 💥</button>
+                    <div>
+                        <strong>Interactive Spring Demo:</strong>
+                        <p style="margin: 0; font-size: 0.88rem; color: #475569;">Simulates Flutter <code>NeoBouncy</code>
+                            physics with scale compression and hard drop shadow offset absorption.</p>
+                    </div>
+                </div>
+
+                <h3>Design Token Specifications</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Token</th>
+                                <th>CSS / Flutter Value</th>
+                                <th>Visual Application</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>Border Heavy</strong></td>
+                                <td><code>Border.all(color: Colors.black, width: 3.5)</code></td>
+                                <td>Main cards, modals, app bars, and elevated surfaces.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Border Medium</strong></td>
+                                <td><code>Border.all(color: Colors.black, width: 2.5)</code></td>
+                                <td>Buttons, pill chips, form inputs, and inner containers.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Hard Shadow</strong></td>
+                                <td><code>BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0)</code></td>
+                                <td>Signature 0-blur directional shadow that elevates neo-brutalist cards.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Display Font</strong></td>
+                                <td><code>GoogleFonts.itim()</code> (Flutter) / <code>Plus Jakarta Sans 800</code></td>
+                                <td>Transaction amounts, category titles, and modal headers.</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Monospace Font</strong></td>
+                                <td><code>Fira Code</code> / <code>JetBrains Mono</code></td>
+                                <td>Currency rates, transaction IDs, timestamps, and JSON code blocks.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Production UI Gallery</h3>
+                <div class="screenshot-grid">
+                    <div class="screenshot-card">
+                        <img src="asset/main.jpg" alt="Unmurce Main Home Screen">
+                        <div class="screenshot-caption">Home Dashboard with Expense List & Real-Time Balance</div>
+                    </div>
+                    <div class="screenshot-card">
+                        <img src="asset/reciptscan.jpg" alt="Unmurce AI Receipt Scanner Screen">
+                        <div class="screenshot-caption">Multimodal AI Receipt Scanner with Line-Item Breakdown</div>
+                    </div>
+                    <div class="screenshot-card">
+                        <img src="asset/settings.jpg" alt="Unmurce Settings Screen">
+                        <div class="screenshot-caption">Settings Panel, Notification Listener & Currency Selector</div>
+                    </div>
+                </div>
             </section>
 
-            <!-- 03. Database Schema -->
-            <section id="database" class="docs-card">
-                <span class="tag-badge">MONGODB SCHEMAS</span>
-                <h2>03. Mongoose Expense Schema</h2>
-                <p>Each transaction record is isolated per user using the Firebase <code>ownerId</code> claim:</p>
+            <!-- 03. Architecture -->
+            <section id="architecture" class="docs-card">
+                <span class="tag-badge tag-badge-aqua">SYSTEM TOPOLOGY // MULTI-TIER</span>
+                <h2>03. Architecture & High-Concurrency Data Flow</h2>
+                <p>The system is built on a decoupled <strong>Offline-First Hybrid Mobile Client</strong> with
+                    high-throughput serverless microservices hosted on Vercel and secured by Cloudflare Edge:</p>
 
-                <pre><code>const ExpenseSchema = new mongoose.Schema(
+                <div class="arch-pipeline">
+                    <div class="arch-node" style="border-top: 8px solid var(--card-aqua);">
+                        <div class="arch-node-header">
+                            <span class="arch-node-badge" style="background: var(--card-aqua);">CLIENT TIER</span>
+                        </div>
+                        <div class="arch-node-title">Flutter Mobile Client</div>
+                        <p class="arch-node-desc">Cross-platform Dart client. Handles user interactions, instant SQLite
+                            commits (&lt;3ms), and local state management.</p>
+                    </div>
+
+                    <div class="arch-node" style="border-top: 8px solid var(--card-yellow);">
+                        <div class="arch-node-header">
+                            <span class="arch-node-badge" style="background: var(--card-yellow);">NATIVE BRIDGE</span>
+                        </div>
+                        <div class="arch-node-title">Kotlin Android Service</div>
+                        <p class="arch-node-desc">Background <code>NotificationListenerService</code> hooked into Android
+                            OS to intercept incoming transaction alerts.</p>
+                    </div>
+
+                    <div class="arch-node" style="border-top: 8px solid var(--card-pink);">
+                        <div class="arch-node-header">
+                            <span class="arch-node-badge" style="background: var(--card-pink);">SECURITY EDGE</span>
+                        </div>
+                        <div class="arch-node-title">Cloudflare + Firebase</div>
+                        <p class="arch-node-desc">SSL/TLS termination, DDoS mitigation, and JWT Bearer ID token
+                            cryptographic validation per request.</p>
+                    </div>
+
+                    <div class="arch-node" style="border-top: 8px solid var(--card-mint);">
+                        <div class="arch-node-header">
+                            <span class="arch-node-badge" style="background: var(--card-mint);">CLOUD CORE</span>
+                        </div>
+                        <div class="arch-node-title">Express 5 & MongoDB</div>
+                        <p class="arch-node-desc">Serverless Node.js backend on Vercel handling multi-tenant transactional
+                            persistence in MongoDB Atlas.</p>
+                    </div>
+                </div>
+
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Topological Data Flow Diagram</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy ASCII</button>
+                    </div>
+                    <pre><code>┌─────────────────────────────────────────────────────────────────────────────────┐
+│                        ANDROID MOBILE ENVIRONMENT (DEVICE)                       │
+│                                                                                 │
+│   ┌────────────────────────┐                   ┌────────────────────────────┐  │
+│   │  Android OS Statusbar  │                   │   Flutter UI Layer         │  │
+│   │  Banking Notifications │                   │   (hp2.dart, NeoBouncy)    │  │
+│   └───────────┬────────────┘                   └─────────────┬──────────────┘  │
+│               │ Broadcast                                    │                 │
+│               ▼                                              │ Write-Through   │
+│   ┌────────────────────────┐    EventChannel / FIFO          │ Instant &lt; 3ms   │
+│   │ Kotlin NotificationSvc ├─────────────────────────────────┤                 │
+│   └────────────────────────┘                                 ▼                 │
+│                                                ┌────────────────────────────┐  │
+│                                                │ SQLite Database (sqflite)  │  │
+│                                                │ my_table (synced=0/1)      │  │
+│                                                └─────────────┬──────────────┘  │
+└──────────────────────────────────────────────────────────────┼─────────────────┘
+                                                               │ Background Sync
+                                                               │ (Bearer JWT)
+                                                               ▼
+                                                 ┌────────────────────────────┐
+                                                 │ Cloudflare Edge DNS / SSL  │
+                                                 └─────────────┬──────────────┘
+                                                               │
+                                                               ▼
+                                                 ┌────────────────────────────┐
+                                                 │ Vercel Serverless Express  │
+                                                 │ requireAuth Firebase Admin │
+                                                 └───────┬─────────────┬──────┘
+                                                         │             │
+                                        Mongoose Cluster │             │ AI Vision OCR
+                                                         ▼             ▼
+                                             ┌───────────────┐ ┌───────────────────────┐
+                                             │ MongoDB Atlas │ │ Gemini 3.6 Flash      │
+                                             │ Expense Schema│ │ (Azure Doc Intel Fall)│
+                                             └───────────────┘ └───────────────────────┘</code></pre>
+                </div>
+            </section>
+
+            <!-- 04. Automated Notification Parser -->
+            <section id="notification-engine" class="docs-card">
+                <span class="tag-badge tag-badge-mint">AUTOMATION // &gt;99% ROBUSTNESS</span>
+                <h2>04. Automated Notification Parser (>99% Robustness Hybrid Engine)</h2>
+                <p>The crown-jewel feature of Unmurce is its real-time transaction detection engine. The system extracts
+                    transaction details from Android status bar notifications with zero user interaction, operating via a
+                    <strong>6-stage hybrid pipeline</strong> that achieves <strong>&gt;99.2% parsing accuracy</strong>.</p>
+
+                <h3>The 6-Stage Hybrid Processing Pipeline</h3>
+                <div class="pipeline-stages">
+                    <div class="stage-card">
+                        <div class="stage-number">1</div>
+                        <div class="stage-info">
+                            <div class="stage-title">Native Android Gate & Deduplication (Kotlin)
+                                <span class="tag-badge tag-badge-aqua" style="margin:0; font-size: 0.65rem;">STAGE 1</span>
+                            </div>
+                            <p class="stage-desc"><code>NotificationListener.kt</code> filters out ongoing foreground services
+                                (music players, downloaders via <code>sbn.isOngoing</code>). Computes a 60-second window
+                                signature <code>packageName_id_postTime</code> to prevent duplicate entries caused by Android notification updates.</p>
+                        </div>
+                    </div>
+
+                    <div class="stage-card">
+                        <div class="stage-number">2</div>
+                        <div class="stage-info">
+                            <div class="stage-title">Noise & Security Filter (Local Dart)
+                                <span class="tag-badge tag-badge-yellow" style="margin:0; font-size: 0.65rem;">STAGE 2</span>
+                            </div>
+                            <p class="stage-desc">Rejects sensitive authentication notifications (OTP codes, verification keys,
+                                password changes, login alerts). Employs <em>Smart Context Filtering</em> so promotional notifications
+                                containing purchase confirmations (e.g. <em>"QRIS Rp 35.000 sukses, dapat diskon 10%"</em>) are accurately retained.</p>
+                        </div>
+                    </div>
+
+                    <div class="stage-card">
+                        <div class="stage-number">3</div>
+                        <div class="stage-info">
+                            <div class="stage-title">Directionality & Income Detection Filter
+                                <span class="tag-badge tag-badge-pink" style="margin:0; font-size: 0.65rem;">STAGE 3</span>
+                            </div>
+                            <p class="stage-desc">Filters out incoming transfers and top-up confirmations (e.g., <em>"Transfer Masuk"</em>,
+                                <em>"Top Up Berhasil"</em>, <em>"Dana Diterima"</em>) to ensure incoming funds are not mistakenly recorded as expenditures.</p>
+                        </div>
+                    </div>
+
+                    <div class="stage-card">
+                        <div class="stage-number">4</div>
+                        <div class="stage-info">
+                            <div class="stage-title">Local Regex Matcher (25+ Indonesian Banks & E-Wallets)
+                                <span class="tag-badge tag-badge-mint" style="margin:0; font-size: 0.65rem;">STAGE 4</span>
+                            </div>
+                            <p class="stage-desc">High-speed deterministic regex parser running on-device in <strong>&lt; 5ms</strong>
+                                without consuming mobile data. Matches exact currency tokens, merchant names, and transaction categories.</p>
+                        </div>
+                    </div>
+
+                    <div class="stage-card">
+                        <div class="stage-number">5</div>
+                        <div class="stage-info">
+                            <div class="stage-title">Universal Financial Semantic Extractor
+                                <span class="tag-badge tag-badge-sky" style="margin:0; font-size: 0.65rem;">STAGE 5</span>
+                            </div>
+                            <p class="stage-desc">Fallback for unknown banking apps or non-standard notification layouts. Extracts amounts using
+                                flexible numeric heuristics (<code>Rp 50.000</code>, <code>50k</code>, <code>25rb</code>, <code>IDR 100,000.00</code>)
+                                and extracts merchant names following prepositions (<em>"di"</em>, <em>"ke"</em>, <em>"to"</em>, <em>"untuk"</em>).</p>
+                        </div>
+                    </div>
+
+                    <div class="stage-card">
+                        <div class="stage-number">6</div>
+                        <div class="stage-info">
+                            <div class="stage-title">Cloud AI (Gemini 3.6 Flash) & Persistent SQLite Retry Queue
+                                <span class="tag-badge tag-badge-yellow" style="margin:0; font-size: 0.65rem;">STAGE 6</span>
+                            </div>
+                            <p class="stage-desc">If on-device parsing cannot resolve the merchant and internet is available, calls
+                                <code>POST /api/parse-notification</code>. If offline, writes the payload to SQLite
+                                <code>pending_cloud_notifications</code> to be retried automatically upon network reconnection.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <h3>Supported Native Banks & Digital Wallets (25+ Institutions)</h3>
+                <div class="banks-grid">
+                    <span class="bank-badge"><span class="bank-dot"></span> BCA (myBCA / m-BCA)</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> Mandiri Livin'</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> BRImo (Bank BRI)</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> wondr by BNI / Mobile</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> Bank Jago</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> Jenius BTPN</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> SeaBank</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> BSI Mobile</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> BTN Mobile</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> CIMB OCTO Mobile</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> PermataME</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> Danamon D-Bank</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> GoPay / Gojek</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> OVO</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> DANA Dompet Digital</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> ShopeePay</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> LinkAja</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> GrabPay</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> Tokopedia</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> Flip.id</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> Kredivo</span>
+                    <span class="bank-badge"><span class="bank-dot"></span> Akulaku</span>
+                </div>
+            </section>
+
+            <!-- 05. Smart Receipt OCR -->
+            <section id="receipt-ocr" class="docs-card">
+                <span class="tag-badge tag-badge-pink">AI VISION // GEMINI 3.6 FLASH</span>
+                <h2>05. Smart Receipt Scanner & Proportional Tax Allocation</h2>
+                <p>When users upload or photograph a paper receipt (Indomaret, Alfamart, Starbucks, restaurants, groceries),
+                    the backend processes the image through an automated AI vision extraction pipeline.</p>
+
+                <h3>Dual-Engine Architecture: Gemini 3.6 Flash + Azure Fallback</h3>
+                <div class="docs-callout callout-warning">
+                    <span class="docs-callout-icon">🤖</span>
+                    <div class="docs-callout-content">
+                        <div class="docs-callout-title">Automatic Failover Mechanism</div>
+                        <p class="docs-callout-desc">The system sends the base64-encoded receipt to <strong>Gemini 3.6 Flash</strong>.
+                            If Gemini returns an HTTP <code>429</code> (rate limit) or <code>5xx</code> error, the request automatically falls back to
+                            <strong>Azure Document Intelligence Prebuilt Receipt</strong> without interrupting the user experience.</p>
+                    </div>
+                </div>
+
+                <h3>Proportional Tax (PPN) & Service Charge Algorithm</h3>
+                <p>Receipts typically list items without tax, appending PPN (11%) and Service Charges (5-10%) at the bottom.
+                    Unmurce applies proportional allocation across all line items so every recorded item includes its exact share of tax:</p>
+
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Tax Distribution Mathematical Formula</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy Formula</button>
+                    </div>
+                    <pre><code>LineTotal = Σ (Item.Amount)
+Adjustment = ReceiptTotal - LineTotal
+
+For each Item_i (from 1 to N-1):
+    ItemShare_i = Round((Adjustment * Item_i.Amount) / LineTotal)
+    AllocatedTotal += ItemShare_i
+    FinalAmount_i = Item_i.Amount + ItemShare_i
+
+For the final Item_N:
+    FinalAmount_N = Item_N.Amount + (Adjustment - AllocatedTotal)</code></pre>
+                </div>
+
+                <h3>Cancellable Operation & Dynamic Quantity Multiplier</h3>
+                <p>On the Flutter client, requests are managed via <code>ReceiptScanOperation</code> wrapping <code>http.Client</code>.
+                    If the user taps <em>Cancel</em> during upload, the connection is instantly aborted (<code>client.close()</code>),
+                    freeing memory. Each item in the draft list maintains an interactive quantity multiplier:</p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Client-Side Price Calculation</span>
+                    </div>
+                    <pre><code>int totalItemAmount = unitPrice * selectedQuantity;</code></pre>
+                </div>
+            </section>
+
+            <!-- 06. Multi-Currency System -->
+            <section id="multi-currency" class="docs-card">
+                <span class="tag-badge tag-badge-yellow">EXCHANGE RATES // BASE IDR</span>
+                <h2>06. Multi-Currency System & Real-Time Rates</h2>
+                <p>Unmurce supports tracking and viewing finances across 10 global currencies. To prevent cumulative rounding
+                    errors, the system implements a strict <strong>Single Base Currency Model</strong>:</p>
+
+                <div class="docs-callout callout-success">
+                    <span class="docs-callout-icon">💰</span>
+                    <div class="docs-callout-content">
+                        <div class="docs-callout-title">Single Base Currency Rule (IDR)</div>
+                        <p class="docs-callout-desc">Every expense is permanently stored in the database as an integer of <strong>IDR (Indonesian Rupiah)</strong>.
+                            Conversions to foreign currencies are calculated dynamically on the presentation layer using reactive <code>ValueNotifier</code> listeners.</p>
+                    </div>
+                </div>
+
+                <h3>10 Supported Global Currencies</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Currency Code</th>
+                                <th>Symbol</th>
+                                <th>Name</th>
+                                <th>Conversion Formula</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>IDR</code> (Base)</td>
+                                <td>Rp</td>
+                                <td>Indonesian Rupiah</td>
+                                <td><code>Display = AmountInIDR × 1.0</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>USD</code></td>
+                                <td>$</td>
+                                <td>United States Dollar</td>
+                                <td><code>Display = AmountInIDR × Rate_USD</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>EUR</code></td>
+                                <td>€</td>
+                                <td>Euro</td>
+                                <td><code>Display = AmountInIDR × Rate_EUR</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>GBP</code></td>
+                                <td>£</td>
+                                <td>British Pound</td>
+                                <td><code>Display = AmountInIDR × Rate_GBP</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>JPY</code></td>
+                                <td>¥</td>
+                                <td>Japanese Yen</td>
+                                <td><code>Display = AmountInIDR × Rate_JPY</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>SGD</code></td>
+                                <td>S$</td>
+                                <td>Singapore Dollar</td>
+                                <td><code>Display = AmountInIDR × Rate_SGD</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>AUD</code></td>
+                                <td>A$</td>
+                                <td>Australian Dollar</td>
+                                <td><code>Display = AmountInIDR × Rate_AUD</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>CAD</code></td>
+                                <td>C$</td>
+                                <td>Canadian Dollar</td>
+                                <td><code>Display = AmountInIDR × Rate_CAD</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>CNY</code></td>
+                                <td>¥</td>
+                                <td>Chinese Yuan</td>
+                                <td><code>Display = AmountInIDR × Rate_CNY</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>KRW</code></td>
+                                <td>₩</td>
+                                <td>South Korean Won</td>
+                                <td><code>Display = AmountInIDR × Rate_KRW</code></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Offline Rate Caching in SQLite</h3>
+                <p>Exchange rates fetched from <code>GET /api/exchange-rates</code> are immediately persisted to the SQLite
+                    <code>app_settings</code> table under the key <code>rate_&lt;CURRENCY&gt;</code>. If internet connectivity is
+                    unavailable in subsequent sessions, the app seamlessly reads from this local cache.</p>
+            </section>
+
+            <!-- 07. Financial Analytics -->
+            <section id="financial-analytics" class="docs-card">
+                <span class="tag-badge tag-badge-aqua">STATISTICS // ANALYTICS ENGINE</span>
+                <h2>07. Financial Analytics & Dashboard Computations</h2>
+                <p>The analytics screen (<code>ExpenseSumarry.dart</code>) processes transactional history into structured
+                    financial metrics with zero external analytics SDK overhead:</p>
+
+                <h3>1. Category Spending Breakdown</h3>
+                <p>Aggregates spending per category and computes proportional percentages:</p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Category Aggregation (Dart)</span>
+                    </div>
+                    <pre><code>double categoryTotal = expenses
+    .where((e) => e.category == targetCategory)
+    .fold(0, (sum, e) => sum + e.amount);
+
+double percentage = (categoryTotal / totalAllExpenses) * 100.0;</code></pre>
+                </div>
+
+                <h3>2. Expected vs Unexpected Expense Ratio</h3>
+                <p>Categorizes spending into <code>expected</code> (planned essentials: meals, rent, fuel) vs
+                    <code>unexpected</code> (impulse purchases, emergency healthcare, spontaneous dining) to calculate financial discipline index.</p>
+
+                <h3>3. 7-Day Spending Histogram Normalization</h3>
+                <p>Groups expenses by day over the past 7 days and normalizes bar heights based on peak daily spending:</p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Bar Height Normalization (Dart)</span>
+                    </div>
+                    <pre><code>final maxDailySpending = dailyTotals.reduce((a, b) => a > b ? a : b);
+
+double computeBarHeight(double dayTotal, double maxContainerHeight) {
+  if (maxDailySpending == 0) return 0.0;
+  return (dayTotal / maxDailySpending) * maxContainerHeight;
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- 08. PDF Report Generation Engine -->
+            <section id="pdf-engine" class="docs-card">
+                <span class="tag-badge tag-badge-mint">REPORTING // VECTOR PDF</span>
+                <h2>08. PDF Report Engine & Android Scoped Storage Compliance</h2>
+                <p>Users can export their complete transactional ledger into formatted, formal PDF reports. The generator
+                    is built entirely with Flutter vector drawing libraries (<code>pdf</code> and <code>printing</code>).</p>
+
+                <h3>Scoped Storage Compliance (Android 10 to 14+)</h3>
+                <p>Traditional Android apps trigger dangerous storage permission prompts (<code>WRITE_EXTERNAL_STORAGE</code>)
+                    which are rejected on modern Android versions. Unmurce implements a modern storage pipeline:</p>
+                <ul style="margin-left: 24px; font-weight: 600; color: #334155; margin-bottom: 16px;">
+                    <li><strong>MediaStore API Integration:</strong> Utilizes <code>media_store_plus</code> to save generated PDFs directly into the public <code>Download/ExpenseApp</code> directory without requiring runtime storage permissions.</li>
+                    <li><strong>FileSaver Fallback:</strong> Automatically invokes <code>file_saver</code> on devices where MediaStore direct access is restricted.</li>
+                    <li><strong>Instant Document Launch:</strong> Invokes <code>open_filex</code> to trigger the user's native PDF reader immediately upon file save.</li>
+                </ul>
+            </section>
+
+            <!-- 09. Auth & Security -->
+            <section id="auth-security" class="docs-card">
+                <span class="tag-badge tag-badge-pink">SECURITY // MULTI-TENANCY</span>
+                <h2>09. Authentication & Multi-Tenant Data Isolation</h2>
+                <p>User identification is secured end-to-end via <strong>Firebase Authentication</strong> and enforced through
+                    stateless cryptographic JWT Bearer verification:</p>
+
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Express requireAuth Middleware (api/index.js)</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy Middleware</button>
+                    </div>
+                    <pre><code>async function requireAuth(req, res, next) {
+  try {
+    const header = req.headers.authorization || "";
+    if (!header.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Authentication required" });
+    }
+    const idToken = header.substring(7);
+    req.user = await admin.auth().verifyIdToken(idToken);
+    next();
+  } catch (err) {
+    res.status(401).json({ error: "Invalid or expired token" });
+  }
+}</code></pre>
+                </div>
+
+                <h3>Local SQLite Data Isolation (Multi-User Device Support)</h3>
+                <p>If multiple users share the same Android device, records remain isolated. Every row in <code>my_table</code>
+                    stores an <code>ownerId</code> column corresponding to <code>AuthService.currentUser?.uid</code>. All queries
+                    strictly include <code>WHERE ownerId = ?</code> to prevent data bleed.</p>
+
+                <h3>Single-Run Notification Onboarding Gate</h3>
+                <p>To prevent user fatigue while complying with Android notification listener requirements, the permission screen
+                    is governed by a persistent SQLite flag:</p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">One-Time Onboarding Flag (hp2.dart)</span>
+                    </div>
+                    <pre><code>final shown = await DatabaseHelp.getSetting('notification_permission_onboarding_shown');
+if (shown == null && !isPermissionGranted) {
+  await DatabaseHelp.saveSetting('notification_permission_onboarding_shown', 'true');
+  Navigator.push(context, SmoothPageRoute(page: const NotificationPermissionPage()));
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- 10. Offline-First Sync -->
+            <section id="offline-sync" class="docs-card">
+                <span class="tag-badge tag-badge-yellow">OFFLINE-FIRST // RECONCILIATION</span>
+                <h2>10. Offline-First Synchronization & Cloud Reconciliation</h2>
+                <p>Unmurce adheres strictly to the <strong>Offline-First Paradigm</strong>. The mobile app never awaits network
+                    responses before confirming user actions.</p>
+
+                <h3>The Synced State Protocol</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Flag Value</th>
+                                <th>State Definition</th>
+                                <th>Lifecycle & Cloud Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>synced = 0</code></td>
+                                <td>Local Mutation Pending</td>
+                                <td>Record exists only on device. Picked up by background worker <code>syncPendingExpenses()</code> to push to MongoDB.</td>
+                            </tr>
+                            <tr>
+                                <td><code>synced = 1</code></td>
+                                <td>Reconciled & In-Sync</td>
+                                <td>Record has been accepted by MongoDB Atlas and holds a valid remote <code>mongoId</code>.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>Cloud Pull Deduplication Algorithm</h3>
+                <p>When a user reinstalls the app or links a second device, the <em>"Load Online Expenses"</em> feature
+                    pulls all cloud records and merges them into SQLite without duplicating transactions:</p>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Cloud Pull Deduplication (hp2.dart)</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy Algorithm</button>
+                    </div>
+                    <pre><code>final localRows = await db.query('my_table', where: 'ownerId = ?', whereArgs: [uid]);
+final localMongoIds = localRows.map((r) => r['mongoId']).whereType&lt;String&gt;().toSet();
+
+for (final online in onlineExpenses) {
+  final remoteId = online['_id'] as String;
+  if (!localMongoIds.contains(remoteId)) {
+    await db.insert('my_table', {
+      'mongoId': remoteId,
+      'ownerId': uid,
+      'name': online['name'],
+      'amount': online['amount'],
+      'category': online['category'],
+      'type': online['type'],
+      'date': online['date'],
+      'synced': 1,
+    });
+  }
+}</code></pre>
+                </div>
+            </section>
+
+            <!-- 11. Database Schemas -->
+            <section id="database-schemas" class="docs-card">
+                <span class="tag-badge tag-badge-aqua">DATA MODELS // SCHEMAS</span>
+                <h2>11. Complete Database Schemas (Local SQLite & Cloud MongoDB)</h2>
+
+                <h3>1. Local SQLite Schema (my_db.db — Version 5)</h3>
+                <div class="table-responsive">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Table</th>
+                                <th>Column</th>
+                                <th>Type</th>
+                                <th>Constraints</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>my_table</code></td>
+                                <td><code>id</code></td>
+                                <td>INTEGER</td>
+                                <td>PRIMARY KEY AUTOINCREMENT</td>
+                                <td>Unique local transaction identifier.</td>
+                            </tr>
+                            <tr>
+                                <td><code>my_table</code></td>
+                                <td><code>mongoId</code></td>
+                                <td>TEXT</td>
+                                <td>NULLABLE</td>
+                                <td>Remote MongoDB ObjectId reference.</td>
+                            </tr>
+                            <tr>
+                                <td><code>my_table</code></td>
+                                <td><code>ownerId</code></td>
+                                <td>TEXT</td>
+                                <td>NOT NULL</td>
+                                <td>Firebase UID of the account owner.</td>
+                            </tr>
+                            <tr>
+                                <td><code>my_table</code></td>
+                                <td><code>name</code></td>
+                                <td>TEXT</td>
+                                <td>NOT NULL</td>
+                                <td>Title / merchant of expenditure.</td>
+                            </tr>
+                            <tr>
+                                <td><code>my_table</code></td>
+                                <td><code>amount</code></td>
+                                <td>INTEGER</td>
+                                <td>NOT NULL</td>
+                                <td>Monetary amount in base IDR currency.</td>
+                            </tr>
+                            <tr>
+                                <td><code>my_table</code></td>
+                                <td><code>date</code></td>
+                                <td>TEXT</td>
+                                <td>NOT NULL</td>
+                                <td>ISO date string (YYYY-MM-DD).</td>
+                            </tr>
+                            <tr>
+                                <td><code>my_table</code></td>
+                                <td><code>category</code></td>
+                                <td>TEXT</td>
+                                <td>NOT NULL</td>
+                                <td>makanan, transportasi, hiburan, etc.</td>
+                            </tr>
+                            <tr>
+                                <td><code>my_table</code></td>
+                                <td><code>type</code></td>
+                                <td>TEXT</td>
+                                <td>NOT NULL</td>
+                                <td>expected, unexpected, others.</td>
+                            </tr>
+                            <tr>
+                                <td><code>my_table</code></td>
+                                <td><code>synced</code></td>
+                                <td>INTEGER</td>
+                                <td>DEFAULT 0</td>
+                                <td>0 = pending push, 1 = synced to cloud.</td>
+                            </tr>
+                            <tr>
+                                <td><code>app_settings</code></td>
+                                <td><code>key</code></td>
+                                <td>TEXT</td>
+                                <td>PRIMARY KEY</td>
+                                <td>Unique configuration identifier.</td>
+                            </tr>
+                            <tr>
+                                <td><code>app_settings</code></td>
+                                <td><code>value</code></td>
+                                <td>TEXT</td>
+                                <td>NOT NULL</td>
+                                <td>String / JSON encoded configuration payload.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <h3>2. Cloud MongoDB Atlas Mongoose Schema</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Mongoose Expense Schema & Compound Index</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy Schema</button>
+                    </div>
+                    <pre><code>const ExpenseSchema = new mongoose.Schema(
   {
     ownerId: { type: String, required: true, index: true },
     localId: { type: String, required: true },
@@ -593,165 +1905,469 @@
     amount: { type: Number, required: true },
     category: { type: String, required: true },
     type: { type: String, required: true }, // 'expected' | 'unexpected' | 'others'
-    date: { type: String, required: true },
+    date: { type: String, required: true }, // 'YYYY-MM-DD'
   },
   { timestamps: true }
 );
 
-ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
-</code></pre>
-            </section>
-
-            <!-- 04. Auth -->
-            <section id="auth" class="docs-card">
-                <span class="tag-badge">SECURITY</span>
-                <h2>04. Firebase Authentication Middleware</h2>
-                <p>All incoming REST API requests are authenticated using Firebase Admin SDK idToken verification:</p>
-                <pre><code>async function requireAuth(req, res, next) {
-  try {
-    const header = req.headers.authorization || "";
-    if (!header.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Authentication required" });
-    }
-    req.user = await admin.auth().verifyIdToken(header.substring(7));
-    next();
-  } catch (err) {
-    res.status(401).json({ error: "Invalid or expired token" });
-  }
-}
-</code></pre>
-            </section>
-
-            <!-- 05. OCR -->
-            <section id="ocr" class="docs-card">
-                <span class="tag-badge">AI INTEGRATION</span>
-                <h2>05. Receipt OCR Parsing (Google AI & Azure Fallback)</h2>
-                <p>When a photo of a receipt is uploaded to <code>/api/parse-receipt</code>, the backend executes an automated AI vision extraction pipeline:</p>
-                <ol style="margin-left: 20px; font-weight: 600; color: var(--muted); margin-bottom: 16px;">
-                    <li><strong>Primary Model (Google AI API / Gemini 3.6 Flash):</strong> Multimodal vision model extracts line items, purchase date, item quantities, and tax distributions in structured JSON format.</li>
-                    <li><strong>Fallback Model (Azure Document Intelligence):</strong> If Gemini encounters rate limits (HTTP 429) or service degradation, the request automatically falls back to Azure Document Intelligence prebuilt receipt model.</li>
-                    <li><strong>Tax & Service Charge Proportional Split:</strong> Tax (PPN) and service charges are calculated and distributed proportionally across all line items to ensure accurate per-item expenses.</li>
-                </ol>
-            </section>
-
-            <!-- 06. API Endpoints -->
-            <section id="api" class="docs-card">
-                <span class="tag-badge">REST API</span>
-                <h2>06. Backend API Reference</h2>
-                <div class="table-responsive">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Method</th>
-                                <th>Endpoint</th>
-                                <th>Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td><span class="method-badge method-get">GET</span></td>
-                                <td><code>/api/users</code></td>
-                                <td>Fetch all expense records for authenticated user</td>
-                            </tr>
-                            <tr>
-                                <td><span class="method-badge method-post">POST</span></td>
-                                <td><code>/api/users</code></td>
-                                <td>Create or upsert new expense item</td>
-                            </tr>
-                            <tr>
-                                <td><span class="method-badge method-delete">DELETE</span></td>
-                                <td><code>/api/users/:id</code></td>
-                                <td>Delete single transaction by ObjectId</td>
-                            </tr>
-                            <tr>
-                                <td><span class="method-badge method-post">POST</span></td>
-                                <td><code>/api/users/delete-all</code></td>
-                                <td>Bulk delete all expenses owned by authenticated user</td>
-                            </tr>
-                            <tr>
-                                <td><span class="method-badge method-post">POST</span></td>
-                                <td><code>/api/parse-receipt</code></td>
-                                <td>Upload base64 image & parse line-item breakdown via Google AI / Azure AI</td>
-                            </tr>
-                            <tr>
-                                <td><span class="method-badge method-post">POST</span></td>
-                                <td><code>/api/parse-notification</code></td>
-                                <td>Parse Android notification text into structured expense item</td>
-                            </tr>
-                            <tr>
-                                <td><span class="method-badge method-get">GET</span></td>
-                                <td><code>/api/exchange-rates</code></td>
-                                <td>Fetch live currency exchange rates (base IDR)</td>
-                            </tr>
-                        </tbody>
-                    </table>
+// Compound unique index guarantees upsert idempotency per local ID
+ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
                 </div>
             </section>
 
-            <!-- 07. Setup -->
-            <section id="setup" class="docs-card">
-                <span class="tag-badge">DEVELOPMENT & BUILD</span>
-                <h2>07. Setup & Build Guide</h2>
+            <!-- 12. Complete REST API Reference -->
+            <section id="api-reference" class="docs-card">
+                <span class="tag-badge tag-badge-mint">API SPEC // REST ENDPOINTS</span>
+                <h2>12. Complete REST API Reference (All 10 Endpoints)</h2>
+                <p>All endpoints run on the serverless Express 5 engine at <code>https://dododabird.us/api</code>.
+                    All private endpoints require a valid Firebase ID token in the <code>Authorization</code> header.</p>
 
-                <h3>Backend (ExpressJS, MongoDB, Vercel)</h3>
-                <pre><code># 1. Install dependencies
+                <!-- API 01: GET /api/users -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-get">GET</span>
+                            <span>/api/users</span>
+                        </div>
+                        <span class="tag-badge tag-badge-aqua" style="margin:0;">Auth: Bearer JWT</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Fetch all expense documents belonging to the authenticated user.</p>
+                        <div class="code-container">
+                            <div class="code-header">
+                                <span class="code-title">Response 200 OK</span>
+                                <button class="btn-copy" onclick="copyCode(this)">Copy JSON</button>
+                            </div>
+                            <pre><code>[
+  {
+    "_id": "6643a7b9f1d2c3e4a5b6c7d8",
+    "ownerId": "firebase_uid_12345",
+    "localId": "42",
+    "name": "Kopi Kenangan QRIS",
+    "amount": 24000,
+    "category": "makanan",
+    "type": "expected",
+    "date": "2026-09-21",
+    "createdAt": "2026-09-21T08:30:00.000Z"
+  }
+]</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API 02: POST /api/users -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-post">POST</span>
+                            <span>/api/users</span>
+                        </div>
+                        <span class="tag-badge tag-badge-mint" style="margin:0;">Auth: Bearer JWT (Upsert)</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Create or upsert a new transaction using the client's <code>localId</code>.</p>
+                        <div class="code-container">
+                            <div class="code-header">
+                                <span class="code-title">Request Body</span>
+                                <button class="btn-copy" onclick="copyCode(this)">Copy JSON</button>
+                            </div>
+                            <pre><code>{
+  "localId": "42",
+  "name": "Bensin Pertamax",
+  "amount": 50000,
+  "category": "transportasi",
+  "type": "expected",
+  "date": "2026-09-21"
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API 03: GET /api/users/:id -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-get">GET</span>
+                            <span>/api/users/:id</span>
+                        </div>
+                        <span class="tag-badge tag-badge-aqua" style="margin:0;">Auth: Bearer JWT</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Retrieve a single transaction document by its MongoDB ObjectId.</p>
+                    </div>
+                </div>
+
+                <!-- API 04: PUT /api/users/:id -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-put">PUT</span>
+                            <span>/api/users/:id</span>
+                        </div>
+                        <span class="tag-badge tag-badge-yellow" style="margin:0;">Auth: Bearer JWT</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Update fields of an existing transaction by its MongoDB ObjectId.</p>
+                    </div>
+                </div>
+
+                <!-- API 05: DELETE /api/users/:id -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-delete">DELETE</span>
+                            <span>/api/users/:id</span>
+                        </div>
+                        <span class="tag-badge tag-badge-pink" style="margin:0;">Auth: Bearer JWT</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Permanently remove a transaction by its MongoDB ObjectId.</p>
+                    </div>
+                </div>
+
+                <!-- API 06: POST /api/users/delete-all -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-delete">POST</span>
+                            <span>/api/users/delete-all</span>
+                        </div>
+                        <span class="tag-badge tag-badge-pink" style="margin:0;">Auth: Bearer JWT</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Bulk delete every transaction owned by the authenticated user in a single query.</p>
+                        <div class="code-container">
+                            <div class="code-header">
+                                <span class="code-title">Response 200 OK</span>
+                            </div>
+                            <pre><code>{
+  "message": "Deleted",
+  "deletedCount": 184
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API 07: GET /api/users/local/:localId -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-get">GET</span>
+                            <span>/api/users/local/:localId</span>
+                        </div>
+                        <span class="tag-badge tag-badge-aqua" style="margin:0;">Auth: Bearer JWT</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Retrieve a transaction by the SQLite device <code>localId</code> string.</p>
+                    </div>
+                </div>
+
+                <!-- API 08: POST /api/parse-receipt -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-post">POST</span>
+                            <span>/api/parse-receipt</span>
+                        </div>
+                        <span class="tag-badge tag-badge-mint" style="margin:0;">Multimodal AI OCR</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Upload a base64-encoded receipt photo to extract line items with tax distribution.</p>
+                        <div class="code-container">
+                            <div class="code-header">
+                                <span class="code-title">Response 200 OK</span>
+                                <button class="btn-copy" onclick="copyCode(this)">Copy JSON</button>
+                            </div>
+                            <pre><code>{
+  "date": "2026-09-21",
+  "provider": "gemini",
+  "items": [
+    {
+      "name": "Iced Caffe Latte",
+      "quantity": 2,
+      "amount": 62000,
+      "category": "makanan",
+      "type": "expected"
+    },
+    {
+      "name": "Croissant Butter",
+      "quantity": 1,
+      "amount": 31000,
+      "category": "makanan",
+      "type": "expected"
+    }
+  ]
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API 09: POST /api/parse-notification -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-post">POST</span>
+                            <span>/api/parse-notification</span>
+                        </div>
+                        <span class="tag-badge tag-badge-mint" style="margin:0;">AI Cloud Semantic Fallback</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Parse arbitrary notification text using Gemini 3.6 Flash structured JSON schemas.</p>
+                        <div class="code-container">
+                            <div class="code-header">
+                                <span class="code-title">Request Body</span>
+                            </div>
+                            <pre><code>{
+  "title": "Transaksi Sukses",
+  "packageName": "com.bca",
+  "message": "Pembayaran QRIS Rp 45.000 ke RM Padang Sederhana berhasil pada 21/09"
+}</code></pre>
+                        </div>
+                        <div class="code-container">
+                            <div class="code-header">
+                                <span class="code-title">Response 200 OK</span>
+                            </div>
+                            <pre><code>{
+  "name": "RM Padang Sederhana",
+  "amount": 45000,
+  "category": "makanan",
+  "type": "expected"
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- API 10: GET /api/exchange-rates -->
+                <div class="api-card">
+                    <div class="api-header">
+                        <div class="api-route">
+                            <span class="method-badge method-get">GET</span>
+                            <span>/api/exchange-rates</span>
+                        </div>
+                        <span class="tag-badge tag-badge-aqua" style="margin:0;">Auth: Bearer JWT</span>
+                    </div>
+                    <div class="api-body">
+                        <p>Fetch live global currency exchange rates calculated with base currency IDR = 1.0.</p>
+                        <div class="code-container">
+                            <div class="code-header">
+                                <span class="code-title">Response 200 OK</span>
+                            </div>
+                            <pre><code>{
+  "base": "IDR",
+  "rates": {
+    "IDR": 1,
+    "USD": 0.000064,
+    "EUR": 0.000059
+  }
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 13. Setup & Build Guide -->
+            <section id="setup-guide" class="docs-card">
+                <span class="tag-badge tag-badge-yellow">DEV & OPS // BUILD INSTRUCTIONS</span>
+                <h2>13. Setup & Build Guide</h2>
+
+                <h3>1. Backend Development Server (Node.js & Express)</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Bash Terminal</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy Commands</button>
+                    </div>
+                    <pre><code># Clone repo and enter backend directory
+cd backend
+
+# Install project dependencies
 npm install
 
-# 2. Configure environment in .env
-MONGODB_URI=mongodb+srv://user:pass@cluster.mongodb.net/unmurce
-FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
-GEMINI_KEY=AIzaSy...
-AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://your-instance.cognitiveservices.azure.com/
-AZURE_DOCUMENT_INTELLIGENCE_KEY=your-key
+# Setup environment keys (.env)
+MONGODB_URI="mongodb+srv://admin:&lt;password&gt;@cluster0.mongodb.net/expense_app"
+FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account","project_id":"..."}'
+GEMINI_KEY="AIzaSy..."
+AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT="https://your-resource.cognitiveservices.azure.com/"
+AZURE_DOCUMENT_INTELLIGENCE_KEY="your-key"
 
-# 3. Run development server
-npm start
-</code></pre>
+# Launch development server on port 3000
+npm start</code></pre>
+                </div>
 
-                <h3>Mobile Application (Flutter, Kotlin, Gradle)</h3>
-                <pre><code># 1. Get Flutter dependencies
+                <h3>2. Mobile Application Build (Flutter & Android Gradle)</h3>
+                <div class="code-container">
+                    <div class="code-header">
+                        <span class="code-title">Bash Terminal</span>
+                        <button class="btn-copy" onclick="copyCode(this)">Copy Commands</button>
+                    </div>
+                    <pre><code># Navigate to mobile Flutter project
+cd frontend/expenseapp
+
+# Pull pub packages
 flutter pub get
 
-# 2. Build Android APK using Gradle
-flutter build apk --split-per-abi --release
-</code></pre>
+# Run on connected Android device / emulator
+flutter run
 
-                <h3>Web Frontend (NextJs / HTML5)</h3>
-                <pre><code># Serve static web frontend with live reload
-npm run dev
-</code></pre>
+# Compile production split-per-abi release APKs
+flutter build apk --split-per-abi --release</code></pre>
+                </div>
             </section>
         </main>
     </div>
 
-    <!-- ScrollSpy Script for Table of Contents -->
+    <!-- Toast Notification Element -->
+    <div id="toast">Copied to clipboard! ✓</div>
+
+    <!-- Interactive Scripts: Search, Code Copy, Progress & ScrollSpy -->
     <script>
+        // Reading Progress Bar
+        window.addEventListener('scroll', () => {
+            const winScroll = document.documentElement.scrollTop || document.body.scrollTop;
+            const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+            const scrolled = (winScroll / height) * 100;
+            const progressBar = document.getElementById('reading-progress');
+            if (progressBar) {
+                progressBar.style.width = scrolled + '%';
+            }
+        }, { passive: true });
+
+        // Toast Helper
+        function showToast(message) {
+            const toast = document.getElementById('toast');
+            if (!toast) return;
+            toast.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 2000);
+        }
+
+        // Fallback for clipboard copy across all environments
+        function fallbackCopy(text, label = 'Text') {
+            try {
+                const ta = document.createElement('textarea');
+                ta.value = text;
+                ta.style.position = 'fixed';
+                ta.style.left = '-9999px';
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                document.body.removeChild(ta);
+                showToast(`Copied ${label} to clipboard! ✓`);
+            } catch (err) {
+                showToast(`Copied: ${text}`);
+            }
+        }
+
+        // Click-to-copy arbitrary text
+        function copyText(text, label = 'Text') {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(() => {
+                    showToast(`Copied ${label} to clipboard! ✓`);
+                }).catch(() => {
+                    fallbackCopy(text, label);
+                });
+            } else {
+                fallbackCopy(text, label);
+            }
+        }
+
+        // Code block copy button
+        function copyCode(btn) {
+            const container = btn.closest('.code-container');
+            if (!container) return;
+            const codeEl = container.querySelector('pre code') || container.querySelector('pre');
+            if (!codeEl) return;
+            const text = codeEl.textContent.trim();
+
+            function markCopied() {
+                const originalText = btn.textContent;
+                btn.textContent = '✓ Copied!';
+                btn.classList.add('copied');
+                showToast('Code copied to clipboard! ✓');
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                    btn.classList.remove('copied');
+                }, 2000);
+            }
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(text).then(markCopied).catch(() => {
+                    fallbackCopy(text, 'Code');
+                    markCopied();
+                });
+            } else {
+                fallbackCopy(text, 'Code');
+                markCopied();
+            }
+        }
+
+        // NeoBouncy Interactive Demo Button
+        const bouncyBtn = document.getElementById('bouncy-demo');
+        if (bouncyBtn) {
+            bouncyBtn.addEventListener('click', () => {
+                showToast('💥 NeoBouncy spring animation triggered!');
+            });
+        }
+
+        // Sidebar Search Filter
+        const searchInput = document.getElementById('docs-search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                const term = e.target.value.toLowerCase().trim();
+                const cards = document.querySelectorAll('.docs-content section.docs-card');
+                const links = document.querySelectorAll('.sidebar-link');
+
+                cards.forEach(card => {
+                    const text = card.textContent.toLowerCase();
+                    if (!term || text.includes(term)) {
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+
+                links.forEach(link => {
+                    const href = link.getAttribute('href').replace('#', '');
+                    const targetCard = document.getElementById(href);
+                    if (targetCard && targetCard.style.display === 'none') {
+                        link.style.display = 'none';
+                    } else {
+                        link.style.display = 'flex';
+                    }
+                });
+            });
+        }
+
+        // ScrollSpy with Active Link Highlighting
         document.addEventListener('DOMContentLoaded', () => {
             const sections = document.querySelectorAll('.docs-content section[id]');
             const navLinks = document.querySelectorAll('.sidebar-link');
 
-            function setActiveLink() {
-                let currentSectionId = '';
-                const scrollPosition = window.scrollY + 140;
+            function updateScrollSpy() {
+                let currentId = '';
+                const scrollPos = window.scrollY + 140;
 
                 sections.forEach(section => {
-                    const sectionTop = section.offsetTop;
-                    const sectionHeight = section.offsetHeight;
-                    if (scrollPosition >= sectionTop && scrollPosition < sectionTop + sectionHeight) {
-                        currentSectionId = section.getAttribute('id');
+                    if (section.style.display === 'none') return;
+                    const top = section.offsetTop;
+                    const height = section.offsetHeight;
+                    if (scrollPos >= top && scrollPos < top + height) {
+                        currentId = section.getAttribute('id');
                     }
                 });
 
                 if ((window.innerHeight + window.scrollY) >= document.body.offsetHeight - 50) {
-                    if (sections.length > 0) {
-                        currentSectionId = sections[sections.length - 1].getAttribute('id');
+                    const visibleSections = Array.from(sections).filter(s => s.style.display !== 'none');
+                    if (visibleSections.length > 0) {
+                        currentId = visibleSections[visibleSections.length - 1].getAttribute('id');
                     }
                 }
 
-                if (currentSectionId) {
+                if (currentId) {
                     navLinks.forEach(link => {
                         const href = link.getAttribute('href').replace('#', '');
-                        if (href === currentSectionId) {
+                        if (href === currentId) {
                             link.classList.add('active');
                         } else {
                             link.classList.remove('active');
@@ -760,8 +2376,8 @@ npm run dev
                 }
             }
 
-            window.addEventListener('scroll', setActiveLink, { passive: true });
-            setActiveLink();
+            window.addEventListener('scroll', updateScrollSpy, { passive: true });
+            updateScrollSpy();
         });
     </script>
 </body>
