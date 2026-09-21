@@ -22,6 +22,7 @@ import 'ExpenseSumarry.dart';
 import '../services/auth_service.dart';
 import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
+import 'notification_permission_page.dart';
 
 // FIXME
 
@@ -62,6 +63,7 @@ class _HomePage2State extends State<HomePage2> {
     _pageController = PageController(initialPage: _selectedIndex);
     _restoreCurrencyPreference();
     _startNotificationParser();
+    _checkFirstTimeNotificationPermission();
   }
 
   @override
@@ -92,6 +94,31 @@ class _HomePage2State extends State<HomePage2> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Could not parse notification: $error')),
     );
+  }
+
+  Future<void> _checkFirstTimeNotificationPermission() async {
+    final shown = await DatabaseHelp.getSetting(
+      'notification_permission_onboarding_shown',
+    );
+    if (shown != null) return;
+
+    // Mark as shown immediately so it is strictly shown only once after install
+    await DatabaseHelp.setSetting(
+      'notification_permission_onboarding_shown',
+      'true',
+    );
+
+    final service = NotificationExpenseService.instance;
+    final isAlreadyEnabled = await service.isEnabled();
+    if (!isAlreadyEnabled && mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          Navigator.of(
+            context,
+          ).push(SmoothPageRoute(page: const NotificationPermissionPage()));
+        }
+      });
+    }
   }
 
   Future<void> _restoreCurrencyPreference() async {
@@ -1973,7 +2000,7 @@ class _SettingsPageState extends State<SettingsPage> {
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.info_outline),
           title: Text('Expense App'),
-          subtitle: Text('Version 1.5.0'),
+          subtitle: Text('Version 1.5.2'),
         ),
       ],
     );

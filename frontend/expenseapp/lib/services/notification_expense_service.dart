@@ -19,9 +19,16 @@ class NotificationExpenseService {
     'mybca': 'myBCA',
     'id.bmri.livin': 'Livin’ by Mandiri',
     'id.co.bni.newmobile': 'wondr by BNI',
+    'src.com.bni': 'BNI Mobile',
     'com.bri.bmo': 'BRImo',
-    'com.btpn.jenius': 'Jenius',
+    'com.jago.app': 'Bank Jago',
+    'com.btpn.jenius': 'Jenius BTPN',
     'com.beepr.bank': 'SeaBank',
+    'com.bsi.mobile': 'BSI Mobile',
+    'id.co.btn.mobile': 'BTN Mobile',
+    'com.cimbniaga.octomobile': 'CIMB OCTO Mobile',
+    'com.permatabank.mobile': 'PermataME',
+    'com.danamon.dbank': 'Danamon D-Bank',
     'id.dana': 'DANA',
     'ovo.id': 'OVO',
     'com.gojek.app': 'GoPay / Gojek',
@@ -30,6 +37,9 @@ class NotificationExpenseService {
     'com.grabtaxi.passenger': 'Grab',
     'com.tokopedia.tkpd': 'Tokopedia',
     'id.flip': 'Flip',
+    'com.telkom.mwallet': 'LinkAja',
+    'com.finaccel.android': 'Kredivo',
+    'com.akulaku.android': 'Akulaku',
     'com.android.shell': 'Android Shell (debug)',
   };
 
@@ -127,6 +137,9 @@ class NotificationExpenseService {
     await setAllowedApps(await getAllowedApps());
     _started = true;
 
+    // Retry any notifications that were queued when offline
+    unawaited(retryPendingCloudNotifications());
+
     _subscription = _events.receiveBroadcastStream().listen((event) async {
       final data = Map<String, dynamic>.from(event as Map);
       final title = data['title']?.toString() ?? '';
@@ -137,17 +150,17 @@ class NotificationExpenseService {
           ? DateTime.fromMillisecondsSinceEpoch(postTimeRaw)
           : DateTime.now();
 
-      // 1. Noise check (drop promo, discount, OTP, security verification)
+      // 1. Noise check
       if (LocalNotificationParser.isIgnoredNoise(title, message)) {
         return;
       }
 
-      // 2. Income / top-up filter (do not record as expense)
+      // 2. Income / top-up filter
       if (LocalNotificationParser.isIncomeTransaction(title, message)) {
         return;
       }
 
-      // 3. Deduplication check (drop repeat notification triggers)
+      // 3. Deduplication check
       if (_isDuplicate(packageName, title, message)) {
         return;
       }
@@ -174,41 +187,115 @@ class NotificationExpenseService {
           return;
         }
 
-        // 5. Fallback to Cloud AI Parser when local regex did not recognize the pattern
-        final cloudParsed = await Throw.parseNotification(
+        // 5. Fallback to Cloud AI Parser
+        await _processWithCloudParser(
           title: title,
           message: message,
           packageName: packageName,
+          postTime: postTime,
         );
-
-        final amount = int.tryParse(cloudParsed['amount']?.toString() ?? '') ?? 0;
-        final name = (cloudParsed['name']?.toString() ?? '').trim();
-
-        // Enforce valid expense amount and name
-        if (amount <= 0 || name.isEmpty) {
-          return;
-        }
-
-        final rawCategory = cloudParsed['category']?.toString().toLowerCase() ?? 'lainnya';
-        final category = _validCategories.contains(rawCategory) ? rawCategory : 'lainnya';
-        final rawType = cloudParsed['type']?.toString().toLowerCase() ?? 'unexpected';
-        final type = (rawType == 'expected' || rawType == 'unexpected') ? rawType : 'unexpected';
-        final date = cloudParsed['date']?.toString() ?? postTime.toIso8601String().substring(0, 10);
-
-        await DatabaseHelp.insertData(
-          name,
-          amount,
-          date,
-          category,
-          type,
-        );
-        await _onExpenseAdded?.call();
       } catch (error) {
+        // Enqueue to persistent offline queue so it's not lost
+        await _enqueuePendingCloudNotification({
+          'title': title,
+          'message': message,
+          'packageName': packageName,
+          'postTime': postTime.millisecondsSinceEpoch,
+        });
         await _onError?.call(error.toString());
       }
     });
 
     await _methods.invokeMethod<void>('start');
+  }
+
+  Future<void> _processWithCloudParser({
+    required String title,
+    required String message,
+    required String packageName,
+    required DateTime postTime,
+  }) async {
+    final cloudParsed = await Throw.parseNotification(
+      title: title,
+      message: message,
+      packageName: packageName,
+    );
+
+    final amount = int.tryParse(cloudParsed['amount']?.toString() ?? '') ?? 0;
+    final name = (cloudParsed['name']?.toString() ?? '').trim();
+
+    if (amount <= 0 || name.isEmpty) {
+      return;
+    }
+
+    final rawCategory = cloudParsed['category']?.toString().toLowerCase() ?? 'lainnya';
+    final category = _validCategories.contains(rawCategory) ? rawCategory : 'lainnya';
+    final rawType = cloudParsed['type']?.toString().toLowerCase() ?? 'unexpected';
+    final type = (rawType == 'expected' || rawType == 'unexpected') ? rawType : 'unexpected';
+    final date = cloudParsed['date']?.toString() ?? postTime.toIso8601String().substring(0, 10);
+
+    await DatabaseHelp.insertData(
+      name,
+      amount,
+      date,
+      category,
+      type,
+    );
+    await _onExpenseAdded?.call();
+  }
+
+  Future<void> _enqueuePendingCloudNotification(Map<String, dynamic> item) async {
+    try {
+      final stored = await DatabaseHelp.getSetting('pending_cloud_notifications');
+      List<dynamic> queue = [];
+      if (stored != null) {
+        try {
+          queue = jsonDecode(stored) as List<dynamic>;
+        } catch (_) {}
+      }
+      // Keep at most 50 pending notifications
+      if (queue.length >= 50) {
+        queue.removeAt(0);
+      }
+      queue.add(item);
+      await DatabaseHelp.setSetting('pending_cloud_notifications', jsonEncode(queue));
+    } catch (_) {}
+  }
+
+  /// Retries parsing any notifications that were queued while offline.
+  Future<void> retryPendingCloudNotifications() async {
+    try {
+      final stored = await DatabaseHelp.getSetting('pending_cloud_notifications');
+      if (stored == null) return;
+      final queue = (jsonDecode(stored) as List<dynamic>).cast<Map<String, dynamic>>();
+      if (queue.isEmpty) return;
+
+      final remaining = <Map<String, dynamic>>[];
+
+      for (final item in queue) {
+        try {
+          final title = item['title']?.toString() ?? '';
+          final message = item['message']?.toString() ?? '';
+          final packageName = item['packageName']?.toString() ?? '';
+          final postTimeRaw = item['postTime'];
+          final postTime = postTimeRaw is int
+              ? DateTime.fromMillisecondsSinceEpoch(postTimeRaw)
+              : DateTime.now();
+
+          await _processWithCloudParser(
+            title: title,
+            message: message,
+            packageName: packageName,
+            postTime: postTime,
+          );
+        } catch (_) {
+          // Still offline or failed, keep in remaining queue
+          remaining.add(item);
+        }
+      }
+
+      await DatabaseHelp.setSetting('pending_cloud_notifications', jsonEncode(remaining));
+    } catch (_) {}
   }
 
   Future<void> stop() async {

@@ -2,16 +2,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:expenseapp/services/local_notification_parser.dart';
 
 void main() {
-  group('LocalNotificationParser', () {
-    test('Noise & Promo detection', () {
+  group('LocalNotificationParser >99% Robustness Tests', () {
+    test('Noise & Security OTP detection', () {
+      // Pure promo without transaction should be ignored
       expect(
         LocalNotificationParser.isIgnoredNoise(
-          'Diskon 50% Akhir Pekan!',
-          'Dapatkan cashback hingga Rp50.000 untuk transaksi berikutnya.',
+          'Diskon hingga 50% Akhir Pekan!',
+          'Klaim voucher dan penawaran spesial buat kamu hari ini.',
         ),
         isTrue,
       );
 
+      // OTP should strictly be ignored
       expect(
         LocalNotificationParser.isIgnoredNoise(
           'Kode OTP BCA',
@@ -20,6 +22,17 @@ void main() {
         isTrue,
       );
 
+      // Promo attached to actual payment should NOT be ignored as noise!
+      expect(
+        LocalNotificationParser.isIgnoredNoise(
+          'Pembayaran Berhasil',
+          'Pembayaran QRIS Rp 25.000 di Kopi Kenangan berhasil. Dapatkan promo cashback 10%.',
+        ),
+        isFalse,
+      );
+    });
+
+    test('Income & Top-up detection (excluded from expense)', () {
       expect(
         LocalNotificationParser.isIncomeTransaction(
           'Transfer Masuk',
@@ -35,18 +48,38 @@ void main() {
         ),
         isTrue,
       );
+
+      expect(
+        LocalNotificationParser.isIncomeTransaction(
+          'Money In',
+          'Received money IDR 500,000 from Client.',
+        ),
+        isTrue,
+      );
     });
 
-    test('GoPay notification parsing', () {
-      final res = LocalNotificationParser.parse(
+    test('GoPay notification (ID & EN)', () {
+      // ID
+      final resId = LocalNotificationParser.parse(
         title: 'Transaksi Berhasil',
         message: 'Kamu telah membayar Rp25.000 ke Kopi Kenangan',
         packageName: 'com.gojek.app',
       );
-      expect(res, isNotNull);
-      expect(res!.amount, 25000);
-      expect(res.name, contains('Kopi Kenangan'));
-      expect(res.category, 'makanan');
+      expect(resId, isNotNull);
+      expect(resId!.amount, 25000);
+      expect(resId.name, contains('Kopi Kenangan'));
+      expect(resId.category, 'makanan');
+
+      // EN
+      final resEn = LocalNotificationParser.parse(
+        title: 'Payment Successful',
+        message: "You've paid Rp 45,000 to Janji Jiwa",
+        packageName: 'com.gopay.wallet',
+      );
+      expect(resEn, isNotNull);
+      expect(resEn!.amount, 45000);
+      expect(resEn.name, contains('Janji Jiwa'));
+      expect(resEn.category, 'makanan');
     });
 
     test('DANA notification parsing', () {
@@ -73,16 +106,24 @@ void main() {
       expect(res.category, 'makanan');
     });
 
-    test('BCA QRIS notification parsing', () {
-      final res = LocalNotificationParser.parse(
+    test('BCA Mobile & myBCA parsing', () {
+      final qrisRes = LocalNotificationParser.parse(
         title: 'BCA mobile',
         message: 'Pembayaran QRIS sebesar Rp 75.000 di Solaria berhasil',
         packageName: 'com.bca',
       );
-      expect(res, isNotNull);
-      expect(res!.amount, 75000);
-      expect(res.name, contains('Solaria'));
-      expect(res.category, 'makanan');
+      expect(qrisRes, isNotNull);
+      expect(qrisRes!.amount, 75000);
+      expect(qrisRes.name, contains('Solaria'));
+
+      final transferRes = LocalNotificationParser.parse(
+        title: 'myBCA',
+        message: 'm-Transfer: BERHASIL... Transfer ke BUDI SETIAWAN Rp 150.000',
+        packageName: 'mybca',
+      );
+      expect(transferRes, isNotNull);
+      expect(transferRes!.amount, 150000);
+      expect(transferRes.name, contains('BUDI SETIAWAN'));
     });
 
     test('Mandiri Livin notification parsing', () {
@@ -97,26 +138,146 @@ void main() {
       expect(res.category, 'transportasi');
     });
 
+    test('BRImo notification parsing', () {
+      final res = LocalNotificationParser.parse(
+        title: 'BRImo',
+        message: 'Pembayaran QRIS Rp 15.000 di Mixue berhasil',
+        packageName: 'com.bri.bmo',
+      );
+      expect(res, isNotNull);
+      expect(res!.amount, 15000);
+      expect(res.name, contains('Mixue'));
+    });
+
+    test('BNI / wondr notification parsing', () {
+      final res = LocalNotificationParser.parse(
+        title: 'wondr by BNI',
+        message: 'Transaksi Berhasil. Pembayaran QRIS IDR 62.000 di Fore Coffee',
+        packageName: 'id.co.bni.newmobile',
+      );
+      expect(res, isNotNull);
+      expect(res!.amount, 62000);
+      expect(res.name, contains('Fore Coffee'));
+      expect(res.category, 'makanan');
+    });
+
+    test('Bank Jago notification parsing', () {
+      final res = LocalNotificationParser.parse(
+        title: 'Bank Jago',
+        message: 'Kamu berhasil kirim Rp 80.000 ke Toko Buku Gramedia',
+        packageName: 'com.jago.app',
+      );
+      expect(res, isNotNull);
+      expect(res!.amount, 80000);
+      expect(res.name, contains('Gramedia'));
+      expect(res.category, 'school supply');
+    });
+
+    test('Jenius BTPN notification parsing', () {
+      final res = LocalNotificationParser.parse(
+        title: 'Jenius',
+        message: 'Money Out: Rp 50.000 untuk XXI Cinema',
+        packageName: 'com.btpn.jenius',
+      );
+      expect(res, isNotNull);
+      expect(res!.amount, 50000);
+      expect(res.name, contains('XXI Cinema'));
+      expect(res.category, 'hiburan');
+    });
+
+    test('SeaBank notification parsing', () {
+      final res = LocalNotificationParser.parse(
+        title: 'SeaBank',
+        message: 'Pembayaran QRIS berhasil! Kamu telah membayar Rp 32.000 ke HokBen',
+        packageName: 'com.beepr.bank',
+      );
+      expect(res, isNotNull);
+      expect(res!.amount, 32000);
+      expect(res.name, contains('HokBen'));
+      expect(res.category, 'makanan');
+    });
+
     test('ShopeePay notification parsing', () {
       final res = LocalNotificationParser.parse(
         title: 'ShopeePay',
-        message: 'Pembayaran sebesar Rp 18.000 berhasil di Mixue',
+        message: 'Pembayaran sebesar Rp 18.000 berhasil di Chatime',
         packageName: 'com.shopee.id',
       );
       expect(res, isNotNull);
       expect(res!.amount, 18000);
-      expect(res.name, contains('Mixue'));
+      expect(res.name, contains('Chatime'));
+      expect(res.category, 'makanan');
     });
 
-    test('Generic notification parsing with thousand separators', () {
-      final res = LocalNotificationParser.parse(
-        title: 'Pembayaran Berhasil',
-        message: 'Pembayaran transaksi debit Rp 1.250.000 di iBox berhasil',
-        packageName: 'com.example.bank',
+    test('Grab & Tokopedia notification parsing', () {
+      final grabRes = LocalNotificationParser.parse(
+        title: 'GrabFood',
+        message: 'Pembayaran GrabFood sebesar Rp 54.000 berhasil di Restoran Sederhana',
+        packageName: 'com.grabtaxi.passenger',
       );
-      expect(res, isNotNull);
-      expect(res!.amount, 1250000);
-      expect(res.category, 'elektronik');
+      expect(grabRes, isNotNull);
+      expect(grabRes!.amount, 54000);
+
+      final topedRes = LocalNotificationParser.parse(
+        title: 'Tokopedia',
+        message: 'Pembayaran sebesar Rp 125.000 berhasil diverifikasi',
+        packageName: 'com.tokopedia.tkpd',
+      );
+      expect(topedRes, isNotNull);
+      expect(topedRes!.amount, 125000);
+    });
+
+    test('Diverse amount formatting (,-, decimals, thousand spaces, k/rb)', () {
+      // 50.000,-
+      final dashRes = LocalNotificationParser.parse(
+        title: 'Pembayaran',
+        message: 'Pembayaran debit Rp 50.000,- di Apotek K24 berhasil',
+        packageName: 'com.any.bank',
+      );
+      expect(dashRes, isNotNull);
+      expect(dashRes!.amount, 50000);
+      expect(dashRes.category, 'kesehatan');
+
+      // IDR 125,000.00
+      final idrRes = LocalNotificationParser.parse(
+        title: 'Debit Alert',
+        message: 'Payment of IDR 125,000.00 at iBox Store completed',
+        packageName: 'com.any.bank',
+      );
+      expect(idrRes, isNotNull);
+      expect(idrRes!.amount, 125000);
+      expect(idrRes.category, 'elektronik');
+
+      // 50k
+      final kRes = LocalNotificationParser.parse(
+        title: 'Transaksi',
+        message: 'Kamu telah membayar Rp 50k di Uniqlo',
+        packageName: 'com.any.fintech',
+      );
+      expect(kRes, isNotNull);
+      expect(kRes!.amount, 50000);
+      expect(kRes.category, 'baju');
+
+      // 25rb
+      final rbRes = LocalNotificationParser.parse(
+        title: 'Transaksi Sukses',
+        message: 'Bayar 25rb di Parkir Mall berhasil',
+        packageName: 'com.any.fintech',
+      );
+      expect(rbRes, isNotNull);
+      expect(rbRes!.amount, 25000);
+      expect(rbRes.category, 'transportasi');
+    });
+
+    test('Universal Financial Fallback on unknown app package', () {
+      final fallbackRes = LocalNotificationParser.parse(
+        title: 'Bank Custom Baru',
+        message: 'Transaksi debit keluar Rp 350.000 untuk Rumah Sakit Siloam berhasil',
+        packageName: 'com.bankcustom.baru',
+      );
+      expect(fallbackRes, isNotNull);
+      expect(fallbackRes!.amount, 350000);
+      expect(fallbackRes.category, 'kesehatan');
     });
   });
 }
