@@ -103,40 +103,76 @@ class Throw {
     final mimeType = lowerPath.endsWith('.png') ? 'image/png' : 'image/jpeg';
     onProgress?.call(0.3, 'Uploading receipt');
 
-    late final http.Response response;
+    late final http.StreamedResponse response;
     try {
+      final request = http.Request(
+        'POST',
+        Uri.parse('$baseUrl/parse-receipt'),
+      )
+        ..headers.addAll(await _headers())
+        ..body = jsonEncode({'image': base64Image, 'mimeType': mimeType});
       response = await client
-          .post(
-            Uri.parse('$baseUrl/parse-receipt'),
-            headers: await _headers(),
-            body: jsonEncode({'image': base64Image, 'mimeType': mimeType}),
-          )
+          .send(request)
           .timeout(const Duration(seconds: 45));
+
+      if (response.statusCode != 200) {
+        final responseBody = await response.stream.bytesToString();
+        String message = response.statusCode == 413
+            ? 'Receipt image is too large. Please retake the photo closer or use a smaller image.'
+            : 'Receipt parsing failed (${response.statusCode})';
+        try {
+          final body = jsonDecode(responseBody) as Map<String, dynamic>;
+          if (body['error'] != null) message = body['error'].toString();
+        } catch (_) {
+          // Keep the status-based message when the backend response is not JSON.
+        }
+        throw Exception(message);
+      }
+
+      final contentType = response.headers['content-type'] ?? '';
+      if (!contentType.contains('application/x-ndjson')) {
+        final body = jsonDecode(await response.stream.bytesToString())
+            as Map<String, dynamic>;
+        onProgress?.call(1, 'Receipt data received');
+        return {
+          'date': body['date']?.toString(),
+          'items': (body['items'] as List<dynamic>).cast<Map<String, dynamic>>(),
+          'provider': body['provider']?.toString(),
+        };
+      }
+
+      Map<String, dynamic>? result;
+      String? streamError;
+      await for (final line in response.stream
+          .transform(utf8.decoder)
+          .transform(const LineSplitter())) {
+        if (line.trim().isEmpty) continue;
+        final event = jsonDecode(line) as Map<String, dynamic>;
+        if (event['type'] == 'progress') {
+          final progress = event['progress'];
+          onProgress?.call(
+            progress is num ? progress.toDouble() : 0.5,
+            event['message']?.toString() ?? 'Processing receipt',
+          );
+        } else if (event['type'] == 'result') {
+          result = event;
+        } else if (event['type'] == 'error') {
+          streamError = event['message']?.toString() ?? 'Receipt parsing failed';
+        }
+      }
+
+      if (streamError != null) throw Exception(streamError);
+      if (result == null) throw Exception('Receipt parser returned no result');
+      onProgress?.call(1, 'Receipt data received');
+      return {
+        'date': result['date']?.toString(),
+        'items': (result['items'] as List<dynamic>).cast<Map<String, dynamic>>(),
+        'provider': result['provider']?.toString(),
+      };
     } catch (error) {
       if (isCancelled()) throw ReceiptScanCancelledException();
       rethrow;
     }
-
-    onProgress?.call(0.85, 'Reading receipt with OCR');
-    if (response.statusCode != 200) {
-      String message = response.statusCode == 413
-          ? 'Receipt image is too large. Please retake the photo closer or use a smaller image.'
-          : 'Receipt parsing failed (${response.statusCode})';
-      try {
-        final body = jsonDecode(response.body) as Map<String, dynamic>;
-        if (body['error'] != null) message = body['error'].toString();
-      } catch (_) {
-        // Keep the status-based message when the backend response is not JSON.
-      }
-      throw Exception(message);
-    }
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    onProgress?.call(1, 'Receipt data received');
-    return {
-      'date': data['date']?.toString(),
-      'items': (data['items'] as List<dynamic>).cast<Map<String, dynamic>>(),
-      'provider': data['provider']?.toString(),
-    };
   }
 
   static Future<Map<String, dynamic>> parseNotification({

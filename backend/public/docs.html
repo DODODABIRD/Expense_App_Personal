@@ -1061,7 +1061,7 @@
                     engineered by <strong>Orlando Diamond Prasetyo</strong>. The application features zero-latency
                     local accounting, a <strong>>99% robust hybrid automated banking notification parser</strong>,
                     intelligent multimodal receipt itemization powered by <strong>Google AI (Gemini 3.6 Flash)</strong> with
-                    <strong>Azure Document Intelligence fallback</strong>, and an expressive <strong>Neo-Brutalist design
+                    <strong>OpenRouter GPT-5 Nano and Azure Document Intelligence fallbacks</strong>, and an expressive <strong>Neo-Brutalist design
                         system</strong>.</p>
 
                 <div class="docs-callout callout-info">
@@ -1121,9 +1121,14 @@
                                 <td>Primary engine for receipt line-item extraction and natural language notification parsing.</td>
                             </tr>
                             <tr>
+                                <td><strong>OpenAI GPT-5 Nano via OpenRouter</strong></td>
+                                <td>Multimodal Vision Fallback</td>
+                                <td>Second receipt parser attempted when Gemini is unavailable or returns a retryable failure.</td>
+                            </tr>
+                            <tr>
                                 <td><strong>Azure Document Intel</strong></td>
                                 <td>Enterprise OCR Fallback</td>
-                                <td>Prebuilt receipt analyzer that automatically handles rate-limiting (429) or degradation.</td>
+                                <td>Final receipt fallback using the Prebuilt Receipt analyzer for rate-limiting (429) or degradation.</td>
                             </tr>
                             <tr>
                                 <td><strong>Cloudflare Edge</strong></td>
@@ -1486,14 +1491,14 @@
                 <p>When users upload or photograph a paper receipt (Indomaret, Alfamart, Starbucks, restaurants, groceries),
                     the backend processes the image through an automated AI vision extraction pipeline.</p>
 
-                <h3>Dual-Engine Architecture: Gemini 3.6 Flash + Azure Fallback</h3>
+                <h3>Triple-Engine Architecture: Gemini -> OpenRouter -> Azure</h3>
                 <div class="docs-callout callout-warning">
                     <span class="docs-callout-icon">🤖</span>
                     <div class="docs-callout-content">
                         <div class="docs-callout-title">Automatic Failover Mechanism</div>
-                        <p class="docs-callout-desc">The system sends the base64-encoded receipt to <strong>Gemini 3.6 Flash</strong>.
-                            If Gemini returns an HTTP <code>429</code> (rate limit) or <code>5xx</code> error, the request automatically falls back to
-                            <strong>Azure Document Intelligence Prebuilt Receipt</strong> without interrupting the user experience.</p>
+                        <p class="docs-callout-desc">The system sends the base64-encoded receipt to <strong>Gemini 3.6 Flash</strong> first.
+                            Retryable failures then move to <strong>OpenAI GPT-5 Nano through OpenRouter</strong>, followed by
+                            <strong>Azure Document Intelligence Prebuilt Receipt</strong> as the final fallback.</p>
                     </div>
                 </div>
 
@@ -2186,6 +2191,8 @@ npm install
 MONGODB_URI="mongodb+srv://admin:&lt;password&gt;@cluster0.mongodb.net/expense_app"
 FIREBASE_SERVICE_ACCOUNT_JSON='{"type":"service_account","project_id":"..."}'
 GEMINI_KEY="AIzaSy..."
+OPENROUTER_API_KEY="sk-or-v1-..."
+OPENROUTER_MODEL="openai/gpt-5-nano"
 AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT="https://your-resource.cognitiveservices.azure.com/"
 AZURE_DOCUMENT_INTELLIGENCE_KEY="your-key"
 

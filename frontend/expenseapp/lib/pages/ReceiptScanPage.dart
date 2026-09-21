@@ -125,6 +125,19 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
     }
   }
 
+  String _providerLabel(String? provider) {
+    switch (provider) {
+      case 'gemini':
+        return 'Gemini AI';
+      case 'openrouter':
+        return 'OpenAI GPT-5 Nano via OpenRouter';
+      case 'azure':
+        return 'Azure AI Document Intelligence';
+      default:
+        return 'AI receipt parser';
+    }
+  }
+
   int get _currentCurrencyDecimalDigits {
     switch (appCurrency.value) {
       case 'USD':
@@ -237,9 +250,7 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
           );
         }).toList();
 
-        final provider = parsedReceipt['provider'] == 'azure'
-            ? 'Azure AI Document Intelligence'
-            : 'Gemini AI';
+        final provider = _providerLabel(parsedReceipt['provider']?.toString());
         _scanStatus = 'Processed with $provider';
         if (_scanLogs.isEmpty || _scanLogs.last != _scanStatus) {
           _scanLogs = [..._scanLogs, _scanStatus];

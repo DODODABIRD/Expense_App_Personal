@@ -97,6 +97,12 @@ const azureDocumentEndpoint = String(
   process.env.AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT || ""
 ).replace(/\/+$/, "");
 const azureDocumentKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY || "";
+const openRouterApiKey =
+  process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEY || "";
+const openRouterModel =
+  process.env.OPENROUTER_MODEL || "openai/gpt-5-nano";
+const openRouterReferer = process.env.OPENROUTER_SITE_URL || "";
+const openRouterAppName = process.env.OPENROUTER_APP_NAME || "";
 
 const geminiModel =
   process.env.GEMINI_MODEL ||
@@ -274,7 +280,7 @@ function isAzureConfigured() {
   return Boolean(azureDocumentEndpoint && azureDocumentKey);
 }
 
-function shouldUseAzureFallback(error) {
+function shouldUseReceiptFallback(error) {
   return !error?.status || [400, 404, 429, 500, 502, 503, 504].includes(error.status);
 }
 
@@ -366,6 +372,69 @@ async function parseReceiptWithGemini(imageBase64, mimeType) {
   const parsed = JSON.parse(jsonText);
   if (!Array.isArray(parsed?.items) || parsed.items.length === 0) {
     throw new ReceiptProviderError("Gemini returned no receipt items");
+  }
+  return parsed;
+}
+
+async function parseReceiptWithOpenRouter(imageBase64, mimeType) {
+  const response = await fetchWithTimeout(
+    "https://openrouter.ai/api/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterApiKey}`,
+        "Content-Type": "application/json",
+        ...(openRouterReferer ? { "HTTP-Referer": openRouterReferer } : {}),
+        ...(openRouterAppName ? { "X-Title": openRouterAppName } : {}),
+      },
+      body: JSON.stringify({
+        model: openRouterModel,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: receiptPrompt() },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:${mimeType};base64,${imageBase64}`,
+                },
+              },
+            ],
+          },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    },
+    15000
+  );
+
+  const body = await response.json();
+  if (!response.ok) {
+    throw new ReceiptProviderError(
+      body.error?.message || "OpenRouter request failed",
+      response.status
+    );
+  }
+
+  const content = body.choices?.[0]?.message?.content;
+  const text = Array.isArray(content)
+    ? content
+        .map((part) => (typeof part === "string" ? part : part?.text || ""))
+        .join("")
+        .trim()
+    : String(content || "").trim();
+  if (!text) throw new ReceiptProviderError("OpenRouter returned no parsed receipt");
+
+  const jsonText = text.replace(/^```(?:json)?\s*|\s*```$/gi, "").trim();
+  let parsed;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (_) {
+    throw new ReceiptProviderError("OpenRouter returned invalid receipt JSON");
+  }
+  if (!Array.isArray(parsed?.items) || parsed.items.length === 0) {
+    throw new ReceiptProviderError("OpenRouter returned no receipt items");
   }
   return parsed;
 }
@@ -686,8 +755,9 @@ async function parseReceiptWithAzure(imageBase64) {
  * into each item's amount so every returned item is already final price.
  */
 app.post("/api/parse-receipt", requireAuth, async (req, res) => {
+  let streamStarted = false;
   try {
-    if (!parserApiKey && !isAzureConfigured()) {
+    if (!parserApiKey && !openRouterApiKey && !isAzureConfigured()) {
       return res.status(503).json({ error: "No receipt parser is configured" });
     }
 
@@ -697,37 +767,121 @@ app.post("/api/parse-receipt", requireAuth, async (req, res) => {
     }
     const mimeType = String(req.body?.mimeType || "image/jpeg");
 
+    res.status(200);
+    res.setHeader("Content-Type", "application/x-ndjson; charset=utf-8");
+    res.setHeader("Cache-Control", "no-cache, no-transform");
+    res.setHeader("X-Accel-Buffering", "no");
+    res.flushHeaders?.();
+    streamStarted = true;
+    const sendProgress = (stage, status, progress, message) => {
+      res.write(
+        `${JSON.stringify({ type: "progress", stage, status, progress, message })}\n`
+      );
+    };
+
     let parsed;
-    let provider = "azure";
-    let geminiError;
+    let provider;
+    let lastError;
     if (parserApiKey) {
+      sendProgress("gemini", "processing", 0.4, "Processing with Gemini");
       try {
         parsed = await parseReceiptWithGemini(imageBase64, mimeType);
         provider = "gemini";
       } catch (error) {
-        geminiError = error;
-        console.warn(`[ReceiptParser] Gemini failed (${error.status || error.message}), falling back to Azure...`);
+        lastError = error;
+        sendProgress(
+          "gemini",
+          "failed",
+          0.46,
+          `Gemini failed: ${error.message}`
+        );
+        console.warn(`[ReceiptParser] Gemini failed (${error.status || error.message}), trying OpenRouter...`);
       }
+    } else {
+      sendProgress("gemini", "skipped", 0.36, "Gemini skipped: API key is not configured");
     }
 
-    if (!parsed && isAzureConfigured() && shouldUseAzureFallback(geminiError)) {
-      parsed = await parseReceiptWithAzure(imageBase64);
-      provider = "azure";
+    if (!parsed && openRouterApiKey && shouldUseReceiptFallback(lastError)) {
+      sendProgress(
+        "openrouter",
+        "processing",
+        0.52,
+        "Processing with OpenAI GPT-5 Nano via OpenRouter"
+      );
+      try {
+        parsed = await parseReceiptWithOpenRouter(imageBase64, mimeType);
+        provider = "openrouter";
+      } catch (error) {
+        lastError = error;
+        sendProgress(
+          "openrouter",
+          "failed",
+          0.62,
+          `OpenRouter failed: ${error.message}`
+        );
+        console.warn(`[ReceiptParser] OpenRouter failed (${error.status || error.message}), falling back to Azure...`);
+      }
+    } else if (!parsed) {
+      sendProgress(
+        "openrouter",
+        "skipped",
+        0.5,
+        "OpenRouter skipped: API key is not configured or fallback is not eligible"
+      );
+    }
+
+    if (!parsed && isAzureConfigured() && shouldUseReceiptFallback(lastError)) {
+      sendProgress(
+        "azure",
+        "processing",
+        0.68,
+        "Processing with Azure Document Intelligence"
+      );
+      try {
+        parsed = await parseReceiptWithAzure(imageBase64);
+        provider = "azure";
+      } catch (error) {
+        lastError = error;
+        sendProgress(
+          "azure",
+          "failed",
+          0.86,
+          `Azure failed: ${error.message}`
+        );
+      }
+    } else if (!parsed) {
+      sendProgress(
+        "azure",
+        "skipped",
+        0.66,
+        "Azure skipped: credentials are not configured or fallback is not eligible"
+      );
     }
 
     if (!parsed) {
-      throw geminiError || new ReceiptProviderError("Receipt parser failed");
+      throw lastError || new ReceiptProviderError("Receipt parser failed");
     }
 
     const items = Array.isArray(parsed?.items) ? parsed.items.map(normalizeReceiptItem) : [];
     if (items.length === 0) {
-      return res.status(422).json({ error: "No items were detected on the receipt" });
+      throw new ReceiptProviderError("No items were detected on the receipt", 422);
     }
-    return res.json({ date: normalizeReceiptDate(parsed?.date), items, provider });
+    res.write(
+      `${JSON.stringify({
+        type: "result",
+        date: normalizeReceiptDate(parsed?.date),
+        items,
+        provider,
+      })}\n`
+    );
+    return res.end();
   } catch (err) {
-    return res.status(err.status >= 400 ? err.status : 502).json({
-      error: `Could not parse receipt: ${err.message}`,
-    });
+    const message = `Could not parse receipt: ${err.message}`;
+    if (streamStarted) {
+      res.write(`${JSON.stringify({ type: "error", message })}\n`);
+      return res.end();
+    }
+    return res.status(err.status >= 400 ? err.status : 502).json({ error: message });
   }
 });
 
