@@ -9,7 +9,11 @@ const String baseUrl = String.fromEnvironment(
   defaultValue: 'https://dododabird.us/api',
 );
 
-typedef ReceiptScanProgress = void Function(double progress, String message);
+typedef ReceiptScanProgress = void Function(
+  double progress,
+  String message, {
+  String status,
+});
 
 class ReceiptScanCancelledException implements Exception {
   @override
@@ -97,11 +101,11 @@ class Throw {
     bool Function() isCancelled,
   ) async {
     final bytes = await imageFile.readAsBytes();
-    onProgress?.call(0.15, 'Preparing receipt image');
+    onProgress?.call(0.15, 'Preparing receipt image', status: 'processing');
     final base64Image = base64Encode(bytes);
     final lowerPath = imageFile.path.toLowerCase();
     final mimeType = lowerPath.endsWith('.png') ? 'image/png' : 'image/jpeg';
-    onProgress?.call(0.3, 'Uploading receipt');
+    onProgress?.call(0.3, 'Uploading receipt', status: 'processing');
 
     late final http.StreamedResponse response;
     try {
@@ -126,6 +130,7 @@ class Throw {
         } catch (_) {
           // Keep the status-based message when the backend response is not JSON.
         }
+        onProgress?.call(1, message, status: 'failed');
         throw Exception(message);
       }
 
@@ -133,7 +138,7 @@ class Throw {
       if (!contentType.contains('application/x-ndjson')) {
         final body = jsonDecode(await response.stream.bytesToString())
             as Map<String, dynamic>;
-        onProgress?.call(1, 'Receipt data received');
+        onProgress?.call(1, 'Receipt data received', status: 'success');
         return {
           'date': body['date']?.toString(),
           'items': (body['items'] as List<dynamic>).cast<Map<String, dynamic>>(),
@@ -153,17 +158,19 @@ class Throw {
           onProgress?.call(
             progress is num ? progress.toDouble() : 0.5,
             event['message']?.toString() ?? 'Processing receipt',
+            status: event['status']?.toString() ?? 'processing',
           );
         } else if (event['type'] == 'result') {
           result = event;
         } else if (event['type'] == 'error') {
           streamError = event['message']?.toString() ?? 'Receipt parsing failed';
+          onProgress?.call(1, streamError, status: 'failed');
         }
       }
 
       if (streamError != null) throw Exception(streamError);
       if (result == null) throw Exception('Receipt parser returned no result');
-      onProgress?.call(1, 'Receipt data received');
+      onProgress?.call(1, 'Receipt data received', status: 'success');
       return {
         'date': result['date']?.toString(),
         'items': (result['items'] as List<dynamic>).cast<Map<String, dynamic>>(),

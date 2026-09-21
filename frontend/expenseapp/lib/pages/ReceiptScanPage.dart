@@ -43,6 +43,13 @@ class _ReceiptItemDraft {
       0;
 }
 
+class _ReceiptScanLog {
+  final String message;
+  final String status;
+
+  const _ReceiptScanLog(this.message, this.status);
+}
+
 class _ReceiptScanPageState extends State<ReceiptScanPage> {
   final _picker = ImagePicker();
 
@@ -91,7 +98,7 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
   ReceiptScanOperation? _scanOperation;
   double _scanProgress = 0;
   String _scanStatus = '';
-  List<String> _scanLogs = [];
+  List<_ReceiptScanLog> _scanLogs = [];
 
   @override
   void dispose() {
@@ -200,7 +207,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
       _isCancelling = false;
       _scanProgress = 0;
       _scanStatus = 'Preparing receipt image';
-      _scanLogs = ['Preparing receipt image'];
+      _scanLogs = [
+        const _ReceiptScanLog('Preparing receipt image', 'processing'),
+      ];
       _errorMessage = null;
     });
 
@@ -252,21 +261,22 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
 
         final provider = _providerLabel(parsedReceipt['provider']?.toString());
         _scanStatus = 'Processed with $provider';
-        if (_scanLogs.isEmpty || _scanLogs.last != _scanStatus) {
-          _scanLogs = [..._scanLogs, _scanStatus];
-        }
+        _addScanLog(_scanStatus, 'success');
       });
     } on ReceiptScanCancelledException {
       if (mounted) {
         setState(() {
           _scanStatus = 'Scan cancelled';
-          _scanLogs = [..._scanLogs, _scanStatus];
+          _addScanLog(_scanStatus, 'cancelled');
           _errorMessage = null;
         });
       }
     } catch (error) {
       if (mounted) {
-        setState(() => _errorMessage = 'Could not scan receipt: $error');
+        setState(() {
+          _errorMessage = 'Could not scan receipt: $error';
+          _addScanLog('Scan failed: $error', 'failed');
+        });
       }
     } finally {
       if (identical(_scanOperation, operation)) _scanOperation = null;
@@ -279,15 +289,54 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
     }
   }
 
-  void _updateScanProgress(double progress, String message) {
+  void _updateScanProgress(
+    double progress,
+    String message, {
+    String status = 'processing',
+  }) {
     if (!mounted) return;
     setState(() {
       _scanProgress = progress.clamp(0.0, 1.0).toDouble();
       _scanStatus = message;
-      if (_scanLogs.isEmpty || _scanLogs.last != message) {
-        _scanLogs = [..._scanLogs, message];
-      }
+      _addScanLog(message, status);
     });
+  }
+
+  void _addScanLog(String message, String status) {
+    if (_scanLogs.isNotEmpty &&
+        _scanLogs.last.message == message &&
+        _scanLogs.last.status == status) {
+      return;
+    }
+    _scanLogs = [..._scanLogs, _ReceiptScanLog(message, status)];
+  }
+
+  IconData _scanLogIcon(String status) {
+    switch (status) {
+      case 'success':
+        return Icons.check_circle_rounded;
+      case 'failed':
+      case 'cancelled':
+        return Icons.close_rounded;
+      case 'skipped':
+        return Icons.remove_circle_outline_rounded;
+      default:
+        return Icons.bolt_rounded;
+    }
+  }
+
+  Color _scanLogColor(String status) {
+    switch (status) {
+      case 'success':
+        return const Color(0xFF06D6A0);
+      case 'failed':
+      case 'cancelled':
+        return const Color(0xFFFF5D5D);
+      case 'skipped':
+        return Colors.grey;
+      default:
+        return const Color(0xFF5DF9FF);
+    }
   }
 
   void _cancelScan() {
@@ -295,7 +344,7 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
     setState(() {
       _isCancelling = true;
       _scanStatus = 'Cancelling scan';
-      _scanLogs = [..._scanLogs, _scanStatus];
+      _addScanLog(_scanStatus, 'processing');
     });
     _scanOperation!.cancel();
   }
@@ -952,24 +1001,17 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
             ),
           ),
           const SizedBox(height: 16),
-          ..._scanLogs.asMap().entries.map(
-            (entry) => Padding(
+          ..._scanLogs.map(
+            (log) => Padding(
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
-                  Icon(
-                    entry.key == _scanLogs.length - 1
-                        ? Icons.bolt_rounded
-                        : Icons.check_circle_rounded,
-                    size: 18,
-                    color: entry.key == _scanLogs.length - 1
-                        ? const Color(0xFF5DF9FF)
-                        : const Color(0xFF06D6A0),
-                  ),
+                  Icon(_scanLogIcon(log.status),
+                      size: 18, color: _scanLogColor(log.status)),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      entry.value,
+                      log.message,
                       style: TextStyle(
                         fontSize: 13,
                         color: isDark ? Colors.white70 : Colors.black87,

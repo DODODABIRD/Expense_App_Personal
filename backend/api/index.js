@@ -448,11 +448,13 @@ function parseAzureAmount(field) {
     ""
   ).trim();
 
-  const valueNumber =
+  const rawValueNumber =
     field?.valueNumber ??
     field?.valueInteger ??
     field?.valueCurrency?.amount ??
     (typeof field?.value === "number" ? field.value : null);
+  const valueNumber =
+    typeof rawValueNumber === "string" ? Number(rawValueNumber) : rawValueNumber;
 
   // 1. Inspect raw OCR content string for currency/thousand separator patterns
   if (content) {
@@ -559,19 +561,156 @@ function azureItemValue(item, fieldName) {
   return azureFieldValue(item?.valueObject?.[fieldName]);
 }
 
-function addAzureTaxToItems(items, total) {
-  const lineTotal = items.reduce((sum, item) => sum + item.amount, 0);
-  const adjustment = total > lineTotal ? total - lineTotal : 0;
-  if (!adjustment || !lineTotal) return items;
+function azureFieldAmount(fields, names) {
+  const wanted = new Set(
+    names.map((name) => String(name).replace(/[^a-z0-9]/gi, "").toLowerCase())
+  );
+  for (const [key, field] of Object.entries(fields || {})) {
+    const normalizedKey = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
+    if (wanted.has(normalizedKey)) {
+      const amount = parseAzureAmount(field);
+      if (amount > 0) return amount;
+    }
+  }
+  return 0;
+}
 
-  let allocated = 0;
-  return items.map((item, index) => {
-    const share = index === items.length - 1
-      ? adjustment - allocated
-      : Math.round((adjustment * item.amount) / lineTotal);
-    allocated += share;
-    return { ...item, amount: item.amount + share };
+function collectAzureOcrText(result, document) {
+  const pageLines = (result?.pages || []).flatMap((page) =>
+    (page.lines || []).map((line) => line.content)
+  );
+  const tableCells = (result?.tables || []).flatMap((table) =>
+    (table.cells || []).map((cell) => cell.content)
+  );
+  return [result?.content, document?.content, ...pageLines, ...tableCells]
+    .filter((value) => value !== undefined && value !== null && String(value).trim())
+    .map((value) => String(value).trim())
+    .join("\n");
+}
+
+function azureTextAmountsAfterLabel(text, labelPattern) {
+  const amounts = [];
+  const lines = String(text || "").split(/\r?\n/);
+  for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+    const line = lines[lineIndex];
+    const match = line.match(labelPattern);
+    if (!match) continue;
+    const afterLabel = line.slice((match.index || 0) + match[0].length);
+    const nextLine = lines[lineIndex + 1] || "";
+    const valueText = /\d/.test(afterLabel)
+      ? afterLabel
+      : `${afterLabel} ${nextLine}`;
+    const tokens = valueText.match(/(?:Rp|IDR|RP|\$|€|£)?\s*\d[\d.,\s]*(?:\s*[kK])?/g) || [];
+    for (const token of tokens) {
+      const amount = parseAzureAmount({ content: token });
+      if (amount > 0) amounts.push(amount);
+    }
+  }
+  return amounts;
+}
+
+function uniqueAzureAmounts(amounts) {
+  return [...new Set(amounts.filter((amount) => Number.isFinite(amount) && amount > 0))];
+}
+
+function azurePlainTotalFromOcr(text) {
+  for (const line of String(text || "").split(/\r?\n/)) {
+    if (!/^\s*total\b/i.test(line)) continue;
+    if (/\b(?:items?|tax|subtotal|discount|qty|quantity)\b/i.test(line)) continue;
+    const amounts = azureTextAmountsAfterLabel(line, /^\s*total\b/i);
+    if (amounts.length > 0) return amounts[0];
+  }
+  return 0;
+}
+
+function resolveAzureReceiptTotals(result, document, fields) {
+  const ocrText = collectAzureOcrText(result, document);
+  const subtotal =
+    azureTextAmountsAfterLabel(ocrText, /\bsub\s*total\b/i)[0] ||
+    azureFieldAmount(fields, ["Subtotal"]);
+
+  const grandTotalFromOcr =
+    azureTextAmountsAfterLabel(
+      ocrText,
+      /\b(?:grand\s*total|total\s*due|amount\s*due|balance\s*due|net\s*total)\b/i
+    )[0] ||
+    azurePlainTotalFromOcr(ocrText);
+  const grandTotalFromFields = azureFieldAmount(fields, [
+    "GrandTotal",
+    "TotalDue",
+    "AmountDue",
+    "BalanceDue",
+  ]);
+  const structuredTotal = parseAzureAmount(fields?.Total);
+
+  const explicitTax = uniqueAzureAmounts(
+    azureTextAmountsAfterLabel(ocrText, /\b(?:ppn|pb1|vat|gst)\b/i)
+  );
+  const genericTax = uniqueAzureAmounts(
+    azureTextAmountsAfterLabel(ocrText, /\b(?:tax|pajak)\b/i)
+  );
+  const tax = explicitTax.length > 0
+    ? explicitTax.reduce((sum, amount) => sum + amount, 0)
+    : genericTax.length > 0
+      ? genericTax.reduce((sum, amount) => sum + amount, 0)
+      : azureFieldAmount(fields, ["TotalTax", "Tax", "Pajak"]);
+
+  const serviceChargeFromOcr = uniqueAzureAmounts(
+    azureTextAmountsAfterLabel(ocrText, /\b(?:service\s*charge|service|sc|tip)\b/i)
+  );
+  const serviceCharge = serviceChargeFromOcr.length > 0
+    ? serviceChargeFromOcr.reduce((sum, amount) => sum + amount, 0)
+    : azureFieldAmount(fields, ["ServiceCharge", "Tip"]);
+  const breakdownTotal = subtotal > 0 ? subtotal + tax + serviceCharge : 0;
+
+  let total = grandTotalFromOcr || grandTotalFromFields;
+  if (!total) {
+    const hasChargeEvidence = tax > 0 || serviceCharge > 0;
+    if (breakdownTotal > 0 && structuredTotal > 0 && hasChargeEvidence) {
+      const difference = Math.abs(breakdownTotal - structuredTotal);
+      const roundingTolerance = Math.max(100, Math.round(breakdownTotal * 0.001));
+      total = difference <= roundingTolerance ? structuredTotal : breakdownTotal;
+    } else {
+      total = structuredTotal || breakdownTotal || subtotal;
+    }
+  }
+
+  return { subtotal, tax, serviceCharge, breakdownTotal, total };
+}
+
+function reconcileAzureItemsToTotal(items, total) {
+  const targetTotal = Math.max(0, Math.round(Number(total) || 0));
+  const lineTotal = items.reduce(
+    (sum, item) => sum + Math.max(0, Math.round(Number(item.amount) || 0)),
+    0
+  );
+  if (!targetTotal || !lineTotal || targetTotal === lineTotal) return items;
+
+  const allocations = items.map((item, index) => {
+    const amount = Math.max(0, Math.round(Number(item.amount) || 0));
+    const exact = (amount * targetTotal) / lineTotal;
+    return {
+      index,
+      amount: Math.floor(exact),
+      remainder: exact - Math.floor(exact),
+    };
   });
+
+  let allocatedTotal = allocations.reduce((sum, item) => sum + item.amount, 0);
+  const byRemainder = [...allocations].sort(
+    (left, right) => right.remainder - left.remainder || left.index - right.index
+  );
+  let cursor = 0;
+  while (allocatedTotal < targetTotal && byRemainder.length > 0) {
+    byRemainder[cursor % byRemainder.length].amount += 1;
+    allocatedTotal += 1;
+    cursor += 1;
+  }
+
+  return items.map((item, index) => ({
+    ...item,
+    amount: allocations[index].amount,
+  }));
 }
 
 async function parseReceiptWithAzure(imageBase64) {
@@ -713,24 +852,19 @@ async function parseReceiptWithAzure(imageBase64) {
     };
   });
 
-  let total = parseAzureAmount(fields.Total);
-  if (!total) {
-    const subtotal = parseAzureAmount(fields.Subtotal);
-    const tax = parseAzureAmount(fields.TotalTax) || parseAzureAmount(fields.Tax);
-    const tip = parseAzureAmount(fields.Tip) || parseAzureAmount(fields.ServiceCharge);
-    if (subtotal > 0) {
-      total = subtotal + tax + tip;
-    }
-  }
+  const totals = resolveAzureReceiptTotals(result, document, fields);
+  let total = totals.total;
+  const subtotal = totals.subtotal;
 
   // IDR scaling sanity check:
   // If total is in thousands (>= 10,000) but items were parsed as units (< 1000)
   const rawLineTotal = items.reduce((sum, item) => sum + item.amount, 0);
-  if (total >= 10000 && rawLineTotal > 0 && rawLineTotal < 1000) {
+  const scaleReference = subtotal || total;
+  if (scaleReference >= 10000 && rawLineTotal > 0 && rawLineTotal < 1000) {
     for (const item of items) {
       item.amount *= 1000;
     }
-  } else if (total > 0 && total < 1000 && rawLineTotal > 0 && rawLineTotal < 1000) {
+  } else if (scaleReference > 0 && scaleReference < 1000 && rawLineTotal > 0 && rawLineTotal < 1000) {
     total *= 1000;
     for (const item of items) {
       item.amount *= 1000;
@@ -745,7 +879,7 @@ async function parseReceiptWithAzure(imageBase64) {
 
   return {
     date: azureFieldValue(fields.TransactionDate),
-    items: addAzureTaxToItems(items, total),
+    items: reconcileAzureItemsToTotal(items, total),
   };
 }
 
