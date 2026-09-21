@@ -1,7 +1,7 @@
 name: expenseapp
 description: "This Aint A Virus Dawg"
 publish_to: 'none'
-version: 1.5.2
+version: 1.5.3
 
 environment:
   sdk: ^3.11.0

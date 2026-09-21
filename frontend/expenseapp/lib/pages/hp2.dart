@@ -2000,7 +2000,7 @@ class _SettingsPageState extends State<SettingsPage> {
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.info_outline),
           title: Text('Expense App'),
-          subtitle: Text('Version 1.5.2'),
+          subtitle: Text('Version 1.5.3'),
         ),
       ],
     );
