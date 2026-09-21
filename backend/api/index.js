@@ -98,6 +98,11 @@ const azureDocumentEndpoint = String(
 ).replace(/\/+$/, "");
 const azureDocumentKey = process.env.AZURE_DOCUMENT_INTELLIGENCE_KEY || "";
 
+const geminiModel =
+  process.env.GEMINI_MODEL ||
+  process.env.GOOGLE_MODEL ||
+  "gemini-3.6-flash";
+
 function normalizeParsedExpense(value) {
   const amount = Number(value?.amount);
   const type = String(value?.type || "others").toLowerCase();
@@ -128,17 +133,16 @@ app.post("/api/parse-notification", requireAuth, async (req, res) => {
     }
 
     const prompt = `You extract expenses from a generic mobile notification.
-Return only valid JSON with exactly these keys: name (string), amount (integer
-in the source currency), category (short lowercase string), and type (one of
-expected, unexpected, others). If it is not clearly an expense, still return
-the best reasonable interpretation and use others. Do not include markdown.
+Return only valid JSON with exactly these keys: name (string), amount (integer in the source currency, e.g. in IDR Rupiah as full integer without decimals), category (short lowercase string), and type (one of expected, unexpected, others).
+IMPORTANT: In Indonesian Rupiah (Rp / IDR), periods (.) are thousands separators (e.g. "Rp 50.000" = 50000). Never return divided amounts.
+If it is not clearly an expense, still return the best reasonable interpretation and use others. Do not include markdown.
 Notification title: ${String(req.body?.title || "")}
 Notification app: ${String(req.body?.packageName || "")}
 Notification message: ${notification}`;
 
     const response = await fetch(
-      "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" +
-        encodeURIComponent(parserApiKey),
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=` +
+      encodeURIComponent(parserApiKey),
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -186,25 +190,77 @@ const RECEIPT_CATEGORIES = [
   "hiburan",
 ];
 
+function guessReceiptCategory(itemName) {
+  const lower = String(itemName || "").toLowerCase();
+  if (/bensin|pertalite|pertamax|spbu|parkir|tol|grab|gojek|taxi|ojol/.test(lower)) {
+    return "transportasi";
+  }
+  if (/obat|apotek|panadol|paracetamol|vitamin|dokter|klinik|masker|bodrex|tolak angin/.test(lower)) {
+    return "kesehatan";
+  }
+  if (/kabel|charger|batere|battery|mouse|keyboard|usb|headphone|earphone|hp/.test(lower)) {
+    return "elektronik";
+  }
+  if (/kaos|kemeja|celana|baju|dress|rok|jaket|jacket|sepatu|sandal|t-shirt/.test(lower)) {
+    return "baju";
+  }
+  if (/buku|pulpen|pensil|penghapus|kertas|atk|fotocopy|binder|spidol/.test(lower)) {
+    return "school supply";
+  }
+  if (/bioskop|tiket|cinema|xxi|karaoke|game|billiard|wisata/.test(lower)) {
+    return "hiburan";
+  }
+  return "makanan";
+}
+
 function normalizeReceiptItem(value) {
   const amount = Number(value?.amount);
   const quantity = Number(value?.quantity);
-  const category = String(value?.category || "makanan").trim().toLowerCase();
+  const rawCat = String(value?.category || "").trim().toLowerCase();
+  const category = RECEIPT_CATEGORIES.includes(rawCat)
+    ? rawCat
+    : guessReceiptCategory(value?.name);
   const type = String(value?.type || "others").toLowerCase();
   return {
     name: String(value?.name || "Unknown item").trim(),
     quantity: Number.isFinite(quantity) && quantity > 0 ? Math.round(quantity) : 1,
     amount: Number.isFinite(amount) ? Math.max(0, Math.round(amount)) : 0,
-    category: RECEIPT_CATEGORIES.includes(category) ? category : "makanan",
+    category,
     type: ["expected", "unexpected", "others"].includes(type) ? type : "others",
   };
 }
 
 function normalizeReceiptDate(value) {
-  const date = String(value || '').trim();
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
-  const parsed = new Date(`${date}T00:00:00Z`);
-  return Number.isNaN(parsed.getTime()) ? null : date;
+  if (!value) return null;
+  const raw = String(value).trim();
+
+  // 1. ISO format: YYYY-MM-DD
+  if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) {
+    const parsed = new Date(`${raw}T00:00:00Z`);
+    return Number.isNaN(parsed.getTime()) ? null : raw;
+  }
+
+  // 2. Common Indonesian formats: DD/MM/YYYY or DD-MM-YYYY
+  const dmy = raw.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (dmy) {
+    const day = dmy[1].padStart(2, "0");
+    const month = dmy[2].padStart(2, "0");
+    const year = dmy[3];
+    const iso = `${year}-${month}-${day}`;
+    const parsed = new Date(`${iso}T00:00:00Z`);
+    return Number.isNaN(parsed.getTime()) ? null : iso;
+  }
+
+  // 3. Fallback date string parsing (e.g. "18 Sep 2026")
+  const parsed = new Date(raw);
+  if (!Number.isNaN(parsed.getTime())) {
+    const y = parsed.getFullYear();
+    const m = String(parsed.getMonth() + 1).padStart(2, "0");
+    const d = String(parsed.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
+  return null;
 }
 
 class ReceiptProviderError extends Error {
@@ -219,7 +275,7 @@ function isAzureConfigured() {
 }
 
 function shouldUseAzureFallback(error) {
-  return !error?.status || [429, 500, 502, 503, 504].includes(error.status);
+  return !error?.status || [400, 404, 429, 500, 502, 503, 504].includes(error.status);
 }
 
 async function fetchWithTimeout(url, options, timeoutMs) {
@@ -235,8 +291,13 @@ async function fetchWithTimeout(url, options, timeoutMs) {
 function receiptPrompt() {
   return `You extract itemized purchases from a photo of a store or
 restaurant receipt. Read the receipt date and every purchased line item, and ignore lines such as
-subtotal, cash, change, or payment method. If the receipt also lists a tax
-(PPN/tax) and/or a service charge, distribute those charges proportionally
+subtotal, cash, change, or payment method.
+
+IMPORTANT FOR INDONESIAN (IDR) RECEIPTS & NUMBER FORMATTING:
+- In Indonesian receipts, prices are in Rupiah (IDR). Periods (.) are frequently used as thousands separators (e.g., "174.000" means 174000 IDR, "313.082" means 313082 IDR, "20.000" means 20000 IDR, "14.000" means 14000 IDR). Never treat those periods as decimal points.
+- Always output the full integer value in the local currency without decimals (e.g., 174000, not 174; 313082, not 313).
+
+If the receipt also lists a tax (PPN/PB1/tax) and/or a service charge (SC), distribute those charges proportionally
 across every item so each item's "amount" already includes its share of the
 tax and service charge. Return only valid JSON with an "items" array. Each
 item has: name (string), quantity (integer, default 1), amount (integer,
@@ -248,8 +309,8 @@ date in YYYY-MM-DD format, or null if it cannot be read. Do not include markdown
 
 async function parseReceiptWithGemini(imageBase64, mimeType) {
   const response = await fetchWithTimeout(
-    "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=" +
-      encodeURIComponent(parserApiKey),
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(geminiModel)}:generateContent?key=` +
+    encodeURIComponent(parserApiKey),
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -309,6 +370,110 @@ async function parseReceiptWithGemini(imageBase64, mimeType) {
   return parsed;
 }
 
+function parseAzureAmount(field) {
+  if (!field) return 0;
+
+  const content = String(
+    field?.content ??
+    field?.valueString ??
+    ""
+  ).trim();
+
+  const valueNumber =
+    field?.valueNumber ??
+    field?.valueInteger ??
+    field?.valueCurrency?.amount ??
+    (typeof field?.value === "number" ? field.value : null);
+
+  // 1. Inspect raw OCR content string for currency/thousand separator patterns
+  if (content) {
+    let text = content
+      .replace(/^(?:Rp|IDR|RP|idr|\$|\€|\£)\.?\s*/i, "")
+      .replace(/\s*(?:,\-|\.\-|\-)$/, "")
+      .replace(/[\*\#\@]/g, "")
+      .trim();
+
+    // Remove single trailing tax code character like "174.000 B" or "174.000 A"
+    text = text.replace(/\s+[A-Za-z]$/, "").trim();
+
+    // Handle 'k' / 'K' (e.g. 174k, 25.5k)
+    const kMatch = text.match(/^(\d+(?:[.,]\d+)?)\s*[kK]$/);
+    if (kMatch) {
+      const val = parseFloat(kMatch[1].replace(/,/g, "."));
+      if (!Number.isNaN(val)) return Math.round(val * 1000);
+    }
+
+    // Indonesian / European dot thousands separator: e.g. "174.000", "1.250.000", "313.082"
+    if (/^\d{1,3}(?:\.\d{3})+(?:,\d+)?$/.test(cleanText(text))) {
+      const integerPart = cleanText(text).replace(/\./g, "").replace(/,.*/, "");
+      const num = parseInt(integerPart, 10);
+      if (!Number.isNaN(num)) return num;
+    }
+
+    // Double dot / noise like "174.000.00"
+    if (/^\d{1,3}(?:\.\d{3})+\.\d{2}$/.test(text)) {
+      const parts = text.split(".");
+      parts.pop();
+      const num = parseInt(parts.join(""), 10);
+      if (!Number.isNaN(num)) return num;
+    }
+
+    // US comma thousands separator: e.g. "1,250,000.00" or "174,000"
+    if (/^\d{1,3}(?:,\d{3})+(?:\.\d+)?$/.test(cleanText(text))) {
+      const integerPart = cleanText(text).replace(/,/g, "").replace(/\..*/, "");
+      const num = parseInt(integerPart, 10);
+      if (!Number.isNaN(num)) return num;
+    }
+
+    // Single dot with exactly 3 digits: e.g. "313.082" or "18.620"
+    const singleDotThree = text.match(/^(\d+)\.(\d{3})$/);
+    if (singleDotThree) {
+      return parseInt(singleDotThree[1] + singleDotThree[2], 10);
+    }
+
+    // Space as thousands separator: "174 000"
+    if (/^\d{1,3}(?:\s\d{3})+$/.test(text)) {
+      const num = parseInt(text.replace(/\s+/g, ""), 10);
+      if (!Number.isNaN(num)) return num;
+    }
+
+    // Pure digits: "174000"
+    if (/^\d+$/.test(text)) {
+      const num = parseInt(text, 10);
+      if (!Number.isNaN(num)) return num;
+    }
+
+    // Comma decimal: "174000,50"
+    if (/^\d+,\d+$/.test(text)) {
+      const num = parseInt(text.replace(/,.*/, ""), 10);
+      if (!Number.isNaN(num)) return num;
+    }
+
+    // Embedded dot sequence in text: "Total : 313.082"
+    const embedded = text.match(/\d{1,3}(?:\.\d{3})+/);
+    if (embedded) {
+      const num = parseInt(embedded[0].replace(/\./g, ""), 10);
+      if (!Number.isNaN(num)) return num;
+    }
+  }
+
+  // 2. Inspect valueNumber / valueCurrency.amount fallback
+  if (typeof valueNumber === "number" && !Number.isNaN(valueNumber)) {
+    const strVal = valueNumber.toString();
+    // If Azure parsed "313.082" as float 313.082 with 3 decimal digits
+    if (/\.\d{3}$/.test(strVal)) {
+      return Math.round(valueNumber * 1000);
+    }
+    return Math.round(valueNumber);
+  }
+
+  return 0;
+}
+
+function cleanText(str) {
+  return String(str || "").replace(/[^\d.,]/g, "").trim();
+}
+
 function azureFieldValue(field) {
   return (
     field?.valueString ??
@@ -316,7 +481,8 @@ function azureFieldValue(field) {
     field?.valueNumber ??
     field?.valueInteger ??
     field?.valueCurrency?.amount ??
-    field?.value
+    field?.value ??
+    field?.content
   );
 }
 
@@ -399,17 +565,114 @@ async function parseReceiptWithAzure(imageBase64) {
 
   const document = result.documents?.[0];
   const fields = document?.fields || {};
-  const rawItems = fields.Items?.valueArray || [];
-  const items = rawItems.map((item) => ({
-    name: String(azureItemValue(item, "Description") || "Unknown item"),
-    quantity: Number(azureItemValue(item, "Quantity")) || 1,
-    amount: Number(
-      azureItemValue(item, "TotalPrice") ?? azureItemValue(item, "Price")
-    ) || 0,
-    category: "makanan",
-    type: "others",
-  }));
-  const total = Number(azureFieldValue(fields.Total)) || 0;
+  let rawItems = fields.Items?.valueArray || [];
+
+  // Table fallback if Items field is missing or empty
+  if (rawItems.length === 0 && Array.isArray(result.tables) && result.tables.length > 0) {
+    const table = result.tables[0];
+    const rowMap = new Map();
+    for (const cell of table.cells || []) {
+      if (!rowMap.has(cell.rowIndex)) rowMap.set(cell.rowIndex, []);
+      rowMap.get(cell.rowIndex).push(cell);
+    }
+    const extracted = [];
+    for (const [rowIndex, cells] of rowMap.entries()) {
+      const rowText = cells.map((c) => c.content).join(" ").toLowerCase();
+      if (rowIndex === 0 && /item|desc|qty|price|total|harga|nama/i.test(rowText)) continue;
+
+      let itemPrice = 0;
+      let itemQty = 1;
+      let itemDesc = "";
+
+      for (const cell of cells) {
+        const amt = parseAzureAmount(cell);
+        const cellText = String(cell.content || "").trim();
+        if (amt > 0 && itemPrice === 0) {
+          itemPrice = amt;
+        } else if (/^\d{1,2}$/.test(cellText) && itemQty === 1) {
+          itemQty = parseInt(cellText, 10);
+        } else if (cellText.length > itemDesc.length && !/^\d+$/.test(cellText)) {
+          itemDesc = cellText;
+        }
+      }
+
+      if (itemPrice > 0) {
+        extracted.push({
+          name: itemDesc || `Item ${rowIndex}`,
+          quantity: itemQty,
+          amount: itemPrice,
+          category: guessReceiptCategory(itemDesc),
+          type: "others",
+        });
+      }
+    }
+    if (extracted.length > 0) {
+      rawItems = extracted;
+    }
+  }
+
+  const items = rawItems.map((item) => {
+    if (item.amount !== undefined && item.name !== undefined) {
+      return item;
+    }
+
+    const qtyRaw = Number(azureItemValue(item, "Quantity"));
+    const quantity = Number.isFinite(qtyRaw) && qtyRaw > 0 ? Math.round(qtyRaw) : 1;
+    const totalPrice = parseAzureAmount(item?.valueObject?.TotalPrice);
+    const unitPrice = parseAzureAmount(item?.valueObject?.Price);
+
+    let amount = 0;
+    if (totalPrice > 0) {
+      amount = totalPrice;
+    } else if (unitPrice > 0) {
+      amount = unitPrice * quantity;
+    }
+
+    const name = String(
+      azureItemValue(item, "Description") ||
+      azureItemValue(item, "Name") ||
+      item?.content ||
+      "Unknown item"
+    ).trim();
+
+    return {
+      name: name || "Unknown item",
+      quantity,
+      amount,
+      category: guessReceiptCategory(name),
+      type: "others",
+    };
+  });
+
+  let total = parseAzureAmount(fields.Total);
+  if (!total) {
+    const subtotal = parseAzureAmount(fields.Subtotal);
+    const tax = parseAzureAmount(fields.TotalTax) || parseAzureAmount(fields.Tax);
+    const tip = parseAzureAmount(fields.Tip) || parseAzureAmount(fields.ServiceCharge);
+    if (subtotal > 0) {
+      total = subtotal + tax + tip;
+    }
+  }
+
+  // IDR scaling sanity check:
+  // If total is in thousands (>= 10,000) but items were parsed as units (< 1000)
+  const rawLineTotal = items.reduce((sum, item) => sum + item.amount, 0);
+  if (total >= 10000 && rawLineTotal > 0 && rawLineTotal < 1000) {
+    for (const item of items) {
+      item.amount *= 1000;
+    }
+  } else if (total > 0 && total < 1000 && rawLineTotal > 0 && rawLineTotal < 1000) {
+    total *= 1000;
+    for (const item of items) {
+      item.amount *= 1000;
+    }
+  } else if (rawLineTotal >= 10000) {
+    for (const item of items) {
+      if (item.amount > 0 && item.amount < 1000) {
+        item.amount *= 1000;
+      }
+    }
+  }
 
   return {
     date: azureFieldValue(fields.TransactionDate),
@@ -443,6 +706,7 @@ app.post("/api/parse-receipt", requireAuth, async (req, res) => {
         provider = "gemini";
       } catch (error) {
         geminiError = error;
+        console.warn(`[ReceiptParser] Gemini failed (${error.status || error.message}), falling back to Azure...`);
       }
     }
 
