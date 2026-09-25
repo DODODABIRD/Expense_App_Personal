@@ -743,6 +743,34 @@ h1 {
     margin-top: 10px;
 }
 
+.model-config {
+    margin-top: 4px;
+}
+
+.model-config-heading {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 10px;
+    border-bottom: var(--border-thin);
+    font-size: 0.74rem;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+}
+
+.model-config-heading span:last-child {
+    color: var(--muted);
+    font-size: 0.68rem;
+}
+
+.model-config-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+    gap: 16px;
+    margin-top: 14px;
+}
+
 .fact-box {
     padding: 16px 20px;
     border: var(--border);
@@ -764,6 +792,30 @@ h1 {
 .fact-box strong {
     font-weight: 800;
     font-size: 0.98rem;
+}
+
+.model-fact {
+    min-width: 0;
+}
+
+.model-fact-aqua {
+    background: var(--card-aqua);
+}
+
+.model-fact-yellow {
+    background: var(--card-yellow);
+}
+
+.model-fact strong {
+    overflow-wrap: anywhere;
+    font-size: 0.84rem;
+    line-height: 1.4;
+}
+
+.model-fact small {
+    color: var(--muted);
+    font-size: 0.74rem;
+    font-weight: 600;
 }
 
 /* Work Section */

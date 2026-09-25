@@ -387,9 +387,11 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
 | `DELETE` | `/api/users/:id` | Bearer JWT | Menghapus permanen satu transaksi berdasarkan MongoDB ObjectId |
 | `POST` | `/api/users/delete-all` | Bearer JWT | Menghapus massal seluruh transaksi milik pengguna |
 | `GET` | `/api/users/local/:localId` | Bearer JWT | Mengambil transaksi berdasarkan identifier lokal SQLite |
-| `POST` | `/api/parse-receipt` | Bearer JWT | Upload foto struk base64 & ekstraksi item via Gemini -> OpenRouter GPT-5 Nano -> Azure fallback |
+| `POST` | `/api/parse-receipt` | Bearer JWT | Upload foto struk base64 & ekstraksi item via Groq -> Azure fallback (maksimal 8 detik) |
 | `POST` | `/api/parse-notification` | Bearer JWT | AI Parsing teks notifikasi Android perbankan menjadi objek transaksi |
 | `GET` | `/api/exchange-rates` | Bearer JWT | Mengambil kurs mata uang global real-time (basis IDR) |
+
+Set `GROQ_API_KEY` and `GROQ_MODEL` in Vercel to configure the AI provider and default model. Set `GROQ_NOTIFICATION_MODEL` to override the model used for notification parsing; if unset, notification parsing uses `GROQ_MODEL`. Receipt parsing continues to use `GROQ_MODEL`. Redeploy after changing these environment variables.
 
 ---
 

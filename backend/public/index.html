@@ -82,6 +82,7 @@
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="portfolio.css">
+    <script src="/model-status.js" defer></script>
 </head>
 
 <body id="top">
@@ -335,6 +336,25 @@
                     <div class="fact-box"><span>PRIMARY PROJECT</span><strong>Unmurce Expense App</strong></div>
                     <div class="fact-box"><span>DOCUMENTATION</span><a href="/docs"
                             style="text-decoration: underline; font-weight: 800;">View Tech Docs ↗</a></div>
+                </div>
+
+                <div class="model-config">
+                    <div class="model-config-heading">
+                        <span>LIVE MODEL ROUTING</span>
+                        <span>ACTIVE VERCEL DEPLOYMENT</span>
+                    </div>
+                    <div class="model-config-grid">
+                        <div class="fact-box model-fact model-fact-aqua">
+                            <span>GROQ_MODEL / RECEIPTS</span>
+                            <strong data-runtime-model="GROQ_MODEL" aria-live="polite">Loading...</strong>
+                            <small>Default model used for receipt parsing</small>
+                        </div>
+                        <div class="fact-box model-fact model-fact-yellow">
+                            <span>GROQ_NOTIFICATION_MODEL</span>
+                            <strong data-runtime-model="GROQ_NOTIFICATION_MODEL" aria-live="polite">Loading...</strong>
+                            <small>Effective model; defaults to GROQ_MODEL</small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>

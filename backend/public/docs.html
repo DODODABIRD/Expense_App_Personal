@@ -14,6 +14,7 @@
     <link
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600;700&display=swap"
         rel="stylesheet">
+    <script src="/model-status.js" defer></script>
     <style>
         :root {
             color-scheme: only light;
@@ -417,6 +418,69 @@
         .callout-success {
             background: #dcfce7;
             border-color: #000;
+        }
+
+        .runtime-config {
+            align-items: flex-start;
+        }
+
+        .runtime-config-heading {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .runtime-config-heading .docs-callout-title {
+            margin: 0;
+        }
+
+        .runtime-config-status {
+            padding: 3px 9px;
+            border: 2px solid #000;
+            border-radius: var(--radius-pill);
+            background: var(--card-mint);
+            font-size: 0.68rem;
+            font-weight: 800;
+        }
+
+        .runtime-config-note {
+            margin: 7px 0 0;
+            font-size: 0.82rem;
+        }
+
+        .runtime-model-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+            gap: 12px 20px;
+            margin-top: 14px;
+        }
+
+        .runtime-model-item {
+            min-width: 0;
+            padding-top: 9px;
+            border-top: 2px solid #000;
+        }
+
+        .runtime-model-item span {
+            display: block;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .runtime-model-item code {
+            display: block;
+            margin-top: 4px;
+            overflow-wrap: anywhere;
+            font-size: 0.86rem;
+        }
+
+        .runtime-model-item small {
+            display: block;
+            margin-top: 4px;
+            color: var(--muted);
+            font-weight: 600;
         }
 
         /* Color Palette Swatches */
@@ -1071,6 +1135,29 @@
                         <p class="docs-callout-desc">Local transaction persistence completes in <strong>&lt; 3ms</strong> via
                             SQLite before triggering asynchronous non-blocking cloud synchronization. Zero UI lag is
                             guaranteed regardless of network state.</p>
+                    </div>
+                </div>
+
+                <div class="docs-callout callout-info runtime-config" aria-live="polite">
+                    <span class="docs-callout-icon" aria-hidden="true">AI</span>
+                    <div class="docs-callout-content">
+                        <div class="runtime-config-heading">
+                            <div class="docs-callout-title">Live Groq routing</div>
+                            <span class="runtime-config-status" data-runtime-status>CONNECTING</span>
+                        </div>
+                        <p class="runtime-config-note">Current model IDs from this Vercel deployment. Values refresh when this page loads.</p>
+                        <div class="runtime-model-grid">
+                            <div class="runtime-model-item">
+                                <span>GROQ_MODEL</span>
+                                <code data-runtime-model="GROQ_MODEL">Loading...</code>
+                                <small>Default model used for receipt parsing.</small>
+                            </div>
+                            <div class="runtime-model-item">
+                                <span>GROQ_NOTIFICATION_MODEL</span>
+                                <code data-runtime-model="GROQ_NOTIFICATION_MODEL">Loading...</code>
+                                <small>Notification model; falls back to GROQ_MODEL when unset.</small>
+                            </div>
+                        </div>
                     </div>
                 </div>
 

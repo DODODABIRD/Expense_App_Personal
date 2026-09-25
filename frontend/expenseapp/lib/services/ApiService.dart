@@ -211,6 +211,35 @@ class Throw {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
+  static Future<int> updateAiNotificationReference(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl/ai-notification-reference'),
+          headers: await _headers(),
+          body: jsonEncode({'items': items}),
+        )
+        .timeout(const Duration(seconds: 30));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      String message =
+          'Could not update AI notification reference (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['error'] != null) message = body['error'].toString();
+      } catch (_) {
+        // Keep the status-based message when the response is not JSON.
+      }
+      throw Exception(message);
+    }
+
+    final body = jsonDecode(response.body) as Map<String, dynamic>;
+    if (body['updated'] != true) {
+      throw Exception('The server did not confirm the reference update');
+    }
+    return body['itemCount'] is int ? body['itemCount'] as int : items.length;
+  }
+
   Future<void> getUserById(String id) async {
     final url = Uri.parse('$baseUrl/users/$id');
 

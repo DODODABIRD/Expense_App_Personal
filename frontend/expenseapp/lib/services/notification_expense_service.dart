@@ -102,6 +102,61 @@ class NotificationExpenseService {
     }
   }
 
+  Future<int> updateAiNotificationReference() async {
+    final onlineExpenses = await Throw.getOnlineExpenses();
+    final localExpenses = await DatabaseHelp.getData();
+    final items = buildAiNotificationReferenceItems(
+      localExpenses: localExpenses,
+      onlineExpenses: onlineExpenses,
+    );
+    return Throw.updateAiNotificationReference(items);
+  }
+
+  static List<Map<String, dynamic>> buildAiNotificationReferenceItems({
+    required List<Map<String, dynamic>> localExpenses,
+    required List<Map<String, dynamic>> onlineExpenses,
+  }) {
+    final items = <Map<String, dynamic>>[];
+    final knownIds = <String>{};
+
+    for (final expense in localExpenses) {
+      final ids = <String>[
+        if (expense['mongoId'] != null) 'mongo:${expense['mongoId']}',
+        if (expense['id'] != null) 'local:${expense['id']}',
+      ];
+      final item = _toAiReferenceItem(expense);
+      if (item == null || ids.any(knownIds.contains)) continue;
+      knownIds.addAll(ids);
+      items.add(item);
+    }
+
+    for (final expense in onlineExpenses) {
+      final ids = <String>[
+        if (expense['_id'] != null) 'mongo:${expense['_id']}',
+        if (expense['localId'] != null) 'local:${expense['localId']}',
+      ];
+      if (ids.any(knownIds.contains)) continue;
+      final item = _toAiReferenceItem(expense);
+      if (item == null) continue;
+      knownIds.addAll(ids);
+      items.add(item);
+    }
+
+    return items;
+  }
+
+  static Map<String, dynamic>? _toAiReferenceItem(
+    Map<String, dynamic> expense,
+  ) {
+    final name = expense['name']?.toString().trim() ?? '';
+    final rawAmount = expense['amount'];
+    final amount = rawAmount is num
+        ? rawAmount.round()
+        : int.tryParse(rawAmount?.toString() ?? '');
+    if (name.isEmpty || amount == null || amount <= 0) return null;
+    return {'expenseitem': name, 'expenseprice': amount};
+  }
+
   Future<bool> isParserEnabled() async {
     return (await DatabaseHelp.getSetting('auto_expense_parser')) != 'false';
   }
@@ -166,29 +221,7 @@ class NotificationExpenseService {
       }
 
       try {
-        // 4. Try Fast Local Offline Regex Parser first
-        final localParsed = LocalNotificationParser.parse(
-          title: title,
-          message: message,
-          packageName: packageName,
-          timestamp: postTime,
-        );
-
-        if (localParsed != null && localParsed.amount > 0) {
-          final date = localParsed.date ?? postTime.toIso8601String().substring(0, 10);
-          await DatabaseHelp.insertData(
-            localParsed.name,
-            localParsed.amount,
-            date,
-            localParsed.category,
-            localParsed.type,
-          );
-          await _onExpenseAdded?.call();
-          return;
-        }
-
-        // 5. Fallback to Cloud AI Parser
-        await _processWithCloudParser(
+        await _processNotification(
           title: title,
           message: message,
           packageName: packageName,
@@ -209,39 +242,88 @@ class NotificationExpenseService {
     await _methods.invokeMethod<void>('start');
   }
 
-  Future<void> _processWithCloudParser({
+  Future<void> _processNotification({
     required String title,
     required String message,
     required String packageName,
     required DateTime postTime,
+  }) async {
+    Map<String, dynamic>? cloudParsed;
+    Object? cloudError;
+    try {
+      cloudParsed = await _parseWithCloudParser(
+        title: title,
+        message: message,
+        packageName: packageName,
+      );
+    } catch (error) {
+      cloudError = error;
+    }
+
+    if (cloudParsed != null) {
+      await DatabaseHelp.insertData(
+        cloudParsed['name'] as String,
+        cloudParsed['amount'] as int,
+        postTime.toIso8601String().substring(0, 10),
+        cloudParsed['category'] as String,
+        cloudParsed['type'] as String,
+      );
+      await _onExpenseAdded?.call();
+      return;
+    }
+
+    final localParsed = LocalNotificationParser.parse(
+      title: title,
+      message: message,
+      packageName: packageName,
+      timestamp: postTime,
+    );
+    if (localParsed != null && localParsed.amount > 0) {
+      final date =
+          localParsed.date ?? postTime.toIso8601String().substring(0, 10);
+      await DatabaseHelp.insertData(
+        localParsed.name,
+        localParsed.amount,
+        date,
+        localParsed.category,
+        localParsed.type,
+      );
+      await _onExpenseAdded?.call();
+      return;
+    }
+
+    if (cloudError != null) throw cloudError;
+    throw Exception('No usable expense was returned by either parser');
+  }
+
+  Future<Map<String, dynamic>?> _parseWithCloudParser({
+    required String title,
+    required String message,
+    required String packageName,
   }) async {
     final cloudParsed = await Throw.parseNotification(
       title: title,
       message: message,
       packageName: packageName,
     );
-
-    final amount = int.tryParse(cloudParsed['amount']?.toString() ?? '') ?? 0;
+    final rawAmount = cloudParsed['amount'];
+    final amount = rawAmount is num
+        ? rawAmount.round()
+        : int.tryParse(rawAmount?.toString() ?? '') ?? 0;
     final name = (cloudParsed['name']?.toString() ?? '').trim();
+    if (amount <= 0 || name.isEmpty) return null;
 
-    if (amount <= 0 || name.isEmpty) {
-      return;
-    }
-
-    final rawCategory = cloudParsed['category']?.toString().toLowerCase() ?? 'lainnya';
-    final category = _validCategories.contains(rawCategory) ? rawCategory : 'lainnya';
-    final rawType = cloudParsed['type']?.toString().toLowerCase() ?? 'unexpected';
-    final type = (rawType == 'expected' || rawType == 'unexpected') ? rawType : 'unexpected';
-    final date = cloudParsed['date']?.toString() ?? postTime.toIso8601String().substring(0, 10);
-
-    await DatabaseHelp.insertData(
-      name,
-      amount,
-      date,
-      category,
-      type,
-    );
-    await _onExpenseAdded?.call();
+    final rawCategory =
+        cloudParsed['category']?.toString().toLowerCase() ?? 'lainnya';
+    final category = _validCategories.contains(rawCategory)
+        ? rawCategory
+        : 'lainnya';
+    final rawType =
+        cloudParsed['type']?.toString().toLowerCase() ?? 'unexpected';
+    final type = (rawType == 'expected' || rawType == 'unexpected')
+        ? rawType
+        : 'unexpected';
+    return {'name': name, 'amount': amount, 'category': category, 'type': type};
   }
 
   Future<void> _enqueuePendingCloudNotification(Map<String, dynamic> item) async {
@@ -282,7 +364,7 @@ class NotificationExpenseService {
               ? DateTime.fromMillisecondsSinceEpoch(postTimeRaw)
               : DateTime.now();
 
-          await _processWithCloudParser(
+          await _processNotification(
             title: title,
             message: message,
             packageName: packageName,

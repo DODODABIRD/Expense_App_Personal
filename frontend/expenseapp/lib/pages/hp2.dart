@@ -1818,6 +1818,7 @@ class _SettingsPageState extends State<SettingsPage> {
   int _pendingSync = 0;
   bool _notificationsEnabled = true;
   bool _autoExpenseParserEnabled = false;
+  bool _isUpdatingAiReference = false;
   Set<String> _allowedNotificationApps = {};
 
   @override
@@ -1902,6 +1903,32 @@ class _SettingsPageState extends State<SettingsPage> {
     await _loadSyncStatus();
   }
 
+  Future<void> _updateAiNotificationReference() async {
+    if (_isUpdatingAiReference) return;
+    setState(() => _isUpdatingAiReference = true);
+    try {
+      final count = await NotificationExpenseService.instance
+          .updateAiNotificationReference();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'AI notification reference updated with $count expenses.',
+          ),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Could not update AI notification reference: $error'),
+        ),
+      );
+    } finally {
+      if (mounted) setState(() => _isUpdatingAiReference = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return ListView(
@@ -1927,6 +1954,16 @@ class _SettingsPageState extends State<SettingsPage> {
           subtitle: 'Import expenses created on another device.',
           color: const Color(0xFF5DF9FF),
           onTap: widget.onLoadOnlineExpenses,
+        ),
+        const SizedBox(height: 16),
+        _SettingsAction(
+          icon: Icons.auto_awesome_outlined,
+          title: 'Update AI notification reference',
+          subtitle: _isUpdatingAiReference
+              ? 'Updating expense history...'
+              : 'Refresh expense examples used by notification AI.',
+          color: const Color(0xFFE5E7EB),
+          onTap: _updateAiNotificationReference,
         ),
         const SizedBox(height: 16),
         _SettingsAction(

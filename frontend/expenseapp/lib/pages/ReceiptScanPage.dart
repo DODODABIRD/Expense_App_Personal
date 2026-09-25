@@ -134,10 +134,8 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
 
   String _providerLabel(String? provider) {
     switch (provider) {
-      case 'gemini':
-        return 'Gemini AI';
-      case 'openrouter':
-        return 'OpenAI GPT-5 Nano via OpenRouter';
+      case 'groq':
+        return 'Groq AI';
       case 'azure':
         return 'Azure AI Document Intelligence';
       default:
