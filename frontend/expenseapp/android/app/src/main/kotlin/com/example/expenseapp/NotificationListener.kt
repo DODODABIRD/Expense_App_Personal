@@ -34,23 +34,7 @@ class NotificationListener : NotificationListenerService() {
         // 2. Ignore ongoing / persistent notifications (music players, system alerts, progress bars)
         if (sbn.isOngoing) return
 
-        // 3. Deduplication filter: prevent duplicate events within 60 seconds
-        val signature = "${sbn.packageName}_${sbn.id}_${sbn.postTime}"
-        val now = System.currentTimeMillis()
-        synchronized(recentSignatures) {
-            val it = recentSignatures.entries.iterator()
-            while (it.hasNext()) {
-                if (now - it.next().value > DEDUP_WINDOW_MS) {
-                    it.remove()
-                }
-            }
-            if (recentSignatures.containsKey(signature)) {
-                return
-            }
-            recentSignatures[signature] = now
-        }
-
-        // 4. Comprehensive text extraction
+        // 3. Comprehensive text extraction
         val extras = sbn.notification.extras
         val textBuilder = StringBuilder()
 
@@ -84,6 +68,25 @@ class NotificationListener : NotificationListenerService() {
         if (fullText.isEmpty()) return
 
         val title = extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.trim() ?: ""
+
+        // 4. Deduplication filter: many banking apps reuse the same notification id and
+        // Android keeps the original postTime on updates, so dedup must be content-based
+        // rather than id/postTime-based, otherwise every later transaction gets dropped.
+        val signature = "${sbn.packageName}_${title}_$fullText"
+        val now = System.currentTimeMillis()
+        synchronized(recentSignatures) {
+            val it = recentSignatures.entries.iterator()
+            while (it.hasNext()) {
+                if (now - it.next().value > DEDUP_WINDOW_MS) {
+                    it.remove()
+                }
+            }
+            if (recentSignatures.containsKey(signature)) {
+                return
+            }
+            recentSignatures[signature] = now
+        }
+
         val payload = JSONObject().apply {
             put("title", title)
             put("text", fullText)
