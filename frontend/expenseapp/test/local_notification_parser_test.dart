@@ -116,6 +116,19 @@ void main() {
       expect(qrisRes!.amount, 75000);
       expect(qrisRes.name, contains('Solaria'));
 
+      final detailedMerchantRes = LocalNotificationParser.parse(
+        title: 'BCA mobile',
+        message:
+            'Pembayaran QRIS Rp 75.000 di Cafe Utama (Cabang Pusat) / Lantai-2 berhasil',
+        packageName: 'com.bca',
+      );
+      expect(detailedMerchantRes, isNotNull);
+      expect(detailedMerchantRes!.amount, 75000);
+      expect(
+        detailedMerchantRes.name,
+        'Cafe Utama (Cabang Pusat) / Lantai-2',
+      );
+
       final transferRes = LocalNotificationParser.parse(
         title: 'myBCA',
         message: 'm-Transfer: BERHASIL... Transfer ke BUDI SETIAWAN Rp 150.000',
@@ -278,6 +291,48 @@ void main() {
       expect(fallbackRes, isNotNull);
       expect(fallbackRes!.amount, 350000);
       expect(fallbackRes.category, 'kesehatan');
+    });
+
+    test('Bare unformatted amount is not truncated', () {
+      final res = LocalNotificationParser.parse(
+        title: 'Pembayaran',
+        message: 'Pembayaran QRIS Rp5000 di Warung Kopi berhasil',
+        packageName: 'com.any.bank',
+      );
+      expect(res, isNotNull);
+      expect(res!.amount, 5000);
+    });
+
+    test('Ignores balance/limit figures when a real transaction amount exists', () {
+      final res = LocalNotificationParser.parse(
+        title: 'Transaksi Berhasil',
+        message: 'Sisa saldo Rp 1.500.000. Pembayaran QRIS Rp 45.000 di Warung Makan Berkah berhasil.',
+        packageName: 'com.any.bank',
+      );
+      expect(res, isNotNull);
+      expect(res!.amount, 45000);
+    });
+
+    test('Merchant word order independent of the payment keyword', () {
+      final res = LocalNotificationParser.parse(
+        title: 'BCA mobile',
+        message: 'Pembayaran QRIS di Solaria sebesar Rp 75.000 berhasil',
+        packageName: 'com.bca',
+      );
+      expect(res, isNotNull);
+      expect(res!.amount, 75000);
+      expect(res.name, contains('Solaria'));
+    });
+
+    test('Does not extract account/device nouns as merchant', () {
+      final res = LocalNotificationParser.parse(
+        title: 'Transfer Berhasil',
+        message: 'Kamu berhasil kirim Rp 100.000 ke rekening 1234567890',
+        packageName: 'com.jago.app',
+      );
+      expect(res, isNotNull);
+      expect(res!.amount, 100000);
+      expect(res.name, isNot(contains('1234567890')));
     });
   });
 }

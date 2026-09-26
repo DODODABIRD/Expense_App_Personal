@@ -33,8 +33,15 @@ class LocalNotificationParser {
 
   // Robust amount regex string used across all parsers
   // Matches: 50k | 25rb | 1.250.000 | 50.000,00 | 50.000,- | 50000
-  static const _amountPattern =
-      r'(?:Rp\.?|IDR)?\s*([0-9]+(?:\s*(?:[kK]|rb|RB))|[0-9]{1,3}(?:[.,\s][0-9]{3})*(?:[.,][0-9]{2})?|[0-9]+)\s*(?:,-)?';
+  // The grouped-thousands branch requires at least one separator group so a bare
+  // number like "5000" falls through to the plain-digit branch instead of being
+  // truncated to "500".
+  static const _numberPattern =
+      r'([0-9]+(?:\s*(?:[kK]|rb|RB))|[0-9]{1,3}(?:[.,\s][0-9]{3})+(?:[.,][0-9]{2})?|[0-9]+)\s*(?:,-)?';
+
+  // Numbers whose nearby context mentions these words are balances/limits,
+  // not the transaction amount, and must be skipped when picking an amount.
+  static const _balanceContextKeywords = <String>['saldo', 'limit', 'sisa', 'balance'];
 
   // Strict OTP / Auth keywords that must always be ignored for security
   static final _securityOtpKeywords = <String>[
@@ -253,389 +260,150 @@ class LocalNotificationParser {
   // SPECIFIC APP PARSERS (Tier 1)
   // ==========================================
 
+  // Extracts an expense using a per-app keyword check plus the shared,
+  // order-independent amount finder, instead of requiring the keyword to sit
+  // directly next to the amount (real notifications vary word order too much
+  // for that to be reliable, e.g. "QRIS di Toko X sebesar Rp..." vs
+  // "QRIS sebesar Rp... di Toko X").
+  static ParsedNotificationResult? _bankParse(
+    String combined,
+    List<String> keywords,
+    String defaultName,
+  ) {
+    if (!_containsAny(combined.toLowerCase(), keywords)) return null;
+    final amount = _findAmount(combined);
+    if (amount <= 0) return null;
+    final merchant = _extractMerchant(combined, defaultName);
+    return ParsedNotificationResult(
+      name: merchant,
+      amount: amount,
+      category: _categorize('$merchant $combined'),
+      type: 'unexpected',
+    );
+  }
+
   static ParsedNotificationResult? _parseGoPay(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:bayar|membayar|pembayaran|paid|payment of)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'GoPay Transaction');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    final m2 = RegExp(
-      r'(?:bayar|pembayaran|order completed|pesananmu)?\s+(?:sebesar\s+)?' +
-          _amountPattern +
-          r'\s+(?:berhasil|sukses|completed)',
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m2 != null) {
-      final amount = _parseAmount(m2.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'GoPay Transaction');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['bayar', 'membayar', 'pembayaran', 'paid', 'payment of', 'order completed', 'pesananmu'],
+      'GoPay Transaction',
+    );
   }
 
   static ParsedNotificationResult? _parseDana(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:bayar|membayar|pembayaran|kirim uang|kirim saldo)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'DANA Payment');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    final m2 = RegExp(
-      r'(?:berhasil bayar|pembayaran berhasil|transaksi sukses).*?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m2 != null) {
-      final amount = _parseAmount(m2.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'DANA Payment');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['bayar', 'membayar', 'pembayaran', 'kirim uang', 'kirim saldo'],
+      'DANA Payment',
+    );
   }
 
   static ParsedNotificationResult? _parseOvo(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:berhasil bayar|pembayaran|terpotong)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'OVO Payment');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['bayar', 'berhasil bayar', 'pembayaran', 'terpotong'],
+      'OVO Payment',
+    );
   }
 
   static ParsedNotificationResult? _parseBca(String title, String message, String combined) {
-    final qrisMatch = RegExp(
-      r'(?:qris|debit|pembayaran ke|pembayaran)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (qrisMatch != null) {
-      final amount = _parseAmount(qrisMatch.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'BCA Transaction');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    final transferMatch = RegExp(
-      r'transfer ke\s+([A-Za-z0-9 ._-]+).*?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (transferMatch != null) {
-      final merchant = _cleanMerchantName(transferMatch.group(1) ?? 'Transfer');
-      final amount = _parseAmount(transferMatch.group(2));
-      if (amount > 0) {
-        return ParsedNotificationResult(
-          name: 'Transfer ke $merchant',
-          amount: amount,
-          category: 'lainnya',
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['qris', 'debit', 'pembayaran', 'transfer ke', 'transfer'],
+      'BCA Transaction',
+    );
   }
 
   static ParsedNotificationResult? _parseMandiri(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:pembayaran qris|transaksi debit|transfer ke|transfer|pembayaran)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'Livin Mandiri');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['qris', 'transaksi debit', 'transfer ke', 'transfer', 'pembayaran'],
+      'Livin Mandiri',
+    );
   }
 
   static ParsedNotificationResult? _parseBri(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:pembayaran qris|transaksi qris|transaksi debit|transfer keluar|pembayaran)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'BRImo Payment');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['qris', 'transaksi debit', 'transfer keluar', 'pembayaran'],
+      'BRImo Payment',
+    );
   }
 
   static ParsedNotificationResult? _parseBni(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:pembayaran qris|transaksi|transfer keluar)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'BNI Payment');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['qris', 'transaksi', 'transfer keluar', 'pembayaran'],
+      'BNI Payment',
+    );
   }
 
   static ParsedNotificationResult? _parseJago(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:kirim|pembayaran ke|terpotong|pembayaran)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'Bank Jago');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['kirim', 'pembayaran ke', 'terpotong', 'pembayaran'],
+      'Bank Jago',
+    );
   }
 
   static ParsedNotificationResult? _parseJenius(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:pembayaran qris|money out:|kamu telah membayar)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'Jenius Payment');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['qris', 'money out', 'membayar', 'pembayaran'],
+      'Jenius Payment',
+    );
   }
 
   static ParsedNotificationResult? _parseSeaBank(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:membayar|pembayaran qris|transfer keluar)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'SeaBank Payment');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['membayar', 'qris', 'pembayaran', 'transfer keluar'],
+      'SeaBank Payment',
+    );
   }
 
   static ParsedNotificationResult? _parseBsi(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:transaksi qris|pembayaran|transfer keluar)\s+(?:berhasil\s+)?(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'BSI Mobile');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['qris', 'transaksi', 'pembayaran', 'transfer keluar'],
+      'BSI Mobile',
+    );
   }
 
   static ParsedNotificationResult? _parseCimb(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:pembayaran qris|debit rekening|transaksi)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'OCTO Mobile');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['qris', 'debit rekening', 'transaksi', 'pembayaran'],
+      'OCTO Mobile',
+    );
   }
 
   static ParsedNotificationResult? _parseShopee(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:pembayaran|berhasil bayar|transaksi)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'ShopeePay');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['pembayaran', 'berhasil bayar', 'transaksi'],
+      'ShopeePay',
+    );
   }
 
   static ParsedNotificationResult? _parseGrab(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:pembayaran|pesananmu|total)\s+(?:sebesar\s+)?' + _amountPattern,
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        final merchant = _extractMerchant(combined, 'Grab');
-        return ParsedNotificationResult(
-          name: merchant,
-          amount: amount,
-          category: _categorize('$merchant $combined'),
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    return _bankParse(
+      combined,
+      const ['pembayaran', 'pesananmu', 'total'],
+      'Grab',
+    );
   }
 
   static ParsedNotificationResult? _parseTokopedia(String title, String message, String combined) {
-    final m1 = RegExp(
-      r'(?:pembayaran|transaksi)\s+(?:sebesar\s+)?' + _amountPattern + r'\s+(?:berhasil|sukses)',
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    if (m1 != null) {
-      final amount = _parseAmount(m1.group(1));
-      if (amount > 0) {
-        return ParsedNotificationResult(
-          name: 'Tokopedia',
-          amount: amount,
-          category: 'lainnya',
-          type: 'unexpected',
-        );
-      }
-    }
-
-    return null;
+    if (!_containsAny(combined.toLowerCase(), const ['pembayaran', 'transaksi'])) return null;
+    final amount = _findAmount(combined);
+    if (amount <= 0) return null;
+    return ParsedNotificationResult(
+      name: 'Tokopedia',
+      amount: amount,
+      category: 'lainnya',
+      type: 'unexpected',
+    );
   }
 
   // ==========================================
@@ -648,31 +416,11 @@ class LocalNotificationParser {
     String combined,
     String packageName,
   ) {
-    final hasFinancialKeyword = _paymentActionKeywords.any((kw) => combined.toLowerCase().contains(kw));
-    if (!hasFinancialKeyword) {
+    if (!_containsAny(combined.toLowerCase(), _paymentActionKeywords)) {
       return null;
     }
 
-    final explicitCurrencyMatch = RegExp(
-      r'(?:Rp\.?|IDR)\s*([0-9]+(?:\s*(?:[kK]|rb|RB))|[0-9]{1,3}(?:[.,\s][0-9]{3})*(?:[.,][0-9]{2})?|[0-9]+)\s*(?:,-)?',
-      caseSensitive: false,
-    ).firstMatch(combined);
-
-    int amount = 0;
-    if (explicitCurrencyMatch != null) {
-      amount = _parseAmount(explicitCurrencyMatch.group(1));
-    }
-
-    if (amount <= 0) {
-      final actionMatch = RegExp(
-        r'(?:bayar|pembayaran|sebesar|paid|payment of|money out)\s+(?:Rp\.?|IDR)?\s*([0-9]+(?:\s*(?:[kK]|rb|RB))|[0-9]{1,3}(?:[.,\s][0-9]{3})*(?:[.,][0-9]{2})?|[0-9]+)\s*(?:,-)?',
-        caseSensitive: false,
-      ).firstMatch(combined);
-      if (actionMatch != null) {
-        amount = _parseAmount(actionMatch.group(1));
-      }
-    }
-
+    final amount = _findAmount(combined);
     if (amount <= 0) {
       return null;
     }
@@ -694,15 +442,64 @@ class LocalNotificationParser {
   // HELPER METHODS
   // ==========================================
 
+  // Prepositions like "ke"/"di" often precede account/device nouns instead of a
+  // merchant name (e.g. "kirim ke rekening", "transaksi di aplikasi"); treat
+  // those, and purely numeric captures (phone/account numbers), as unknown.
+  static const _merchantStopWords = <String>[
+    'rekening', 'akun', 'aplikasi', 'atm', 'kartu', 'nomor', 'saldo',
+    'hp', 'perangkat', 'tanggal', 'pukul', 'jam',
+  ];
+
+  static bool _containsAny(String haystack, Iterable<String> keywords) {
+    return keywords.any(haystack.contains);
+  }
+
+  /// Finds the most likely transaction amount in [combined]: prefers a
+  /// currency-tagged number (skipping balance/limit figures), then falls back
+  /// to a plain number that directly follows a known payment keyword.
+  static int _findAmount(String combined) {
+    final lower = combined.toLowerCase();
+
+    final currencyMatches = RegExp(
+      r'(?:Rp\.?|IDR)\s*' + _numberPattern,
+      caseSensitive: false,
+    ).allMatches(combined);
+
+    for (final match in currencyMatches) {
+      final contextStart = match.start - 25 < 0 ? 0 : match.start - 25;
+      final context = lower.substring(contextStart, match.start);
+      if (_containsAny(context, _balanceContextKeywords)) continue;
+      final amount = _parseAmount(match.group(1));
+      if (amount > 0) return amount;
+    }
+
+    final keywordAlternation = _paymentActionKeywords.map(RegExp.escape).join('|');
+    final actionMatch = RegExp(
+      '(?:$keywordAlternation)\\s+(?:Rp\\.?|IDR)?\\s*' + _numberPattern,
+      caseSensitive: false,
+    ).firstMatch(combined);
+    if (actionMatch != null) {
+      final amount = _parseAmount(actionMatch.group(1));
+      if (amount > 0) return amount;
+    }
+
+    return 0;
+  }
+
   static String _extractMerchant(String combined, [String defaultName = 'Merchant']) {
     final m = RegExp(
-      r'(?:di|ke|to|at|untuk)\s+([A-Za-z0-9 ._-]{2,40})',
+      r'(?:di|ke|to|at|untuk)\s+([^\r\n]+)',
       caseSensitive: false,
     ).firstMatch(combined);
 
     if (m != null) {
       final cleaned = _cleanMerchantName(m.group(1) ?? '');
-      if (cleaned.isNotEmpty && cleaned != 'Merchant') {
+      final firstWord = cleaned.toLowerCase().split(' ').first;
+      final looksNumeric = RegExp(r'^[0-9.\-\s]+$').hasMatch(cleaned);
+      if (cleaned.isNotEmpty &&
+          cleaned != 'Merchant' &&
+          !looksNumeric &&
+          !_merchantStopWords.contains(firstWord)) {
         return cleaned;
       }
     }
@@ -755,7 +552,13 @@ class LocalNotificationParser {
   static String _cleanMerchantName(String raw) {
     var name = raw.replaceAll(RegExp(r'[\r\n]+'), ' ').trim();
     name = name.replaceAll(RegExp(r'^(berhasil|sukses|pada)\s+', caseSensitive: false), '');
-    name = name.replaceAll(RegExp(r'\s+(berhasil|sukses|pada|sebesar|rp|idr|menggunakan|lewat).*$', caseSensitive: false), '');
+    name = name.replaceAll(
+      RegExp(
+        r'\s+(berhasil|sukses|pada|sebesar|rp|idr|menggunakan|lewat|completed|verified|diverifikasi|diproses|processed|selesai).*$',
+        caseSensitive: false,
+      ),
+      '',
+    );
     name = name.replaceAll(RegExp(r'[.!?,;]+$'), '').trim();
     return name.isEmpty ? 'Merchant' : name;
   }

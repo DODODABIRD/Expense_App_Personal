@@ -6,6 +6,10 @@ import 'ApiService.dart';
 import 'databaseHelper.dart';
 import 'local_notification_parser.dart';
 
+class UnparseableNotificationException implements Exception {
+  const UnparseableNotificationException();
+}
+
 class NotificationExpenseService {
   NotificationExpenseService._();
   static final instance = NotificationExpenseService._();
@@ -58,6 +62,7 @@ class NotificationExpenseService {
 
   final Map<String, DateTime> _recentDeduplication = {};
   static const Duration _dedupDuration = Duration(minutes: 5);
+  static const _maxCloudRetryAttempts = 3;
 
   Future<void> Function(String)? _onError;
   Future<void> Function()? _onExpenseAdded;
@@ -228,13 +233,15 @@ class NotificationExpenseService {
           postTime: postTime,
         );
       } catch (error) {
-        // Enqueue to persistent offline queue so it's not lost
-        await _enqueuePendingCloudNotification({
-          'title': title,
-          'message': message,
-          'packageName': packageName,
-          'postTime': postTime.millisecondsSinceEpoch,
-        });
+        if (error is! UnparseableNotificationException) {
+          await _enqueuePendingCloudNotification({
+            'title': title,
+            'message': message,
+            'packageName': packageName,
+            'postTime': postTime.millisecondsSinceEpoch,
+            'retryCount': 0,
+          });
+        }
         await _onError?.call(error.toString());
       }
     });
@@ -293,7 +300,7 @@ class NotificationExpenseService {
     }
 
     if (cloudError != null) throw cloudError;
-    throw Exception('No usable expense was returned by either parser');
+    throw const UnparseableNotificationException();
   }
 
   Future<Map<String, dynamic>?> _parseWithCloudParser({
@@ -370,9 +377,13 @@ class NotificationExpenseService {
             packageName: packageName,
             postTime: postTime,
           );
+        } on UnparseableNotificationException {
+          // The notification was not an expense; it cannot succeed on retry.
         } catch (_) {
-          // Still offline or failed, keep in remaining queue
-          remaining.add(item);
+          final retryCount = (item['retryCount'] as num?)?.toInt() ?? 0;
+          if (retryCount + 1 < _maxCloudRetryAttempts) {
+            remaining.add({...item, 'retryCount': retryCount + 1});
+          }
         }
       }
 
