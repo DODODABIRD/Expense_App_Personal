@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../main.dart';
 import '../services/databaseHelper.dart';
+import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
 import 'ReceiptScanPage.dart';
 
@@ -931,7 +932,8 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
       } else {
         Navigator.pop(context);
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Save expense');
       if (!mounted) return;
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -943,7 +945,7 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
           ),
           backgroundColor: const Color(0xFFFF5D5D),
           content: Text(
-            'Failed to save: $e',
+            'Failed to save: $error',
             style: const TextStyle(
               color: Colors.black,
               fontWeight: FontWeight.bold,

@@ -1,9 +1,12 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'pages/auth_gate.dart';
 import 'firebase_options.dart';
 import 'services/databaseHelper.dart';
+import 'services/error_log_service.dart';
 
 final ValueNotifier<ThemeMode> appThemeMode = ValueNotifier(ThemeMode.light);
 final ValueNotifier<String> appCurrency = ValueNotifier('IDR');
@@ -11,15 +14,34 @@ final ValueNotifier<double> appExchangeRate = ValueNotifier(1);
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _installErrorHandlers();
   await initializeDateFormatting('id_ID');
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   try {
     final savedTheme = await DatabaseHelp.getSetting('theme_mode');
     if (savedTheme == 'dark') appThemeMode.value = ThemeMode.dark;
-  } catch (_) {
+  } catch (error, stackTrace) {
+    captureAppError(error, stackTrace, 'Load saved theme');
     // Use the light theme when local settings cannot be read.
   }
   runApp(const MyApp());
+}
+
+void _installErrorHandlers() {
+  final previousFlutterErrorHandler = FlutterError.onError;
+  FlutterError.onError = (details) {
+    captureAppError(
+      details.exception,
+      details.stack ?? StackTrace.current,
+      'Flutter framework',
+    );
+    previousFlutterErrorHandler?.call(details);
+  };
+
+  ui.PlatformDispatcher.instance.onError = (error, stackTrace) {
+    captureAppError(error, stackTrace, 'Uncaught asynchronous error');
+    return false;
+  };
 }
 
 class MyApp extends StatelessWidget {

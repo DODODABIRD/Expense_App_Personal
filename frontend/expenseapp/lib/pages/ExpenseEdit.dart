@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:sqflite/sqflite.dart';
 import '../main.dart';
 import '../services/databaseHelper.dart';
+import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
 
 class ExpenseEdit extends StatefulWidget {
@@ -139,9 +140,8 @@ class _ExpenseEditState extends State<ExpenseEdit> {
           _selectedCategory = _categories.contains(category)
               ? category!
               : 'makanan';
-          _selectedType = (type == 'expected' ||
-                  type == 'unexpected' ||
-                  type == 'others')
+          _selectedType =
+              (type == 'expected' || type == 'unexpected' || type == 'others')
               ? type!
               : 'others';
           _selectedDate =
@@ -150,7 +150,8 @@ class _ExpenseEditState extends State<ExpenseEdit> {
           _isLoading = false;
         });
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Load expense for editing');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -415,7 +416,10 @@ class _ExpenseEditState extends State<ExpenseEdit> {
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF9EB5D),
                   borderRadius: BorderRadius.circular(10),
@@ -444,7 +448,9 @@ class _ExpenseEditState extends State<ExpenseEdit> {
                   decoration: InputDecoration(
                     hintText: '0',
                     hintStyle: TextStyle(
-                      color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+                      color: isDark
+                          ? Colors.grey.shade600
+                          : Colors.grey.shade400,
                     ),
                     border: InputBorder.none,
                     isDense: true,
@@ -472,8 +478,12 @@ class _ExpenseEditState extends State<ExpenseEdit> {
                       ),
                       decoration: BoxDecoration(
                         color: isNegative
-                            ? (isDark ? const Color(0xFF4A2020) : const Color(0xFFFFE5E5))
-                            : (isDark ? const Color(0xFF333333) : const Color(0xFFF0F4F8)),
+                            ? (isDark
+                                  ? const Color(0xFF4A2020)
+                                  : const Color(0xFFFFE5E5))
+                            : (isDark
+                                  ? const Color(0xFF333333)
+                                  : const Color(0xFFF0F4F8)),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(color: Colors.black, width: 1.5),
                       ),
@@ -483,7 +493,9 @@ class _ExpenseEditState extends State<ExpenseEdit> {
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: isNegative
-                              ? (isDark ? const Color(0xFFFF8A8A) : const Color(0xFFD90429))
+                              ? (isDark
+                                    ? const Color(0xFFFF8A8A)
+                                    : const Color(0xFFD90429))
                               : (isDark ? Colors.white : Colors.black),
                         ),
                       ),
@@ -578,8 +590,9 @@ class _ExpenseEditState extends State<ExpenseEdit> {
                       cat[0].toUpperCase() + cat.substring(1),
                       style: GoogleFonts.itim(
                         fontSize: 16,
-                        fontWeight:
-                            isSelected ? FontWeight.bold : FontWeight.w600,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w600,
                         color: Colors.black,
                       ),
                     ),
@@ -763,8 +776,8 @@ class _ExpenseEditState extends State<ExpenseEdit> {
                       color: isToday
                           ? const Color(0xFF5DF9FF)
                           : (isDark
-                              ? const Color(0xFF333333)
-                              : const Color(0xFFF5F5F5)),
+                                ? const Color(0xFF333333)
+                                : const Color(0xFFF5F5F5)),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.black, width: 1.2),
                     ),
@@ -797,8 +810,8 @@ class _ExpenseEditState extends State<ExpenseEdit> {
                       color: isYesterday
                           ? const Color(0xFF5DF9FF)
                           : (isDark
-                              ? const Color(0xFF333333)
-                              : const Color(0xFFF5F5F5)),
+                                ? const Color(0xFF333333)
+                                : const Color(0xFFF5F5F5)),
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(color: Colors.black, width: 1.2),
                     ),
@@ -994,7 +1007,8 @@ class _ExpenseEditState extends State<ExpenseEdit> {
 
   Future<void> _updateExpense() async {
     final cleanName = _nameController.text.trim();
-    final cleanAmount = int.tryParse(
+    final cleanAmount =
+        int.tryParse(
           _amountController.text.replaceAll(RegExp(r'[^0-9]'), ''),
         ) ??
         0;
@@ -1079,7 +1093,8 @@ class _ExpenseEditState extends State<ExpenseEdit> {
       );
 
       Navigator.pop(context);
-    } catch (e) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Update expense');
       if (!mounted) return;
       setState(() => _isSaving = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1091,7 +1106,7 @@ class _ExpenseEditState extends State<ExpenseEdit> {
           ),
           backgroundColor: const Color(0xFFFF5D5D),
           content: Text(
-            'Failed to update: $e',
+            'Failed to update: $error',
             style: const TextStyle(
               color: Colors.black,
               fontWeight: FontWeight.bold,

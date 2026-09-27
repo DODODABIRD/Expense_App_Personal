@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'ApiService.dart';
 import 'databaseHelper.dart';
+import 'error_log_service.dart';
 import 'local_notification_parser.dart';
 
 class UnparseableNotificationException implements Exception {
@@ -85,7 +86,8 @@ class NotificationExpenseService {
       final values = (jsonDecode(stored) as List).whereType<String>().toSet();
       if (values.contains(allNotificationsKey)) return {allNotificationsKey};
       return values.intersection(supportedApps.keys.toSet());
-    } catch (_) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Read allowed notification apps');
       return {...defaultAllowedApps};
     }
   }
@@ -176,9 +178,12 @@ class NotificationExpenseService {
 
   bool _isDuplicate(String packageName, String title, String text) {
     final now = DateTime.now();
-    _recentDeduplication.removeWhere((_, time) => now.difference(time) > _dedupDuration);
+    _recentDeduplication.removeWhere(
+      (_, time) => now.difference(time) > _dedupDuration,
+    );
 
-    final key = '$packageName|${title.trim().toLowerCase()}|${text.trim().toLowerCase()}';
+    final key =
+        '$packageName|${title.trim().toLowerCase()}|${text.trim().toLowerCase()}';
     if (_recentDeduplication.containsKey(key)) {
       return true;
     }
@@ -232,8 +237,9 @@ class NotificationExpenseService {
           packageName: packageName,
           postTime: postTime,
         );
-      } catch (error) {
+      } catch (error, stackTrace) {
         if (error is! UnparseableNotificationException) {
+          captureAppError(error, stackTrace, 'Process payment notification');
           await _enqueuePendingCloudNotification({
             'title': title,
             'message': message,
@@ -263,7 +269,8 @@ class NotificationExpenseService {
         message: message,
         packageName: packageName,
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Cloud notification parsing');
       cloudError = error;
     }
 
@@ -333,30 +340,44 @@ class NotificationExpenseService {
     return {'name': name, 'amount': amount, 'category': category, 'type': type};
   }
 
-  Future<void> _enqueuePendingCloudNotification(Map<String, dynamic> item) async {
+  Future<void> _enqueuePendingCloudNotification(
+    Map<String, dynamic> item,
+  ) async {
     try {
-      final stored = await DatabaseHelp.getSetting('pending_cloud_notifications');
+      final stored = await DatabaseHelp.getSetting(
+        'pending_cloud_notifications',
+      );
       List<dynamic> queue = [];
       if (stored != null) {
         try {
           queue = jsonDecode(stored) as List<dynamic>;
-        } catch (_) {}
+        } catch (error, stackTrace) {
+          captureAppError(error, stackTrace, 'Read pending notification queue');
+        }
       }
       // Keep at most 50 pending notifications
       if (queue.length >= 50) {
         queue.removeAt(0);
       }
       queue.add(item);
-      await DatabaseHelp.setSetting('pending_cloud_notifications', jsonEncode(queue));
-    } catch (_) {}
+      await DatabaseHelp.setSetting(
+        'pending_cloud_notifications',
+        jsonEncode(queue),
+      );
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Store pending notification');
+    }
   }
 
   /// Retries parsing any notifications that were queued while offline.
   Future<void> retryPendingCloudNotifications() async {
     try {
-      final stored = await DatabaseHelp.getSetting('pending_cloud_notifications');
+      final stored = await DatabaseHelp.getSetting(
+        'pending_cloud_notifications',
+      );
       if (stored == null) return;
-      final queue = (jsonDecode(stored) as List<dynamic>).cast<Map<String, dynamic>>();
+      final queue = (jsonDecode(stored) as List<dynamic>)
+          .cast<Map<String, dynamic>>();
       if (queue.isEmpty) return;
 
       final remaining = <Map<String, dynamic>>[];
@@ -379,7 +400,8 @@ class NotificationExpenseService {
           );
         } on UnparseableNotificationException {
           // The notification was not an expense; it cannot succeed on retry.
-        } catch (_) {
+        } catch (error, stackTrace) {
+          captureAppError(error, stackTrace, 'Retry payment notification');
           final retryCount = (item['retryCount'] as num?)?.toInt() ?? 0;
           if (retryCount + 1 < _maxCloudRetryAttempts) {
             remaining.add({...item, 'retryCount': retryCount + 1});
@@ -387,8 +409,13 @@ class NotificationExpenseService {
         }
       }
 
-      await DatabaseHelp.setSetting('pending_cloud_notifications', jsonEncode(remaining));
-    } catch (_) {}
+      await DatabaseHelp.setSetting(
+        'pending_cloud_notifications',
+        jsonEncode(remaining),
+      );
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Read pending notification queue');
+    }
   }
 
   Future<void> stop() async {

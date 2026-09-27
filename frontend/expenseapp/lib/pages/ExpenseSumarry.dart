@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../main.dart';
 import '../services/databaseHelper.dart';
+import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
 import 'ExpenseEdit.dart';
 import 'hp2.dart';
@@ -114,7 +115,8 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
           _isLoading = false;
         });
       }
-    } catch (_) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Load expense summary');
       if (mounted) setState(() => _isLoading = false);
     }
   }
@@ -285,12 +287,14 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
         label = DateFormat('E').format(dayDate);
       }
 
-      result.add(_DailyExpenseSummary(
-        date: dayDate,
-        dayLabel: label,
-        totalAmount: sum,
-        isToday: i == 0,
-      ));
+      result.add(
+        _DailyExpenseSummary(
+          date: dayDate,
+          dayLabel: label,
+          totalAmount: sum,
+          isToday: i == 0,
+        ),
+      );
     }
 
     return result;
@@ -302,7 +306,8 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
   List<Map<String, dynamic>> get _outliers {
     if (_expenses.length < 3) return [];
 
-    final sortedAmounts = _expenses.map((e) => e.amount.toDouble()).toList()..sort();
+    final sortedAmounts = _expenses.map((e) => e.amount.toDouble()).toList()
+      ..sort();
     final n = sortedAmounts.length;
 
     double q1;
@@ -329,16 +334,15 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
     for (final exp in _expenses) {
       if (exp.amount >= threshold && exp.amount > mean) {
         final ratio = mean > 0 ? (exp.amount / mean) : 1.0;
-        detected.add({
-          'expense': exp,
-          'ratio': ratio,
-        });
+        detected.add({'expense': exp, 'ratio': ratio});
       }
     }
 
-    detected.sort((a, b) => (b['expense'] as ExpenseModel)
-        .amount
-        .compareTo((a['expense'] as ExpenseModel).amount));
+    detected.sort(
+      (a, b) => (b['expense'] as ExpenseModel).amount.compareTo(
+        (a['expense'] as ExpenseModel).amount,
+      ),
+    );
 
     return detected;
   }
@@ -453,7 +457,10 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
             children: [
               Flexible(
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(8),
@@ -462,7 +469,11 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.insights_rounded, size: 16, color: Colors.black),
+                      const Icon(
+                        Icons.insights_rounded,
+                        size: 16,
+                        color: Colors.black,
+                      ),
                       const SizedBox(width: 5),
                       Flexible(
                         child: FittedBox(
@@ -542,11 +553,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.black, width: 1.6),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(2, 2),
-            blurRadius: 0,
-          ),
+          BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0),
         ],
       ),
       child: Row(
@@ -573,7 +580,9 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
     final days = _last7DaysReview;
     final total7Days = days.fold<int>(0, (acc, d) => acc + d.totalAmount);
     final maxAmount = days.map((d) => d.totalAmount).reduce(math.max);
-    final highestDay = days.where((d) => d.totalAmount == maxAmount && d.totalAmount > 0).firstOrNull;
+    final highestDay = days
+        .where((d) => d.totalAmount == maxAmount && d.totalAmount > 0)
+        .firstOrNull;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -593,7 +602,11 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.black, width: 2),
                 ),
-                child: const Icon(Icons.date_range_rounded, color: Colors.black, size: 18),
+                child: const Icon(
+                  Icons.date_range_rounded,
+                  color: Colors.black,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -639,9 +652,13 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: days.map((day) {
-                final ratio = maxAmount > 0 ? (day.totalAmount / maxAmount) : 0.0;
+                final ratio = maxAmount > 0
+                    ? (day.totalAmount / maxAmount)
+                    : 0.0;
                 final barHeight = (ratio * 105).clamp(8.0, 105.0);
-                final isPeak = highestDay != null && day.date.isAtSameMomentAs(highestDay.date);
+                final isPeak =
+                    highestDay != null &&
+                    day.date.isAtSameMomentAs(highestDay.date);
 
                 return Expanded(
                   child: Padding(
@@ -657,7 +674,9 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                               style: TextStyle(
                                 fontSize: 10,
                                 fontWeight: FontWeight.bold,
-                                color: isDark ? Colors.grey[300] : Colors.black87,
+                                color: isDark
+                                    ? Colors.grey[300]
+                                    : Colors.black87,
                               ),
                             ),
                           )
@@ -671,7 +690,9 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                           decoration: BoxDecoration(
                             color: isPeak
                                 ? const Color(0xFFFF5D5D)
-                                : (day.isToday ? const Color(0xFF5DF9FF) : const Color(0xFFF9EB5D)),
+                                : (day.isToday
+                                      ? const Color(0xFF5DF9FF)
+                                      : const Color(0xFFF9EB5D)),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(color: Colors.black, width: 2),
                             boxShadow: const [
@@ -685,19 +706,29 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                         ),
                         const SizedBox(height: 8),
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 2,
+                          ),
                           decoration: day.isToday
                               ? BoxDecoration(
-                                  color: isDark ? Colors.white24 : const Color(0xFF06D6A0),
+                                  color: isDark
+                                      ? Colors.white24
+                                      : const Color(0xFF06D6A0),
                                   borderRadius: BorderRadius.circular(5),
-                                  border: Border.all(color: Colors.black, width: 1.2),
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 1.2,
+                                  ),
                                 )
                               : null,
                           child: Text(
                             day.dayLabel,
                             style: GoogleFonts.itim(
                               fontSize: 12,
-                              fontWeight: day.isToday ? FontWeight.bold : FontWeight.w600,
+                              fontWeight: day.isToday
+                                  ? FontWeight.bold
+                                  : FontWeight.w600,
                               color: isDark ? Colors.white : Colors.black,
                             ),
                           ),
@@ -723,7 +754,11 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.local_fire_department_rounded, color: Color(0xFFFF5D5D), size: 20),
+                  const Icon(
+                    Icons.local_fire_department_rounded,
+                    color: Color(0xFFFF5D5D),
+                    size: 20,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -787,7 +822,11 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.black, width: 2),
                 ),
-                child: const Icon(Icons.category_rounded, color: Colors.black, size: 18),
+                child: const Icon(
+                  Icons.category_rounded,
+                  color: Colors.black,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -830,9 +869,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                   children: cats.map((c) {
                     return Flexible(
                       flex: (c.percentage * 10).round().clamp(1, 1000),
-                      child: Container(
-                        color: c.color,
-                      ),
+                      child: Container(color: c.color),
                     );
                   }).toList(),
                 ),
@@ -846,16 +883,24 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
             Center(
               child: Padding(
                 padding: const EdgeInsets.all(16),
-                child: Text('Belum ada kategori tercatat', style: TextStyle(color: Colors.grey[500])),
+                child: Text(
+                  'Belum ada kategori tercatat',
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
               ),
             )
           else
             ...cats.map((c) {
               return Container(
                 margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF242E38) : const Color(0xFFF9FBFD),
+                  color: isDark
+                      ? const Color(0xFF242E38)
+                      : const Color(0xFFF9FBFD),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: Colors.black, width: 1.8),
                   boxShadow: const [
@@ -896,7 +941,9 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                             '${c.count} item • ${c.percentage.toStringAsFixed(1)}%',
                             style: TextStyle(
                               fontSize: 12,
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              color: isDark
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
                             ),
                           ),
                         ],
@@ -946,7 +993,11 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.black, width: 2),
                 ),
-                child: const Icon(Icons.pie_chart_outline_rounded, color: Colors.black, size: 18),
+                child: const Icon(
+                  Icons.pie_chart_outline_rounded,
+                  color: Colors.black,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -1053,15 +1104,21 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
             : const Color(0xFF06D6A0).withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isHighUnexpected ? const Color(0xFFFF5D5D) : const Color(0xFF06D6A0),
+          color: isHighUnexpected
+              ? const Color(0xFFFF5D5D)
+              : const Color(0xFF06D6A0),
           width: 1.8,
         ),
       ),
       child: Row(
         children: [
           Icon(
-            isHighUnexpected ? Icons.warning_amber_rounded : Icons.verified_rounded,
-            color: isHighUnexpected ? const Color(0xFFFF5D5D) : const Color(0xFF06D6A0),
+            isHighUnexpected
+                ? Icons.warning_amber_rounded
+                : Icons.verified_rounded,
+            color: isHighUnexpected
+                ? const Color(0xFFFF5D5D)
+                : const Color(0xFF06D6A0),
             size: 22,
           ),
           const SizedBox(width: 8),
@@ -1105,7 +1162,11 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: Colors.black, width: 2),
                 ),
-                child: const Icon(Icons.warning_rounded, color: Colors.white, size: 18),
+                child: const Icon(
+                  Icons.warning_rounded,
+                  color: Colors.white,
+                  size: 18,
+                ),
               ),
               const SizedBox(width: 8),
               Expanded(
@@ -1165,7 +1226,11 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.check_circle_rounded, color: Color(0xFF06D6A0), size: 24),
+                  const Icon(
+                    Icons.check_circle_rounded,
+                    color: Color(0xFF06D6A0),
+                    size: 24,
+                  ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
@@ -1189,9 +1254,14 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF2C2424) : const Color(0xFFFFF5F5),
+                  color: isDark
+                      ? const Color(0xFF2C2424)
+                      : const Color(0xFFFFF5F5),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFFF5D5D), width: 2.2),
+                  border: Border.all(
+                    color: const Color(0xFFFF5D5D),
+                    width: 2.2,
+                  ),
                   boxShadow: const [
                     BoxShadow(
                       color: Colors.black,
@@ -1209,7 +1279,11 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(color: Colors.black, width: 2),
                       ),
-                      child: const Icon(Icons.local_fire_department_rounded, color: Colors.white, size: 22),
+                      child: const Icon(
+                        Icons.local_fire_department_rounded,
+                        color: Colors.white,
+                        size: 22,
+                      ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -1233,11 +1307,17 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                             crossAxisAlignment: WrapCrossAlignment.center,
                             children: [
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 6,
+                                  vertical: 2,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFF9EB5D),
                                   borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(color: Colors.black, width: 1.2),
+                                  border: Border.all(
+                                    color: Colors.black,
+                                    width: 1.2,
+                                  ),
                                 ),
                                 child: Text(
                                   '${ratio.toStringAsFixed(1)}x rata-rata',
@@ -1252,7 +1332,9 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                                 DateFormat('dd MMM yyyy').format(exp.date),
                                 style: TextStyle(
                                   fontSize: 11,
-                                  color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                  color: isDark
+                                      ? Colors.grey[400]
+                                      : Colors.grey[600],
                                 ),
                               ),
                             ],
@@ -1280,16 +1362,26 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                           onTap: () async {
                             await Navigator.push(
                               context,
-                              SmoothPageRoute(page: ExpenseEdit(expenseId: exp.id)),
+                              SmoothPageRoute(
+                                page: ExpenseEdit(expenseId: exp.id),
+                              ),
                             );
                             _loadExpenses();
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: isDark ? const Color(0xFF1E2830) : Colors.white,
+                              color: isDark
+                                  ? const Color(0xFF1E2830)
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(6),
-                              border: Border.all(color: Colors.black, width: 1.2),
+                              border: Border.all(
+                                color: Colors.black,
+                                width: 1.2,
+                              ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -1299,14 +1391,18 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                                   style: GoogleFonts.itim(
                                     fontSize: 11,
                                     fontWeight: FontWeight.bold,
-                                    color: isDark ? const Color(0xFF5DF9FF) : const Color(0xFF007A99),
+                                    color: isDark
+                                        ? const Color(0xFF5DF9FF)
+                                        : const Color(0xFF007A99),
                                   ),
                                 ),
                                 const SizedBox(width: 2),
                                 Icon(
                                   Icons.arrow_forward_rounded,
                                   size: 11,
-                                  color: isDark ? const Color(0xFF5DF9FF) : const Color(0xFF007A99),
+                                  color: isDark
+                                      ? const Color(0xFF5DF9FF)
+                                      : const Color(0xFF007A99),
                                 ),
                               ],
                             ),

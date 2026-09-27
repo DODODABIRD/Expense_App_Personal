@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../services/auth_service.dart';
+import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
 
 class AuthPage extends StatefulWidget {
@@ -42,13 +43,16 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: 400),
     );
 
-    _shakeAnimation = TweenSequence<double>([
-      TweenSequenceItem(tween: Tween(begin: 0.0, end: -10.0), weight: 1),
-      TweenSequenceItem(tween: Tween(begin: -10.0, end: 10.0), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 10.0, end: -7.0), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: -7.0, end: 7.0), weight: 2),
-      TweenSequenceItem(tween: Tween(begin: 7.0, end: 0.0), weight: 1),
-    ]).animate(CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut));
+    _shakeAnimation =
+        TweenSequence<double>([
+          TweenSequenceItem(tween: Tween(begin: 0.0, end: -10.0), weight: 1),
+          TweenSequenceItem(tween: Tween(begin: -10.0, end: 10.0), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: 10.0, end: -7.0), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: -7.0, end: 7.0), weight: 2),
+          TweenSequenceItem(tween: Tween(begin: 7.0, end: 0.0), weight: 1),
+        ]).animate(
+          CurvedAnimation(parent: _shakeController, curve: Curves.easeInOut),
+        );
   }
 
   @override
@@ -78,12 +82,14 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
       } else {
         await AuthService.signIn(_email.text, _password.text);
       }
-    } on FirebaseAuthException catch (error) {
+    } on FirebaseAuthException catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Authentication');
       if (mounted) {
         setState(() => _error = _friendlyError(error));
         _shakeController.forward(from: 0.0);
       }
-    } catch (e) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Authentication');
       if (mounted) {
         setState(() => _error = 'Terjadi kesalahan. Silakan coba lagi.');
         _shakeController.forward(from: 0.0);
@@ -177,7 +183,11 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(color: Colors.black, width: 2),
                         ),
-                        child: const Icon(Icons.lock_reset_rounded, color: Colors.black, size: 24),
+                        child: const Icon(
+                          Icons.lock_reset_rounded,
+                          color: Colors.black,
+                          size: 24,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -196,7 +206,9 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                               'Kami kirim link reset ke email kamu',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: isDark ? Colors.grey[400] : Colors.grey[700],
+                                color: isDark
+                                    ? Colors.grey[400]
+                                    : Colors.grey[700],
                               ),
                             ),
                           ],
@@ -215,16 +227,25 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                       decoration: BoxDecoration(
                         color: const Color(0xFF06D6A0).withValues(alpha: 0.2),
                         borderRadius: BorderRadius.circular(14),
-                        border: Border.all(color: const Color(0xFF06D6A0), width: 2),
+                        border: Border.all(
+                          color: const Color(0xFF06D6A0),
+                          width: 2,
+                        ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.check_circle_rounded, color: Color(0xFF06D6A0)),
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: Color(0xFF06D6A0),
+                          ),
                           const SizedBox(width: 10),
                           Expanded(
                             child: Text(
                               resetSuccess!,
-                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
+                              ),
                             ),
                           ),
                         ],
@@ -235,20 +256,33 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                     TextFormField(
                       controller: resetEmailController,
                       keyboardType: TextInputType.emailAddress,
-                      style: TextStyle(color: isDark ? Colors.white : Colors.black),
+                      style: TextStyle(
+                        color: isDark ? Colors.white : Colors.black,
+                      ),
                       decoration: InputDecoration(
                         labelText: 'Email Akun',
                         hintText: 'nama@domain.com',
-                        prefixIcon: const Icon(Icons.email_outlined, color: Colors.black),
+                        prefixIcon: const Icon(
+                          Icons.email_outlined,
+                          color: Colors.black,
+                        ),
                         filled: true,
-                        fillColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF4F7FB),
+                        fillColor: isDark
+                            ? const Color(0xFF2A2A2A)
+                            : const Color(0xFFF4F7FB),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Colors.black, width: 2),
+                          borderSide: const BorderSide(
+                            color: Colors.black,
+                            width: 2,
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(14),
-                          borderSide: const BorderSide(color: Color(0xFF5DF9FF), width: 2.5),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF5DF9FF),
+                            width: 2.5,
+                          ),
                         ),
                       ),
                     ),
@@ -256,7 +290,11 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                       const SizedBox(height: 10),
                       Text(
                         resetError!,
-                        style: const TextStyle(color: Color(0xFFFF5D5D), fontSize: 12, fontWeight: FontWeight.bold),
+                        style: const TextStyle(
+                          color: Color(0xFFFF5D5D),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                     const SizedBox(height: 18),
@@ -268,9 +306,14 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                       onPressed: isSending
                           ? null
                           : () async {
-                              final emailText = resetEmailController.text.trim();
-                              if (emailText.isEmpty || !emailText.contains('@')) {
-                                setSheetState(() => resetError = 'Masukkan email yang valid!');
+                              final emailText = resetEmailController.text
+                                  .trim();
+                              if (emailText.isEmpty ||
+                                  !emailText.contains('@')) {
+                                setSheetState(
+                                  () =>
+                                      resetError = 'Masukkan email yang valid!',
+                                );
                                 return;
                               }
                               setSheetState(() {
@@ -281,17 +324,32 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                                 await AuthService.sendPasswordReset(emailText);
                                 setSheetState(() {
                                   isSending = false;
-                                  resetSuccess = 'Link reset berhasil dikirim! Silakan periksa inbox/spam email kamu.';
+                                  resetSuccess =
+                                      'Link reset berhasil dikirim! Silakan periksa inbox/spam email kamu.';
                                 });
-                              } on FirebaseAuthException catch (err) {
+                              } on FirebaseAuthException catch (
+                                error,
+                                stackTrace
+                              ) {
+                                captureAppError(
+                                  error,
+                                  stackTrace,
+                                  'Password reset email',
+                                );
                                 setSheetState(() {
                                   isSending = false;
-                                  resetError = _friendlyError(err);
+                                  resetError = _friendlyError(error);
                                 });
-                              } catch (_) {
+                              } catch (error, stackTrace) {
+                                captureAppError(
+                                  error,
+                                  stackTrace,
+                                  'Password reset email',
+                                );
                                 setSheetState(() {
                                   isSending = false;
-                                  resetError = 'Gagal mengirim email reset. Coba sesaat lagi.';
+                                  resetError =
+                                      'Gagal mengirim email reset. Coba sesaat lagi.';
                                 });
                               }
                             },
@@ -323,7 +381,10 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             child: Center(
               child: SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 24,
+                ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 440),
                   child: Column(
@@ -392,7 +453,11 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 right: 18,
                 child: Transform.rotate(
                   angle: 0.15 + rotate,
-                  child: _buildStickerBadge('💸 HEDON', const Color(0xFFF9EB5D), isDark),
+                  child: _buildStickerBadge(
+                    '💸 HEDON',
+                    const Color(0xFFF9EB5D),
+                    isDark,
+                  ),
                 ),
               ),
 
@@ -402,7 +467,11 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 left: 14,
                 child: Transform.rotate(
                   angle: -0.2 - rotate,
-                  child: _buildStickerBadge('⭐ SMART', const Color(0xFF5DF9FF), isDark),
+                  child: _buildStickerBadge(
+                    '⭐ SMART',
+                    const Color(0xFF5DF9FF),
+                    isDark,
+                  ),
                 ),
               ),
 
@@ -412,7 +481,12 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 left: 12,
                 child: Transform.rotate(
                   angle: 0.2 + rotate,
-                  child: _buildStickerBadge('🔥 REKAP', const Color(0xFFFF5D5D), isDark, textColor: Colors.white),
+                  child: _buildStickerBadge(
+                    '🔥 REKAP',
+                    const Color(0xFFFF5D5D),
+                    isDark,
+                    textColor: Colors.white,
+                  ),
                 ),
               ),
 
@@ -422,7 +496,11 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 right: 16,
                 child: Transform.rotate(
                   angle: -0.15 - rotate,
-                  child: _buildStickerBadge('✨ UNMURCE', const Color(0xFF06D6A0), isDark),
+                  child: _buildStickerBadge(
+                    '✨ UNMURCE',
+                    const Color(0xFF06D6A0),
+                    isDark,
+                  ),
                 ),
               ),
             ],
@@ -432,7 +510,12 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildStickerBadge(String text, Color color, bool isDark, {Color textColor = Colors.black}) {
+  Widget _buildStickerBadge(
+    String text,
+    Color color,
+    bool isDark, {
+    Color textColor = Colors.black,
+  }) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
       decoration: BoxDecoration(
@@ -440,11 +523,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: Colors.black, width: 2),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(3, 3),
-            blurRadius: 0,
-          ),
+          BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
         ],
       ),
       child: Text(
@@ -486,10 +565,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(17),
-                  child: Image.asset(
-                    'assets/appiconv2.jpg',
-                    fit: BoxFit.cover,
-                  ),
+                  child: Image.asset('assets/appiconv2.jpg', fit: BoxFit.cover),
                 ),
               ),
               // Corner Sparkle Badge
@@ -510,7 +586,11 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                       ),
                     ],
                   ),
-                  child: const Icon(Icons.auto_awesome, size: 16, color: Colors.black),
+                  child: const Icon(
+                    Icons.auto_awesome,
+                    size: 16,
+                    color: Colors.black,
+                  ),
                 ),
               ),
             ],
@@ -553,7 +633,10 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
           transitionBuilder: (child, animation) => FadeTransition(
             opacity: animation,
             child: SlideTransition(
-              position: Tween<Offset>(begin: const Offset(0, 0.2), end: Offset.zero).animate(animation),
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.2),
+                end: Offset.zero,
+              ).animate(animation),
               child: child,
             ),
           ),
@@ -582,11 +665,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black, width: 2.5),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(3, 3),
-            blurRadius: 0,
-          ),
+          BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
         ],
       ),
       child: Row(
@@ -607,9 +686,13 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 curve: Curves.easeInOut,
                 padding: const EdgeInsets.symmetric(vertical: 11),
                 decoration: BoxDecoration(
-                  color: !_registering ? const Color(0xFF5DF9FF) : Colors.transparent,
+                  color: !_registering
+                      ? const Color(0xFF5DF9FF)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(13),
-                  border: !_registering ? Border.all(color: Colors.black, width: 2) : null,
+                  border: !_registering
+                      ? Border.all(color: Colors.black, width: 2)
+                      : null,
                   boxShadow: !_registering
                       ? const [
                           BoxShadow(
@@ -626,7 +709,9 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                     Icon(
                       Icons.login_rounded,
                       size: 19,
-                      color: !_registering ? Colors.black : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                      color: !_registering
+                          ? Colors.black
+                          : (isDark ? Colors.grey[400] : Colors.grey[600]),
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -634,7 +719,9 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                       style: GoogleFonts.itim(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: !_registering ? Colors.black : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                        color: !_registering
+                            ? Colors.black
+                            : (isDark ? Colors.grey[400] : Colors.grey[600]),
                         letterSpacing: 1.1,
                       ),
                     ),
@@ -662,9 +749,13 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 curve: Curves.easeInOut,
                 padding: const EdgeInsets.symmetric(vertical: 11),
                 decoration: BoxDecoration(
-                  color: _registering ? const Color(0xFFF9EB5D) : Colors.transparent,
+                  color: _registering
+                      ? const Color(0xFFF9EB5D)
+                      : Colors.transparent,
                   borderRadius: BorderRadius.circular(13),
-                  border: _registering ? Border.all(color: Colors.black, width: 2) : null,
+                  border: _registering
+                      ? Border.all(color: Colors.black, width: 2)
+                      : null,
                   boxShadow: _registering
                       ? const [
                           BoxShadow(
@@ -681,7 +772,9 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                     Icon(
                       Icons.person_add_rounded,
                       size: 19,
-                      color: _registering ? Colors.black : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                      color: _registering
+                          ? Colors.black
+                          : (isDark ? Colors.grey[400] : Colors.grey[600]),
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -689,7 +782,9 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                       style: GoogleFonts.itim(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
-                        color: _registering ? Colors.black : (isDark ? Colors.grey[400] : Colors.grey[600]),
+                        color: _registering
+                            ? Colors.black
+                            : (isDark ? Colors.grey[400] : Colors.grey[600]),
                         letterSpacing: 1.1,
                       ),
                     ),
@@ -712,11 +807,7 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(color: Colors.black, width: 3),
         boxShadow: const [
-          BoxShadow(
-            color: Colors.black,
-            offset: Offset(6, 6),
-            blurRadius: 0,
-          ),
+          BoxShadow(color: Colors.black, offset: Offset(6, 6), blurRadius: 0),
         ],
       ),
       padding: const EdgeInsets.all(22),
@@ -729,9 +820,14 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
-                    color: _registering ? const Color(0xFFF9EB5D) : const Color(0xFF5DF9FF),
+                    color: _registering
+                        ? const Color(0xFFF9EB5D)
+                        : const Color(0xFF5DF9FF),
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.black, width: 2),
                   ),
@@ -785,10 +881,15 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
               validator: _validatePassword,
               isDark: isDark,
               suffixIcon: IconButton(
-                tooltip: _obscurePassword ? 'Tampilkan password' : 'Sembunyikan password',
-                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                tooltip: _obscurePassword
+                    ? 'Tampilkan password'
+                    : 'Sembunyikan password',
+                onPressed: () =>
+                    setState(() => _obscurePassword = !_obscurePassword),
                 icon: Icon(
-                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  _obscurePassword
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
                   color: isDark ? Colors.grey[300] : Colors.grey[700],
                 ),
               ),
@@ -821,11 +922,20 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                           },
                           isDark: isDark,
                           suffixIcon: IconButton(
-                            tooltip: _obscureConfirmation ? 'Tampilkan password' : 'Sembunyikan password',
-                            onPressed: () => setState(() => _obscureConfirmation = !_obscureConfirmation),
+                            tooltip: _obscureConfirmation
+                                ? 'Tampilkan password'
+                                : 'Sembunyikan password',
+                            onPressed: () => setState(
+                              () =>
+                                  _obscureConfirmation = !_obscureConfirmation,
+                            ),
                             icon: Icon(
-                              _obscureConfirmation ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-                              color: isDark ? Colors.grey[300] : Colors.grey[700],
+                              _obscureConfirmation
+                                  ? Icons.visibility_outlined
+                                  : Icons.visibility_off_outlined,
+                              color: isDark
+                                  ? Colors.grey[300]
+                                  : Colors.grey[700],
                             ),
                           ),
                         ),
@@ -842,7 +952,10 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 child: TextButton(
                   onPressed: _busy ? null : _showForgotPasswordDialog,
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
@@ -851,7 +964,9 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                     style: GoogleFonts.itim(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? const Color(0xFF5DF9FF) : const Color(0xFF007A99),
+                      color: isDark
+                          ? const Color(0xFF5DF9FF)
+                          : const Color(0xFF007A99),
                       decoration: TextDecoration.underline,
                     ),
                   ),
@@ -878,7 +993,11 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.error_outline_rounded, color: Colors.white, size: 22),
+                    const Icon(
+                      Icons.error_outline_rounded,
+                      color: Colors.white,
+                      size: 22,
+                    ),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -900,7 +1019,9 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             // Submit Button
             NeoButton(
               text: _registering ? 'DAFTAR SEKARANG 🚀' : 'MASUK KE APLIKASI ⚡',
-              backgroundColor: _registering ? const Color(0xFFF9EB5D) : const Color(0xFF5DF9FF),
+              backgroundColor: _registering
+                  ? const Color(0xFFF9EB5D)
+                  : const Color(0xFF5DF9FF),
               textColor: Colors.black,
               borderWidth: 2.5,
               shadowOffset: 4,
@@ -969,8 +1090,13 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             ),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: isDark ? const Color(0xFF262626) : const Color(0xFFF7F9FC),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            fillColor: isDark
+                ? const Color(0xFF262626)
+                : const Color(0xFFF7F9FC),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: const BorderSide(color: Colors.black, width: 2),
@@ -981,7 +1107,10 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFF5DF9FF), width: 2.8),
+              borderSide: const BorderSide(
+                color: Color(0xFF5DF9FF),
+                width: 2.8,
+              ),
             ),
             errorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
@@ -989,7 +1118,10 @@ class _AuthPageState extends State<AuthPage> with TickerProviderStateMixin {
             ),
             focusedErrorBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
-              borderSide: const BorderSide(color: Color(0xFFFF5D5D), width: 2.8),
+              borderSide: const BorderSide(
+                color: Color(0xFFFF5D5D),
+                width: 2.8,
+              ),
             ),
             errorStyle: GoogleFonts.itim(
               color: const Color(0xFFFF5D5D),

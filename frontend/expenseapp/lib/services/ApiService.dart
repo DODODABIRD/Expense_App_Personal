@@ -3,17 +3,15 @@ import 'dart:convert';
 import 'dart:io';
 import 'databaseHelper.dart';
 import 'auth_service.dart';
+import 'error_log_service.dart';
 
 const String baseUrl = String.fromEnvironment(
   'EXPENSE_API_BASE_URL',
   defaultValue: 'https://dododabird.us/api',
 );
 
-typedef ReceiptScanProgress = void Function(
-  double progress,
-  String message, {
-  String status,
-});
+typedef ReceiptScanProgress =
+    void Function(double progress, String message, {String status});
 
 class ReceiptScanCancelledException implements Exception {
   @override
@@ -109,10 +107,7 @@ class Throw {
 
     late final http.StreamedResponse response;
     try {
-      final request = http.Request(
-        'POST',
-        Uri.parse('$baseUrl/parse-receipt'),
-      )
+      final request = http.Request('POST', Uri.parse('$baseUrl/parse-receipt'))
         ..headers.addAll(await _headers())
         ..body = jsonEncode({'image': base64Image, 'mimeType': mimeType});
       response = await client
@@ -127,7 +122,8 @@ class Throw {
         try {
           final body = jsonDecode(responseBody) as Map<String, dynamic>;
           if (body['error'] != null) message = body['error'].toString();
-        } catch (_) {
+        } catch (error, stackTrace) {
+          captureAppError(error, stackTrace, 'Parse receipt error response');
           // Keep the status-based message when the backend response is not JSON.
         }
         onProgress?.call(1, message, status: 'failed');
@@ -136,21 +132,24 @@ class Throw {
 
       final contentType = response.headers['content-type'] ?? '';
       if (!contentType.contains('application/x-ndjson')) {
-        final body = jsonDecode(await response.stream.bytesToString())
-            as Map<String, dynamic>;
+        final body =
+            jsonDecode(await response.stream.bytesToString())
+                as Map<String, dynamic>;
         onProgress?.call(1, 'Receipt data received', status: 'success');
         return {
           'date': body['date']?.toString(),
-          'items': (body['items'] as List<dynamic>).cast<Map<String, dynamic>>(),
+          'items': (body['items'] as List<dynamic>)
+              .cast<Map<String, dynamic>>(),
           'provider': body['provider']?.toString(),
         };
       }
 
       Map<String, dynamic>? result;
       String? streamError;
-      await for (final line in response.stream
-          .transform(utf8.decoder)
-          .transform(const LineSplitter())) {
+      await for (final line
+          in response.stream
+              .transform(utf8.decoder)
+              .transform(const LineSplitter())) {
         if (line.trim().isEmpty) continue;
         final event = jsonDecode(line) as Map<String, dynamic>;
         if (event['type'] == 'progress') {
@@ -163,7 +162,8 @@ class Throw {
         } else if (event['type'] == 'result') {
           result = event;
         } else if (event['type'] == 'error') {
-          streamError = event['message']?.toString() ?? 'Receipt parsing failed';
+          streamError =
+              event['message']?.toString() ?? 'Receipt parsing failed';
           onProgress?.call(1, streamError, status: 'failed');
         }
       }
@@ -173,7 +173,8 @@ class Throw {
       onProgress?.call(1, 'Receipt data received', status: 'success');
       return {
         'date': result['date']?.toString(),
-        'items': (result['items'] as List<dynamic>).cast<Map<String, dynamic>>(),
+        'items': (result['items'] as List<dynamic>)
+            .cast<Map<String, dynamic>>(),
         'provider': result['provider']?.toString(),
       };
     } catch (error) {
@@ -203,7 +204,8 @@ class Throw {
       try {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         if (body['error'] != null) message = body['error'].toString();
-      } catch (_) {
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Parse notification error response');
         // Keep the status-based message when the backend response is not JSON.
       }
       throw Exception(message);
@@ -227,7 +229,8 @@ class Throw {
       try {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         if (body['error'] != null) message = body['error'].toString();
-      } catch (_) {
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Parse AI reference error response');
         // Keep the status-based message when the response is not JSON.
       }
       throw Exception(message);
@@ -352,7 +355,8 @@ class Throw {
       try {
         final body = jsonDecode(response.body) as Map<String, dynamic>;
         if (body['error'] != null) message = body['error'].toString();
-      } catch (_) {
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Parse delete-all error response');
         // Keep the status-based message when the backend response is not JSON.
       }
       throw Exception(message);
@@ -400,8 +404,9 @@ class Throw {
       print(response.statusCode);
       print(response.body);
       return mongoId != null;
-    } catch (e) {
-      print('Sync failed: $e');
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Create expense sync');
+      print('Sync failed: $error');
       // Expense stays local, marked as not synced
       return false;
     }
@@ -432,8 +437,9 @@ class Throw {
             expense['date'] as String,
           );
         }
-      } catch (e) {
-        print('Pending sync failed: $e');
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Pending expense sync');
+        print('Pending sync failed: $error');
       }
     }
   }

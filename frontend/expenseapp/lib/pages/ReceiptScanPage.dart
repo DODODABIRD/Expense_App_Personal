@@ -9,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../main.dart';
 import '../services/ApiService.dart';
 import '../services/databaseHelper.dart';
+import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
 
 class ReceiptScanPage extends StatefulWidget {
@@ -182,7 +183,8 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
         maxWidth: 1600,
         maxHeight: 1600,
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Open receipt image source');
       setState(
         () => _errorMessage = source == ImageSource.camera
             ? 'Could not open the camera: $error.'
@@ -269,7 +271,8 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
           _errorMessage = null;
         });
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Scan receipt');
       if (mounted) {
         setState(() {
           _errorMessage = 'Could not scan receipt: $error';
@@ -429,7 +432,8 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => const Center(child: CircularProgressIndicator(color: Colors.black)),
+      builder: (context) =>
+          const Center(child: CircularProgressIndicator(color: Colors.black)),
     );
 
     try {
@@ -438,10 +442,11 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
       for (final item in selected) {
         String itemName = item.nameController.text.trim();
         if (itemName.isEmpty) itemName = 'Unknown item';
-        
+
         // If the user modified the portions eaten e.g. 2 out of 5 burgers
         if (item.selectedQuantity < item.originalQuantity) {
-          itemName = '$itemName (${item.selectedQuantity}/${item.originalQuantity} porsi)';
+          itemName =
+              '$itemName (${item.selectedQuantity}/${item.originalQuantity} porsi)';
         }
 
         await DatabaseHelp.insertData(
@@ -480,7 +485,8 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
         ),
       );
       Navigator.pop(context, true);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Save receipt items');
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
       ScaffoldMessenger.of(context).showSnackBar(
@@ -565,7 +571,10 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.error_outline, color: Color(0xFFD90429)),
+                            const Icon(
+                              Icons.error_outline,
+                              color: Color(0xFFD90429),
+                            ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -583,9 +592,7 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                     ],
                     if (_isProcessing) ...[
                       const SizedBox(height: 18),
-                      FadeSlideAnimation(
-                        child: _buildProcessingPanel(isDark),
-                      ),
+                      FadeSlideAnimation(child: _buildProcessingPanel(isDark)),
                     ],
                     if (!_isProcessing && _items.isNotEmpty) ...[
                       const SizedBox(height: 20),
@@ -807,7 +814,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
               height: 130,
               width: double.infinity,
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF1E1E1E) : const Color(0xFFF9FBFD),
+                color: isDark
+                    ? const Color(0xFF1E1E1E)
+                    : const Color(0xFFF9FBFD),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color: Colors.black,
@@ -848,7 +857,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
             children: [
               Expanded(
                 child: NeoBouncy(
-                  onTap: _isProcessing ? null : () => _pickImage(ImageSource.camera),
+                  onTap: _isProcessing
+                      ? null
+                      : () => _pickImage(ImageSource.camera),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: _neoBoxDecoration(
@@ -859,7 +870,11 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.camera_alt_rounded, color: Colors.black, size: 20),
+                        Icon(
+                          Icons.camera_alt_rounded,
+                          color: Colors.black,
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Camera',
@@ -877,7 +892,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
               const SizedBox(width: 12),
               Expanded(
                 child: NeoBouncy(
-                  onTap: _isProcessing ? null : () => _pickImage(ImageSource.gallery),
+                  onTap: _isProcessing
+                      ? null
+                      : () => _pickImage(ImageSource.gallery),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     decoration: _neoBoxDecoration(
@@ -888,7 +905,11 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                     child: const Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.photo_library_rounded, color: Colors.black, size: 20),
+                        Icon(
+                          Icons.photo_library_rounded,
+                          color: Colors.black,
+                          size: 20,
+                        ),
                         SizedBox(width: 8),
                         Text(
                           'Gallery',
@@ -957,7 +978,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                       'AI Scanning in progress...',
                       style: TextStyle(
                         fontSize: 12,
-                        color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                        color: isDark
+                            ? Colors.grey.shade400
+                            : Colors.grey.shade600,
                       ),
                     ),
                   ],
@@ -994,7 +1017,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
               child: LinearProgressIndicator(
                 value: _scanProgress,
                 backgroundColor: Colors.transparent,
-                valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFF5DF9FF)),
+                valueColor: const AlwaysStoppedAnimation<Color>(
+                  Color(0xFF5DF9FF),
+                ),
               ),
             ),
           ),
@@ -1004,8 +1029,11 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
               padding: const EdgeInsets.only(bottom: 6),
               child: Row(
                 children: [
-                  Icon(_scanLogIcon(log.status),
-                      size: 18, color: _scanLogColor(log.status)),
+                  Icon(
+                    _scanLogIcon(log.status),
+                    size: 18,
+                    color: _scanLogColor(log.status),
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -1026,7 +1054,10 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
             child: NeoBouncy(
               onTap: _isCancelling ? null : _cancelScan,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.red.shade100,
                   borderRadius: BorderRadius.circular(8),
@@ -1068,7 +1099,11 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(color: Colors.black, width: 1.5),
                 ),
-                child: const Icon(Icons.calendar_today_rounded, size: 18, color: Colors.black),
+                child: const Icon(
+                  Icons.calendar_today_rounded,
+                  size: 18,
+                  color: Colors.black,
+                ),
               ),
               const SizedBox(width: 10),
               Column(
@@ -1079,7 +1114,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                     style: TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                      color: isDark
+                          ? Colors.grey.shade400
+                          : Colors.grey.shade600,
                     ),
                   ),
                   Text(
@@ -1149,7 +1186,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
               height: 28,
               margin: const EdgeInsets.only(top: 4, right: 10),
               decoration: BoxDecoration(
-                color: item.checked ? const Color(0xFF5DF9FF) : Colors.transparent,
+                color: item.checked
+                    ? const Color(0xFF5DF9FF)
+                    : Colors.transparent,
                 borderRadius: BorderRadius.circular(8),
                 border: Border.all(color: Colors.black, width: 2),
               ),
@@ -1203,9 +1242,14 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
 
                 // Portion & Quantity Stepper Bar (e.g. 2 / 5 burger)
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF333333) : const Color(0xFFF4F7FA),
+                    color: isDark
+                        ? const Color(0xFF333333)
+                        : const Color(0xFFF4F7FA),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(color: Colors.black, width: 1.5),
                   ),
@@ -1214,7 +1258,11 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.restaurant_menu_rounded, size: 16, color: Colors.black87),
+                          const Icon(
+                            Icons.restaurant_menu_rounded,
+                            size: 16,
+                            color: Colors.black87,
+                          ),
                           const SizedBox(width: 6),
                           Text(
                             item.originalQuantity > 1
@@ -1232,7 +1280,10 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                           // Minus button
                           NeoBouncy(
                             onTap: item.selectedQuantity > 1
-                                ? () => _changeQuantity(item, item.selectedQuantity - 1)
+                                ? () => _changeQuantity(
+                                    item,
+                                    item.selectedQuantity - 1,
+                                  )
                                 : null,
                             child: Container(
                               width: 26,
@@ -1242,9 +1293,16 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                                     ? Colors.white
                                     : Colors.grey.shade300,
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.black, width: 1.2),
+                                border: Border.all(
+                                  color: Colors.black,
+                                  width: 1.2,
+                                ),
                               ),
-                              child: const Icon(Icons.remove, size: 14, color: Colors.black),
+                              child: const Icon(
+                                Icons.remove,
+                                size: 14,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                           Padding(
@@ -1259,16 +1317,26 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                           ),
                           // Plus button
                           NeoBouncy(
-                            onTap: () => _changeQuantity(item, item.selectedQuantity + 1),
+                            onTap: () => _changeQuantity(
+                              item,
+                              item.selectedQuantity + 1,
+                            ),
                             child: Container(
                               width: 26,
                               height: 26,
                               decoration: BoxDecoration(
                                 color: const Color(0xFF5DF9FF),
                                 borderRadius: BorderRadius.circular(6),
-                                border: Border.all(color: Colors.black, width: 1.2),
+                                border: Border.all(
+                                  color: Colors.black,
+                                  width: 1.2,
+                                ),
                               ),
-                              child: const Icon(Icons.add, size: 14, color: Colors.black),
+                              child: const Icon(
+                                Icons.add,
+                                size: 14,
+                                color: Colors.black,
+                              ),
                             ),
                           ),
                         ],
@@ -1280,7 +1348,10 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
 
                 // Amount Input Box with unit price hint
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                     borderRadius: BorderRadius.circular(10),
@@ -1289,7 +1360,10 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                   child: Row(
                     children: [
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFFF9EB5D),
                           borderRadius: BorderRadius.circular(6),
@@ -1321,18 +1395,23 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                             contentPadding: EdgeInsets.zero,
                             hintText: '0',
                             hintStyle: TextStyle(
-                              color: isDark ? Colors.grey.shade600 : Colors.grey.shade400,
+                              color: isDark
+                                  ? Colors.grey.shade600
+                                  : Colors.grey.shade400,
                             ),
                           ),
                         ),
                       ),
-                      if (item.selectedQuantity > 1 || item.originalQuantity > 1)
+                      if (item.selectedQuantity > 1 ||
+                          item.originalQuantity > 1)
                         Text(
                           '(@ $_currentCurrencySymbol${formatter.format(item.unitPrice)})',
                           style: TextStyle(
                             fontSize: 12,
                             fontWeight: FontWeight.w600,
-                            color: isDark ? Colors.grey.shade400 : Colors.grey.shade600,
+                            color: isDark
+                                ? Colors.grey.shade400
+                                : Colors.grey.shade600,
                           ),
                         ),
                     ],
@@ -1358,10 +1437,15 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                             value: item.category,
                             isExpanded: true,
                             isDense: true,
-                            icon: const Icon(Icons.arrow_drop_down, color: Colors.black, size: 20),
+                            icon: const Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.black,
+                              size: 20,
+                            ),
                             dropdownColor: Colors.white,
                             items: _categories.map((c) {
-                              final icon = _categoryIcons[c] ?? Icons.category_rounded;
+                              final icon =
+                                  _categoryIcons[c] ?? Icons.category_rounded;
                               return DropdownMenuItem(
                                 value: c,
                                 child: Row(
@@ -1381,7 +1465,8 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                               );
                             }).toList(),
                             onChanged: (val) {
-                              if (val != null) setState(() => item.category = val);
+                              if (val != null)
+                                setState(() => item.category = val);
                             },
                           ),
                         ),
@@ -1397,8 +1482,8 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                           color: item.type == 'expected'
                               ? const Color(0xFFF9EB5D)
                               : (item.type == 'unexpected'
-                                  ? const Color(0xFFFF5D5D)
-                                  : const Color(0xFF5D9BFF)),
+                                    ? const Color(0xFFFF5D5D)
+                                    : const Color(0xFF5D9BFF)),
                           borderRadius: BorderRadius.circular(8),
                           border: Border.all(color: Colors.black, width: 1.5),
                         ),
@@ -1407,7 +1492,11 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                             value: item.type,
                             isExpanded: true,
                             isDense: true,
-                            icon: const Icon(Icons.arrow_drop_down, color: Colors.black, size: 20),
+                            icon: const Icon(
+                              Icons.arrow_drop_down,
+                              color: Colors.black,
+                              size: 20,
+                            ),
                             dropdownColor: Colors.white,
                             items: _types.entries.map((e) {
                               return DropdownMenuItem(
@@ -1523,9 +1612,7 @@ class _ReceiptImagePreviewModal extends StatelessWidget {
             onTap: () => Navigator.pop(context),
             child: BackdropFilter(
               filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
-              child: Container(
-                color: Colors.black.withValues(alpha: 0.82),
-              ),
+              child: Container(color: Colors.black.withValues(alpha: 0.82)),
             ),
           ),
 
@@ -1535,13 +1622,19 @@ class _ReceiptImagePreviewModal extends StatelessWidget {
               children: [
                 // Top Navigation Bar
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Badge Header
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: const Color(0xFF5DF9FF),
                           borderRadius: BorderRadius.circular(14),
@@ -1612,7 +1705,10 @@ class _ReceiptImagePreviewModal extends StatelessWidget {
                 Expanded(
                   child: Center(
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 8,
+                      ),
                       child: InteractiveViewer(
                         minScale: 0.8,
                         maxScale: 4.5,
@@ -1634,10 +1730,7 @@ class _ReceiptImagePreviewModal extends StatelessWidget {
                             ),
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(17),
-                              child: Image.file(
-                                imageFile,
-                                fit: BoxFit.contain,
-                              ),
+                              child: Image.file(imageFile, fit: BoxFit.contain),
                             ),
                           ),
                         ),
@@ -1650,7 +1743,10 @@ class _ReceiptImagePreviewModal extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16, top: 8),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                     decoration: BoxDecoration(
                       color: const Color(0xFFF9EB5D),
                       borderRadius: BorderRadius.circular(20),

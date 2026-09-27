@@ -3,6 +3,8 @@ import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'ApiService.dart';
 import 'auth_service.dart';
+import 'error_log_service.dart';
+
 // import 'mongoServices.dart';
 // import 'NeonDBHelper.dart';
 
@@ -202,7 +204,8 @@ class DatabaseHelp {
         category,
         type,
         date,
-      ).catchError((error) {
+      ).catchError((error, stackTrace) {
+        captureAppError(error, stackTrace, 'Background expense update sync');
         print('Background update sync failed: $error');
         return false;
       }),
@@ -288,12 +291,14 @@ class DatabaseHelp {
         whereArgs: [id, AuthService.currentUser?.uid],
       );
       print("Yo, that shit was a bussin move");
-    } catch (e) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Delete local expense');
       print('Yo, that deletion shit wasnt a success');
     }
     try {
       Throw.deleteUserByLocalId(id!);
-    } catch (e) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Delete online expense');
       print('No connection dawg');
     }
   }

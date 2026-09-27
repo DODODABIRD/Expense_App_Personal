@@ -17,11 +17,13 @@ import 'ExpenseAddPage.dart';
 import 'package:intl/intl.dart';
 import '../services/databaseHelper.dart';
 import '../services/ApiService.dart';
+import '../services/error_log_service.dart';
 import 'ExpenseEdit.dart';
 import 'ExpenseSumarry.dart';
 import '../services/auth_service.dart';
 import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
+import 'developer_logs_page.dart';
 import 'notification_permission_page.dart';
 
 // FIXME
@@ -55,6 +57,8 @@ class _HomePage2State extends State<HomePage2> {
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0.0);
   int _selectedIndex = 0;
   int _homeTapCount = 0;
+  int _settingsTapCount = 0;
+  DateTime? _settingsTapStartedAt;
   bool _isChangingCurrency = false;
 
   @override
@@ -129,7 +133,8 @@ class _HomePage2State extends State<HomePage2> {
       if (rate == null || rate <= 0) return;
       appCurrency.value = currency;
       appExchangeRate.value = rate;
-    } catch (_) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Restore currency preference');
       // Keep the default IDR display if the cache is unavailable.
     }
   }
@@ -257,6 +262,10 @@ class _HomePage2State extends State<HomePage2> {
 
   void _onPageChanged(int index) {
     if (!mounted) return;
+    if (index != 2) {
+      _settingsTapCount = 0;
+      _settingsTapStartedAt = null;
+    }
     setState(() {
       _selectedIndex = index;
       _homeTapCount = index == 0 ? _homeTapCount + 1 : 0;
@@ -345,6 +354,28 @@ class _HomePage2State extends State<HomePage2> {
   }
 
   Future<void> _onNavigationSelected(int index) async {
+    if (index == 2) {
+      final now = DateTime.now();
+      final startedAt = _settingsTapStartedAt;
+      if (startedAt == null ||
+          now.difference(startedAt) > const Duration(seconds: 2)) {
+        _settingsTapStartedAt = now;
+        _settingsTapCount = 0;
+      }
+      _settingsTapCount++;
+      if (_settingsTapCount == 3) {
+        _settingsTapCount = 0;
+        _settingsTapStartedAt = null;
+        await Navigator.of(
+          context,
+        ).push(SmoothPageRoute(page: const DeveloperLogsPage()));
+        return;
+      }
+    } else {
+      _settingsTapCount = 0;
+      _settingsTapStartedAt = null;
+    }
+
     if (index == _selectedIndex) {
       if (index == 0) {
         _homeTapCount++;
@@ -393,7 +424,8 @@ class _HomePage2State extends State<HomePage2> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('All expenses deleted.')));
-    } catch (error) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Delete all expenses');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not delete expenses: $error')),
@@ -1278,7 +1310,8 @@ class _HomePage2State extends State<HomePage2> {
           );
           couldOpenFile = openResult.type == ResultType.done;
         }
-      } catch (_) {
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Open exported expense report');
         couldOpenFile = false;
       }
 
@@ -1294,7 +1327,8 @@ class _HomePage2State extends State<HomePage2> {
           ),
         ),
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Export expense report');
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
@@ -1551,7 +1585,8 @@ class _HomePage2State extends State<HomePage2> {
         appCurrency.value = currency;
         appExchangeRate.value = rate;
         await DatabaseHelp.setSetting('currency', currency);
-      } catch (_) {
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Fetch exchange rate');
         final cachedRate = await DatabaseHelp.getCachedExchangeRate(currency);
         if (cachedRate == null || cachedRate <= 0) {
           throw StateError('Exchange rate unavailable while offline');
@@ -1560,7 +1595,8 @@ class _HomePage2State extends State<HomePage2> {
         appExchangeRate.value = cachedRate;
         await DatabaseHelp.setSetting('currency', currency);
       }
-    } catch (error) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Change currency');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Could not change currency: $error')),
@@ -1605,7 +1641,8 @@ class _HomePage2State extends State<HomePage2> {
           ),
         ),
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Load online expenses');
       if (!mounted) return;
       if (loadingShown) Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1632,7 +1669,8 @@ class _HomePage2State extends State<HomePage2> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Password updated.')));
-    } on FirebaseAuthException catch (error) {
+    } on FirebaseAuthException catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Change password');
       if (!mounted) return;
       final message =
           error.code == 'wrong-password' || error.code == 'invalid-credential'
@@ -1917,7 +1955,8 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
         ),
       );
-    } catch (error) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Update AI notification reference');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -2409,7 +2448,8 @@ class _ListWithCardsState extends State<ListWithCards>
       await DatabaseHelp.initDB();
       await DatabaseHelp.assignLegacyExpensesToCurrentUser();
       unawaited(_syncPendingExpenses());
-    } catch (e) {
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Initialize expense database');
       print("Nigga The Database Aint Initialized");
     }
 
@@ -2423,8 +2463,9 @@ class _ListWithCardsState extends State<ListWithCards>
         _expenses = data.map((item) => ExpenseModel.fromMap(item)).toList();
         _isLoading = false;
       });
-    } catch (e) {
-      print("Error loading data: $e");
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Load expenses');
+      print("Error loading data: $error");
       setState(() => _isLoading = false);
     }
   }
