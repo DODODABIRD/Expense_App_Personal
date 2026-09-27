@@ -7,7 +7,7 @@ import 'error_log_service.dart';
 
 const String baseUrl = String.fromEnvironment(
   'EXPENSE_API_BASE_URL',
-  defaultValue: 'https://dododabird.us/api',
+  defaultValue: 'https://expense-app-personal.vercel.app/api',
 );
 
 typedef ReceiptScanProgress =
