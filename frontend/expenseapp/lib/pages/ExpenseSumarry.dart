@@ -164,9 +164,9 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
 
   BoxDecoration _neoCardDecoration({
     Color color = Colors.white,
-    double radius = 20,
-    double borderWidth = 2.8,
-    double shadowOffset = 4,
+    double radius = 18,
+    double borderWidth = 2,
+    double shadowOffset = 3,
   }) {
     return BoxDecoration(
       color: color,
@@ -310,24 +310,34 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
       ..sort();
     final n = sortedAmounts.length;
 
-    double q1;
-    double q3;
-    if (n >= 4) {
-      final q1Index = (n * 0.25).floor();
-      final q3Index = (n * 0.75).floor();
-      q1 = sortedAmounts[q1Index];
-      q3 = sortedAmounts[q3Index];
-    } else {
-      q1 = sortedAmounts.first;
-      q3 = sortedAmounts.last;
-    }
-
-    final iqr = q3 - q1;
-    final double threshold = iqr > 0
-        ? q3 + (1.5 * iqr)
-        : sortedAmounts.reduce((a, b) => a + b) / n * 1.8;
-
     final mean = sortedAmounts.reduce((a, b) => a + b) / n;
+    final variance =
+        sortedAmounts.fold<double>(0, (sum, amount) {
+          final difference = amount - mean;
+          return sum + difference * difference;
+        }) /
+        n;
+    final standardDeviation = math.sqrt(variance);
+
+    final double threshold;
+    if (n < 4) {
+      threshold = mean + (1.5 * standardDeviation);
+    } else {
+      double percentile(double fraction) {
+        final position = (n - 1) * fraction;
+        final lowerIndex = position.floor();
+        final upperIndex = position.ceil();
+        final interpolation = position - lowerIndex;
+        return sortedAmounts[lowerIndex] +
+            (sortedAmounts[upperIndex] - sortedAmounts[lowerIndex]) *
+                interpolation;
+      }
+
+      final q1 = percentile(0.25);
+      final q3 = percentile(0.75);
+      final iqr = q3 - q1;
+      threshold = iqr > 0 ? q3 + (1.5 * iqr) : mean + (1.5 * standardDeviation);
+    }
 
     final detected = <Map<String, dynamic>>[];
 
@@ -588,7 +598,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
       padding: const EdgeInsets.all(18),
       decoration: _neoCardDecoration(
         color: isDark ? const Color(0xFF1E2830) : Colors.white,
-        radius: 22,
+        radius: 18,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -647,7 +657,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
 
           // Custom Neobrutalist Bar Chart
           SizedBox(
-            height: 160,
+            height: 176,
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -808,7 +818,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
       padding: const EdgeInsets.all(18),
       decoration: _neoCardDecoration(
         color: isDark ? const Color(0xFF1E2830) : Colors.white,
-        radius: 22,
+        radius: 18,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -878,7 +888,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
             const SizedBox(height: 16),
           ],
 
-          // Category Cards List
+          // Category breakdown rows
           if (cats.isEmpty)
             Center(
               child: Padding(
@@ -891,26 +901,8 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
             )
           else
             ...cats.map((c) {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF242E38)
-                      : const Color(0xFFF9FBFD),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.black, width: 1.8),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black,
-                      offset: Offset(2, 2),
-                      blurRadius: 0,
-                    ),
-                  ],
-                ),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 10),
                 child: Row(
                   children: [
                     Container(
@@ -979,7 +971,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
       padding: const EdgeInsets.all(18),
       decoration: _neoCardDecoration(
         color: isDark ? const Color(0xFF1E2830) : Colors.white,
-        radius: 22,
+        radius: 18,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1021,26 +1013,28 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
 
           // 3-Way Ratio Row
           Row(
-            children: types.map((t) {
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: types.asMap().entries.map((entry) {
+              final index = entry.key;
+              final t = entry.value;
               return Expanded(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: t.color,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.black, width: 2),
-                    boxShadow: const [
-                      BoxShadow(
-                        color: Colors.black,
-                        offset: Offset(2.5, 2.5),
-                        blurRadius: 0,
-                      ),
-                    ],
+                child: Padding(
+                  padding: EdgeInsets.only(
+                    left: index == 0 ? 0 : 8,
+                    right: index == types.length - 1 ? 0 : 8,
                   ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Container(
+                        width: 24,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: t.color,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       FittedBox(
                         fit: BoxFit.scaleDown,
                         child: Text(
@@ -1048,7 +1042,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                           style: GoogleFonts.itim(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: isDark ? Colors.white : Colors.black,
                           ),
                         ),
                       ),
@@ -1060,7 +1054,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                           style: GoogleFonts.itim(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black,
+                            color: isDark ? Colors.white : Colors.black,
                           ),
                         ),
                       ),
@@ -1072,7 +1066,6 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                           style: const TextStyle(
                             fontSize: 11,
                             fontWeight: FontWeight.bold,
-                            color: Colors.black87,
                           ),
                         ),
                       ),
@@ -1143,12 +1136,13 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
 
   Widget _buildOutliersSection(bool isDark) {
     final outliers = _outliers;
+    final canDetectOutliers = _expenses.length >= 3;
 
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: _neoCardDecoration(
         color: isDark ? const Color(0xFF1E2830) : Colors.white,
-        radius: 22,
+        radius: 18,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1174,7 +1168,7 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                   fit: BoxFit.scaleDown,
                   alignment: Alignment.centerLeft,
                   child: Text(
-                    'Detektor Outlier 🚨',
+                    'Detektor Outlier',
                     style: GoogleFonts.itim(
                       fontSize: 19,
                       fontWeight: FontWeight.bold,
@@ -1220,21 +1214,34 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF06D6A0).withValues(alpha: 0.15),
+                color: canDetectOutliers
+                    ? const Color(0xFF06D6A0).withValues(alpha: 0.15)
+                    : const Color(0xFF5DF9FF).withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFF06D6A0), width: 2),
+                border: Border.all(
+                  color: canDetectOutliers
+                      ? const Color(0xFF06D6A0)
+                      : const Color(0xFF5DF9FF),
+                  width: 2,
+                ),
               ),
               child: Row(
                 children: [
-                  const Icon(
-                    Icons.check_circle_rounded,
-                    color: Color(0xFF06D6A0),
+                  Icon(
+                    canDetectOutliers
+                        ? Icons.check_circle_rounded
+                        : Icons.info_outline_rounded,
+                    color: canDetectOutliers
+                        ? const Color(0xFF06D6A0)
+                        : const Color(0xFF0097A7),
                     size: 24,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Tidak ada outlier terdeteksi! Semua pengeluaran berada dalam rentang wajar ✨',
+                      canDetectOutliers
+                          ? 'Tidak ada outlier terdeteksi! Semua pengeluaran berada dalam rentang wajar.'
+                          : 'Tambahkan minimal 3 transaksi untuk mendeteksi outlier.',
                       style: GoogleFonts.itim(
                         fontSize: 14,
                         fontWeight: FontWeight.bold,
@@ -1257,18 +1264,10 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
                   color: isDark
                       ? const Color(0xFF2C2424)
                       : const Color(0xFFFFF5F5),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: const Color(0xFFFF5D5D),
-                    width: 2.2,
+                  borderRadius: BorderRadius.circular(12),
+                  border: const Border(
+                    left: BorderSide(color: Color(0xFFFF5D5D), width: 4),
                   ),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black,
-                      offset: Offset(3, 3),
-                      blurRadius: 0,
-                    ),
-                  ],
                 ),
                 child: Row(
                   children: [
