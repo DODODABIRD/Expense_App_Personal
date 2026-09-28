@@ -90,6 +90,41 @@ class LocalNotificationParser {
     'money in',
   ];
 
+  static const _genericExpenseNames = <String>{
+    'bca transaction',
+    'bank jago',
+    'bni payment',
+    'brimo payment',
+    'dana payment',
+    'gopay transaction',
+    'grab',
+    'jenius payment',
+    'livin mandiri',
+    'octo mobile',
+    'ovo payment',
+    'seabank payment',
+    'shopeepay',
+    'tokopedia',
+  };
+
+  static bool isAmbiguousNotification(
+    String title,
+    String message,
+    ParsedNotificationResult? localResult,
+  ) {
+    final combined = '$title\n$message';
+    final isTransfer = RegExp(
+      r'\b(?:transfer|kirim\s+(?:uang|saldo)|pindah(?:an)?\s+dana)\b',
+      caseSensitive: false,
+    ).hasMatch(combined);
+    if (localResult == null) return isTransfer && _findAmount(combined) > 0;
+
+    final normalizedName = localResult.name.trim().toLowerCase();
+    return localResult.category == 'lainnya' ||
+        _genericExpenseNames.contains(normalizedName) ||
+        (isTransfer && normalizedName.startsWith('transaksi '));
+  }
+
   // Payment confirmation keywords (indicating a transaction really took place)
   static final _paymentActionKeywords = <String>[
     'bayar',

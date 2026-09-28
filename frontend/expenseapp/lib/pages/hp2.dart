@@ -25,6 +25,7 @@ import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
 import 'developer_logs_page.dart';
 import 'notification_permission_page.dart';
+import 'PendingNotificationReviewPage.dart';
 
 // FIXME
 
@@ -51,7 +52,7 @@ class HomePage2 extends StatefulWidget {
   State<HomePage2> createState() => _HomePage2State();
 }
 
-class _HomePage2State extends State<HomePage2> {
+class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   final listKey = GlobalKey<_ListWithCardsState>();
   late final PageController _pageController;
   final ValueNotifier<double> _scrollOffset = ValueNotifier<double>(0.0);
@@ -60,18 +61,22 @@ class _HomePage2State extends State<HomePage2> {
   int _settingsTapCount = 0;
   DateTime? _settingsTapStartedAt;
   bool _isChangingCurrency = false;
+  int _pendingNotificationCount = 0;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _pageController = PageController(initialPage: _selectedIndex);
     _restoreCurrencyPreference();
+    _loadPendingNotificationCount();
     _startNotificationParser();
     _checkFirstTimeNotificationPermission();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _pageController.dispose();
     _scrollOffset.dispose();
     super.dispose();
@@ -82,15 +87,48 @@ class _HomePage2State extends State<HomePage2> {
     if (!await service.isParserEnabled() || !await service.isEnabled()) return;
     await service.start(
       _showNotificationParserError,
-      onExpenseAdded: () async {
-        listKey.currentState?._loadData();
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Expense parsed from notification.')),
-          );
-        }
-      },
+      onPendingNotificationAdded: _handlePendingNotificationAdded,
     );
+  }
+
+  Future<void> _handlePendingNotificationAdded() async {
+    await _loadPendingNotificationCount();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('A parsed notification is ready for review.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _loadPendingNotificationCount() async {
+    try {
+      final count = await DatabaseHelp.getPendingNotificationExpenseCount();
+      if (mounted) setState(() => _pendingNotificationCount = count);
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Load pending notification count');
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadPendingNotificationCount();
+    }
+  }
+
+  Future<void> _openPendingNotificationReview() async {
+    await Navigator.of(context).push<void>(
+      SmoothPageRoute<void>(
+        page: PendingNotificationReviewPage(
+          onExpenseApproved: () async {
+            await listKey.currentState?._loadData();
+          },
+        ),
+      ),
+    );
+    await _loadPendingNotificationCount();
   }
 
   Future<void> _showNotificationParserError(String error) async {
@@ -195,7 +233,25 @@ class _HomePage2State extends State<HomePage2> {
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                _buildSortDropdown(),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      tooltip: 'Review parsed notifications',
+                      onPressed: _openPendingNotificationReview,
+                      icon: Badge(
+                        isLabelVisible: _pendingNotificationCount > 0,
+                        label: Text(
+                          _pendingNotificationCount > 99
+                              ? '99+'
+                              : '$_pendingNotificationCount',
+                        ),
+                        child: const Icon(Icons.receipt_long_outlined),
+                      ),
+                    ),
+                    _buildSortDropdown(),
+                  ],
+                ),
               ],
             ),
           ),
@@ -257,6 +313,7 @@ class _HomePage2State extends State<HomePage2> {
       onRetrySync: _retrySync,
       onCurrencyChanged: _changeCurrency,
       onLoadOnlineExpenses: _loadOnlineExpenses,
+      onPendingNotificationAdded: _handlePendingNotificationAdded,
     );
   }
 
@@ -1836,6 +1893,7 @@ class SettingsPage extends StatefulWidget {
   final Future<void> Function() onRetrySync;
   final Future<void> Function(String) onCurrencyChanged;
   final Future<void> Function() onLoadOnlineExpenses;
+  final Future<void> Function() onPendingNotificationAdded;
 
   const SettingsPage({
     super.key,
@@ -1846,6 +1904,7 @@ class SettingsPage extends StatefulWidget {
     required this.onRetrySync,
     required this.onCurrencyChanged,
     required this.onLoadOnlineExpenses,
+    required this.onPendingNotificationAdded,
   });
 
   @override
@@ -1907,7 +1966,10 @@ class _SettingsPageState extends State<SettingsPage> {
         await service.isParserEnabled() && await service.isEnabled();
     if (mounted) setState(() => _autoExpenseParserEnabled = enabled);
     if (enabled) {
-      await service.start(_showParserError);
+      await service.start(
+        _showParserError,
+        onPendingNotificationAdded: widget.onPendingNotificationAdded,
+      );
     }
   }
 
@@ -1927,7 +1989,12 @@ class _SettingsPageState extends State<SettingsPage> {
     final service = NotificationExpenseService.instance;
     await service.setParserEnabled(true);
     if (!await service.isEnabled()) await service.openAccessSettings();
-    if (await service.isEnabled()) await service.start(_showParserError);
+    if (await service.isEnabled()) {
+      await service.start(
+        _showParserError,
+        onPendingNotificationAdded: widget.onPendingNotificationAdded,
+      );
+    }
     if (mounted) setState(() => _autoExpenseParserEnabled = true);
   }
 
@@ -1973,7 +2040,6 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 150),
       children: [
-        const SizedBox(height: 30),
         Text(
           'Manage your data',
           style: GoogleFonts.itim(fontSize: 28, fontWeight: FontWeight.bold),
@@ -2076,7 +2142,7 @@ class _SettingsPageState extends State<SettingsPage> {
           contentPadding: EdgeInsets.zero,
           leading: Icon(Icons.info_outline),
           title: Text('Expense App'),
-          subtitle: Text('Version 1.5.3'),
+          subtitle: Text('Version 1.6.0'),
         ),
       ],
     );
@@ -2135,6 +2201,9 @@ class _SettingsPageState extends State<SettingsPage> {
         color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black, width: 2),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
+        ],
       ),
       child: Column(
         children: [
@@ -2201,6 +2270,9 @@ class _SettingsPageState extends State<SettingsPage> {
         color: Theme.of(context).colorScheme.surfaceContainer,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.black, width: 2),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
+        ],
       ),
       child: Column(
         children: [
@@ -2571,10 +2643,78 @@ class _ListWithCardsState extends State<ListWithCards>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Container(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 340;
+              final currencyChip = Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 9,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF9EB5D),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.black, width: 1.6),
+                ),
+                child: Text(
+                  appCurrency.value,
+                  style: GoogleFonts.itim(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+              );
+              final detailsButton = NeoBouncy(
+                scaleFactor: 0.90,
+                onTap: () async {
+                  await Navigator.push(
+                    context,
+                    SmoothPageRoute(
+                      page: ExpenseSumarryPage(initialExpenses: _expenses),
+                    ),
+                  );
+                  _loadData();
+                },
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF5DF9FF),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.black, width: 1.8),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black,
+                        offset: Offset(2, 2),
+                        blurRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'Details',
+                        style: GoogleFonts.itim(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.arrow_forward_rounded,
+                        size: 14,
+                        color: Colors.black,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+              final titleChip = Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 10,
                   vertical: 4,
@@ -2593,93 +2733,58 @@ class _ListWithCardsState extends State<ListWithCards>
                       color: Colors.black,
                     ),
                     const SizedBox(width: 5),
-                    Text(
-                      'TOTAL PENGELUARAN',
-                      style: GoogleFonts.itim(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                        letterSpacing: 0.8,
+                    Flexible(
+                      child: Text(
+                        'TOTAL PENGELUARAN',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.itim(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black,
+                          letterSpacing: 0.8,
+                        ),
                       ),
                     ),
                   ],
                 ),
-              ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
+              );
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF9EB5D),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.black, width: 1.6),
-                    ),
-                    child: Text(
-                      appCurrency.value,
-                      style: GoogleFonts.itim(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  NeoBouncy(
-                    scaleFactor: 0.90,
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        SmoothPageRoute(
-                          page: ExpenseSumarryPage(initialExpenses: _expenses),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: titleChip,
                         ),
-                      );
-                      _loadData();
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
                       ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF5DF9FF),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.black, width: 1.8),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Colors.black,
-                            offset: Offset(2, 2),
-                            blurRadius: 0,
-                          ),
-                        ],
-                      ),
-                      child: Row(
+                      Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            'Details',
-                            style: GoogleFonts.itim(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.black,
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          const Icon(
-                            Icons.arrow_forward_rounded,
-                            size: 14,
-                            color: Colors.black,
-                          ),
+                          if (!isCompact) ...[
+                            currencyChip,
+                            const SizedBox(width: 8),
+                          ],
+                          detailsButton,
                         ],
                       ),
-                    ),
+                    ],
                   ),
+                  if (isCompact)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Align(
+                        alignment: Alignment.centerRight,
+                        child: currencyChip,
+                      ),
+                    ),
                 ],
-              ),
-            ],
+              );
+            },
           ),
           const SizedBox(height: 12),
           FittedBox(

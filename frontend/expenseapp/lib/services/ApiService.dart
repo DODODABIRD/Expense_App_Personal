@@ -213,14 +213,11 @@ class Throw {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  static Future<int> updateAiNotificationReference(
-    List<Map<String, dynamic>> items,
-  ) async {
+  static Future<int> updateAiNotificationReference() async {
     final response = await http
-        .put(
-          Uri.parse('$baseUrl/ai-notification-reference'),
+        .post(
+          Uri.parse('$baseUrl/ai-notification-reference/refresh'),
           headers: await _headers(),
-          body: jsonEncode({'items': items}),
         )
         .timeout(const Duration(seconds: 30));
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -240,7 +237,7 @@ class Throw {
     if (body['updated'] != true) {
       throw Exception('The server did not confirm the reference update');
     }
-    return body['itemCount'] is int ? body['itemCount'] as int : items.length;
+    return body['itemCount'] is int ? body['itemCount'] as int : 0;
   }
 
   Future<void> getUserById(String id) async {

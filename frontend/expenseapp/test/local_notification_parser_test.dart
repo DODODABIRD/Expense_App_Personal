@@ -58,6 +58,81 @@ void main() {
       );
     });
 
+    test('unclear local expenses and generic transfers require AI', () {
+      expect(
+        LocalNotificationParser.isAmbiguousNotification(
+          'BCA Mobile',
+          'Transfer uang berhasil sebesar Rp 50.000',
+          null,
+        ),
+        isTrue,
+      );
+      expect(
+        LocalNotificationParser.isAmbiguousNotification(
+          'BCA Mobile',
+          'Transfer uang berhasil',
+          null,
+        ),
+        isFalse,
+      );
+
+      final namedRecipientTransfer = LocalNotificationParser.parse(
+        title: 'myBCA',
+        message: 'Transfer ke BUDI SETIAWAN Rp 150.000',
+        packageName: 'mybca',
+      );
+      expect(
+        LocalNotificationParser.isAmbiguousNotification(
+          'BCA Mobile',
+          'Transfer ke BUDI SETIAWAN Rp 150.000',
+          namedRecipientTransfer,
+        ),
+        isTrue,
+      );
+
+      final clearTransfer = LocalNotificationParser.parse(
+        title: 'Bank Jago',
+        message: 'Kamu berhasil kirim Rp 80.000 ke Toko Buku Gramedia',
+        packageName: 'com.jago.app',
+      );
+      expect(
+        LocalNotificationParser.isAmbiguousNotification(
+          'Bank Jago',
+          'Kamu berhasil kirim Rp 80.000 ke Toko Buku Gramedia',
+          clearTransfer,
+        ),
+        isFalse,
+      );
+
+      final vaguePayment = LocalNotificationParser.parse(
+        title: 'BCA Mobile',
+        message: 'Pembayaran QRIS Rp 25.000 berhasil',
+        packageName: 'com.bca',
+      );
+      expect(
+        LocalNotificationParser.isAmbiguousNotification(
+          'BCA Mobile',
+          'Pembayaran QRIS Rp 25.000 di Kopi Kenangan',
+          vaguePayment,
+        ),
+        isTrue,
+      );
+
+      final clearPayment = LocalNotificationParser.parse(
+        title: 'BCA Mobile',
+        message: 'Pembayaran QRIS Rp 25.000 di Kopi Kenangan',
+        packageName: 'com.bca',
+      );
+      expect(
+        LocalNotificationParser.isAmbiguousNotification(
+          'BCA Mobile',
+          'Pembayaran QRIS Rp 25.000 di Kopi Kenangan',
+          clearPayment,
+        ),
+        isFalse,
+      );
+    });
+
     test('GoPay notification (ID & EN)', () {
       // ID
       final resId = LocalNotificationParser.parse(

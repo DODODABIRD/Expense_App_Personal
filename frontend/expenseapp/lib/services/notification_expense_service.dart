@@ -3,12 +3,20 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'ApiService.dart';
+import 'auth_service.dart';
 import 'databaseHelper.dart';
 import 'error_log_service.dart';
 import 'local_notification_parser.dart';
 
 class UnparseableNotificationException implements Exception {
   const UnparseableNotificationException();
+}
+
+class AiRequiredNotificationException implements Exception {
+  const AiRequiredNotificationException();
+
+  @override
+  String toString() => 'Ambiguous transfer queued until AI can parse it';
 }
 
 class NotificationExpenseService {
@@ -64,10 +72,13 @@ class NotificationExpenseService {
   final Map<String, DateTime> _recentDeduplication = {};
   static const Duration _dedupDuration = Duration(minutes: 5);
   static const _maxCloudRetryAttempts = 3;
+  static const _pendingRetryInterval = Duration(minutes: 1);
 
   Future<void> Function(String)? _onError;
-  Future<void> Function()? _onExpenseAdded;
+  Future<void> Function()? _onPendingNotificationAdded;
   StreamSubscription<dynamic>? _subscription;
+  Timer? _pendingRetryTimer;
+  bool _isRetryingPendingNotifications = false;
   bool _started = false;
 
   Future<bool> isEnabled() async {
@@ -110,13 +121,7 @@ class NotificationExpenseService {
   }
 
   Future<int> updateAiNotificationReference() async {
-    final onlineExpenses = await Throw.getOnlineExpenses();
-    final localExpenses = await DatabaseHelp.getData();
-    final items = buildAiNotificationReferenceItems(
-      localExpenses: localExpenses,
-      onlineExpenses: onlineExpenses,
-    );
-    return Throw.updateAiNotificationReference(items);
+    return Throw.updateAiNotificationReference();
   }
 
   static List<Map<String, dynamic>> buildAiNotificationReferenceItems({
@@ -193,10 +198,12 @@ class NotificationExpenseService {
 
   Future<void> start(
     Future<void> Function(String)? onError, {
-    Future<void> Function()? onExpenseAdded,
+    Future<void> Function()? onPendingNotificationAdded,
   }) async {
     _onError = onError;
-    _onExpenseAdded = onExpenseAdded;
+    if (onPendingNotificationAdded != null) {
+      _onPendingNotificationAdded = onPendingNotificationAdded;
+    }
     if (_started || !Platform.isAndroid) return;
     await _methods.invokeMethod<void>('setParserActive', {'active': true});
     await setAllowedApps(await getAllowedApps());
@@ -204,6 +211,10 @@ class NotificationExpenseService {
 
     // Retry any notifications that were queued when offline
     unawaited(retryPendingCloudNotifications());
+    _pendingRetryTimer?.cancel();
+    _pendingRetryTimer = Timer.periodic(_pendingRetryInterval, (_) {
+      unawaited(retryPendingCloudNotifications());
+    });
 
     _subscription = _events.receiveBroadcastStream().listen((event) async {
       final data = Map<String, dynamic>.from(event as Map);
@@ -239,13 +250,17 @@ class NotificationExpenseService {
         );
       } catch (error, stackTrace) {
         if (error is! UnparseableNotificationException) {
-          captureAppError(error, stackTrace, 'Process payment notification');
+          if (error is! AiRequiredNotificationException) {
+            captureAppError(error, stackTrace, 'Process payment notification');
+          }
           await _enqueuePendingCloudNotification({
             'title': title,
             'message': message,
             'packageName': packageName,
             'postTime': postTime.millisecondsSinceEpoch,
             'retryCount': 0,
+            'aiRequired': error is AiRequiredNotificationException,
+            'ownerId': AuthService.currentUser?.uid,
           });
         }
         await _onError?.call(error.toString());
@@ -260,6 +275,7 @@ class NotificationExpenseService {
     required String message,
     required String packageName,
     required DateTime postTime,
+    bool aiRequired = false,
   }) async {
     Map<String, dynamic>? cloudParsed;
     Object? cloudError;
@@ -275,34 +291,49 @@ class NotificationExpenseService {
     }
 
     if (cloudParsed != null) {
-      await DatabaseHelp.insertData(
-        cloudParsed['name'] as String,
-        cloudParsed['amount'] as int,
-        postTime.toIso8601String().substring(0, 10),
-        cloudParsed['category'] as String,
-        cloudParsed['type'] as String,
+      await DatabaseHelp.insertPendingNotificationExpense(
+        name: cloudParsed['name'] as String,
+        amount: cloudParsed['amount'] as int,
+        date: postTime.toIso8601String().substring(0, 10),
+        category: cloudParsed['category'] as String,
+        type: cloudParsed['type'] as String,
+        sourceApp: packageName,
+        receivedAt: postTime,
       );
-      await _onExpenseAdded?.call();
+      await _onPendingNotificationAdded?.call();
       return;
     }
 
-    final localParsed = LocalNotificationParser.parse(
-      title: title,
-      message: message,
-      packageName: packageName,
-      timestamp: postTime,
-    );
+    final localParsed = aiRequired
+        ? null
+        : LocalNotificationParser.parse(
+            title: title,
+            message: message,
+            packageName: packageName,
+            timestamp: postTime,
+          );
+    if (aiRequired ||
+        LocalNotificationParser.isAmbiguousNotification(
+          title,
+          message,
+          localParsed,
+        )) {
+      throw const AiRequiredNotificationException();
+    }
+
     if (localParsed != null && localParsed.amount > 0) {
       final date =
           localParsed.date ?? postTime.toIso8601String().substring(0, 10);
-      await DatabaseHelp.insertData(
-        localParsed.name,
-        localParsed.amount,
-        date,
-        localParsed.category,
-        localParsed.type,
+      await DatabaseHelp.insertPendingNotificationExpense(
+        name: localParsed.name,
+        amount: localParsed.amount,
+        date: date,
+        category: localParsed.category,
+        type: localParsed.type,
+        sourceApp: packageName,
+        receivedAt: postTime,
       );
-      await _onExpenseAdded?.call();
+      await _onPendingNotificationAdded?.call();
       return;
     }
 
@@ -355,9 +386,16 @@ class NotificationExpenseService {
           captureAppError(error, stackTrace, 'Read pending notification queue');
         }
       }
-      // Keep at most 50 pending notifications
+      // Keep ordinary transient failures bounded without evicting AI-required entries.
       if (queue.length >= 50) {
-        queue.removeAt(0);
+        final evictableIndex = queue.indexWhere(
+          (queued) => queued is Map && queued['aiRequired'] != true,
+        );
+        if (evictableIndex >= 0) {
+          queue.removeAt(evictableIndex);
+        } else if (item['aiRequired'] != true) {
+          return;
+        }
       }
       queue.add(item);
       await DatabaseHelp.setSetting(
@@ -371,6 +409,8 @@ class NotificationExpenseService {
 
   /// Retries parsing any notifications that were queued while offline.
   Future<void> retryPendingCloudNotifications() async {
+    if (_isRetryingPendingNotifications) return;
+    _isRetryingPendingNotifications = true;
     try {
       final stored = await DatabaseHelp.getSetting(
         'pending_cloud_notifications',
@@ -383,6 +423,19 @@ class NotificationExpenseService {
       final remaining = <Map<String, dynamic>>[];
 
       for (final item in queue) {
+        final pendingOwnerId = item['ownerId']?.toString();
+        final currentOwnerId = AuthService.currentUser?.uid;
+        if (pendingOwnerId != null && pendingOwnerId != currentOwnerId) {
+          remaining.add(item);
+          continue;
+        }
+
+        final nextRetryAt = (item['nextRetryAt'] as num?)?.toInt() ?? 0;
+        if (nextRetryAt > DateTime.now().millisecondsSinceEpoch) {
+          remaining.add(item);
+          continue;
+        }
+
         try {
           final title = item['title']?.toString() ?? '';
           final message = item['message']?.toString() ?? '';
@@ -397,14 +450,28 @@ class NotificationExpenseService {
             message: message,
             packageName: packageName,
             postTime: postTime,
+            aiRequired: item['aiRequired'] == true,
           );
         } on UnparseableNotificationException {
           // The notification was not an expense; it cannot succeed on retry.
         } catch (error, stackTrace) {
-          captureAppError(error, stackTrace, 'Retry payment notification');
+          if (error is! AiRequiredNotificationException) {
+            captureAppError(error, stackTrace, 'Retry payment notification');
+          }
           final retryCount = (item['retryCount'] as num?)?.toInt() ?? 0;
-          if (retryCount + 1 < _maxCloudRetryAttempts) {
-            remaining.add({...item, 'retryCount': retryCount + 1});
+          final nextRetryCount = retryCount + 1;
+          final mustKeepForAi =
+              item['aiRequired'] == true ||
+              error is AiRequiredNotificationException;
+          if (mustKeepForAi || nextRetryCount < _maxCloudRetryAttempts) {
+            remaining.add({
+              ...item,
+              'retryCount': nextRetryCount,
+              'nextRetryAt': DateTime.now()
+                  .add(_pendingRetryDelay(nextRetryCount))
+                  .millisecondsSinceEpoch,
+              if (mustKeepForAi) 'aiRequired': true,
+            });
           }
         }
       }
@@ -415,12 +482,21 @@ class NotificationExpenseService {
       );
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Read pending notification queue');
+    } finally {
+      _isRetryingPendingNotifications = false;
     }
+  }
+
+  Duration _pendingRetryDelay(int retryCount) {
+    if (retryCount >= 7) return const Duration(hours: 1);
+    return Duration(minutes: 1 << (retryCount - 1));
   }
 
   Future<void> stop() async {
     await _subscription?.cancel();
     _subscription = null;
+    _pendingRetryTimer?.cancel();
+    _pendingRetryTimer = null;
     _started = false;
   }
 }

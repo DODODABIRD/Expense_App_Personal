@@ -10,6 +10,7 @@ import 'error_log_service.dart';
 
 class DatabaseHelp {
   static Database? _db;
+  static const _pendingNotificationsTable = 'pending_notification_expenses';
 
   DatabaseHelp._privateConstructor();
   static final DatabaseHelp instance = DatabaseHelp._privateConstructor();
@@ -25,7 +26,7 @@ class DatabaseHelp {
     ); // Basically, join itu menggabungkan dua string jadi satu. kayak naro di ujung gitu kayak print gitu
     _db = await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
               CREATE TABLE my_table (
@@ -46,6 +47,7 @@ class DatabaseHelp {
             value TEXT NOT NULL
           )
         ''');
+        await _createPendingNotificationTable(db);
       },
       onUpgrade: (db, oldVersion, newVersion) async {
         if (oldVersion < 3) {
@@ -65,6 +67,9 @@ class DatabaseHelp {
             )
           ''');
         }
+        if (oldVersion < 6) {
+          await _createPendingNotificationTable(db);
+        }
       },
     );
 
@@ -77,6 +82,24 @@ class DatabaseHelp {
       CREATE TABLE IF NOT EXISTS app_settings (
         key TEXT PRIMARY KEY,
         value TEXT NOT NULL
+      )
+    ''');
+  }
+
+  static Future<void> _createPendingNotificationTable(
+    DatabaseExecutor db,
+  ) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $_pendingNotificationsTable (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ownerId TEXT NOT NULL,
+        name TEXT NOT NULL,
+        amount INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        category TEXT NOT NULL,
+        type TEXT NOT NULL,
+        sourceApp TEXT NOT NULL,
+        receivedAt TEXT NOT NULL
       )
     ''');
   }
@@ -149,11 +172,171 @@ class DatabaseHelp {
       'type': type,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
 
-    unawaited(
-      Throw.createExpense(insertId, name, amount, category, type, date),
-    );
+    _syncCreatedExpense(insertId, name, amount, category, type, date);
 
     return insertId;
+  }
+
+  static Future<int> insertPendingNotificationExpense({
+    required String name,
+    required int amount,
+    required String date,
+    required String category,
+    required String type,
+    required String sourceApp,
+    required DateTime receivedAt,
+  }) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) throw StateError('You must be signed in');
+    if (name.trim().isEmpty || amount <= 0) {
+      throw ArgumentError('A pending expense requires a name and amount');
+    }
+
+    final db = await initDB();
+    return db.insert(_pendingNotificationsTable, {
+      'ownerId': userId,
+      'name': name.trim(),
+      'amount': amount,
+      'date': date,
+      'category': category,
+      'type': type,
+      'sourceApp': sourceApp,
+      'receivedAt': receivedAt.toIso8601String(),
+    });
+  }
+
+  static Future<List<Map<String, dynamic>>>
+  getPendingNotificationExpenses() async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return [];
+
+    final db = await initDB();
+    return db.query(
+      _pendingNotificationsTable,
+      where: 'ownerId = ?',
+      whereArgs: [userId],
+      orderBy: 'receivedAt DESC, id DESC',
+    );
+  }
+
+  static Future<int> getPendingNotificationExpenseCount() async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return 0;
+
+    final db = await initDB();
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS count FROM $_pendingNotificationsTable WHERE ownerId = ?',
+      [userId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
+  }
+
+  static Future<int> updatePendingNotificationExpense({
+    required int id,
+    required String name,
+    required int amount,
+    required String date,
+    required String category,
+    required String type,
+  }) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return 0;
+    if (name.trim().isEmpty || amount <= 0) {
+      throw ArgumentError('A pending expense requires a name and amount');
+    }
+
+    final db = await initDB();
+    return db.update(
+      _pendingNotificationsTable,
+      {
+        'name': name.trim(),
+        'amount': amount,
+        'date': date,
+        'category': category,
+        'type': type,
+      },
+      where: 'id = ? AND ownerId = ?',
+      whereArgs: [id, userId],
+    );
+  }
+
+  static Future<int> discardPendingNotificationExpense(int id) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return 0;
+
+    final db = await initDB();
+    return db.delete(
+      _pendingNotificationsTable,
+      where: 'id = ? AND ownerId = ?',
+      whereArgs: [id, userId],
+    );
+  }
+
+  static Future<bool> approvePendingNotificationExpense(int id) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return false;
+
+    final db = await initDB();
+    Map<String, dynamic>? approvedExpense;
+    await db.transaction((txn) async {
+      final rows = await txn.query(
+        _pendingNotificationsTable,
+        where: 'id = ? AND ownerId = ?',
+        whereArgs: [id, userId],
+        limit: 1,
+      );
+      if (rows.isEmpty) return;
+
+      final pending = rows.first;
+      final name = pending['name'] as String;
+      final amount = pending['amount'] as int;
+      final date = pending['date'] as String;
+      final category = pending['category'] as String;
+      final type = pending['type'] as String;
+      final expenseId = await txn.insert('my_table', {
+        'ownerId': userId,
+        'name': name,
+        'amount': amount,
+        'date': date,
+        'category': category,
+        'type': type,
+      });
+      await txn.delete(
+        _pendingNotificationsTable,
+        where: 'id = ? AND ownerId = ?',
+        whereArgs: [id, userId],
+      );
+      approvedExpense = {
+        'id': expenseId,
+        'name': name,
+        'amount': amount,
+        'date': date,
+        'category': category,
+        'type': type,
+      };
+    });
+
+    if (approvedExpense == null) return false;
+    _syncCreatedExpense(
+      approvedExpense!['id'] as int,
+      approvedExpense!['name'] as String,
+      approvedExpense!['amount'] as int,
+      approvedExpense!['category'] as String,
+      approvedExpense!['type'] as String,
+      approvedExpense!['date'] as String,
+    );
+    return true;
+  }
+
+  static void _syncCreatedExpense(
+    int id,
+    String name,
+    int amount,
+    String category,
+    String type,
+    String date,
+  ) {
+    unawaited(Throw.createExpense(id, name, amount, category, type, date));
   }
 
   /* Update Logic
@@ -313,5 +496,10 @@ class DatabaseHelp {
 
     final db = await initDB();
     await db.delete('my_table', where: 'ownerId = ?', whereArgs: [userId]);
+    await db.delete(
+      _pendingNotificationsTable,
+      where: 'ownerId = ?',
+      whereArgs: [userId],
+    );
   }
 }
