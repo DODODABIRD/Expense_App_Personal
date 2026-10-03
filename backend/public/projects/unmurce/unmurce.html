@@ -900,15 +900,39 @@
                 </div>
             </a>
             <nav class="site-nav" aria-label="Primary navigation">
-                <a href="/">← Portfolio</a>
+                <a href="/">Back to porto</a>
                 <a href="#overview">Overview</a>
-                <a href="#features">Features</a>
-                <a href="#ocr-simulator">OCR Simulator</a>
-                <a href="#architecture">Architecture</a>
-                <a href="#gallery">Screenshots</a>
-                <a href="#tax-engine">Tax Engine</a>
-                <a href="#faq">FAQ</a>
+                <details class="nav-dropdown" id="features-dropdown">
+                    <summary>Features <span class="dropdown-caret" aria-hidden="true">▾</span></summary>
+                    <div class="dropdown-menu">
+                        <a href="#features">
+                            <strong>Core Features</strong>
+                            <small>Capabilities & Offline-First</small>
+                        </a>
+                        <a href="#ocr-simulator">
+                            <strong>OCR Simulator</strong>
+                            <small>Interactive receipt scanning</small>
+                        </a>
+                        <a href="#architecture">
+                            <strong>Architecture</strong>
+                            <small>Multi-model routing & backend</small>
+                        </a>
+                        <a href="#gallery">
+                            <strong>Screenshots</strong>
+                            <small>App UI walkthrough & frames</small>
+                        </a>
+                        <a href="#tax-engine">
+                            <strong>Tax Engine</strong>
+                            <small>Proportional split calculations</small>
+                        </a>
+                        <a href="#faq">
+                            <strong>Technical FAQ</strong>
+                            <small>Architecture & security Q&A</small>
+                        </a>
+                    </div>
+                </details>
                 <a href="#download">Download</a>
+                <a href="/projects/docs">Documentation</a>
             </nav>
             <div class="header-actions-group">
                 <button class="theme-toggle-btn" id="theme-toggle-btn" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
@@ -978,7 +1002,7 @@
                 <a class="mobile-drawer-link" href="/expenses">
                     <span>10</span> Open Live Web App <small class="badge-mini aqua">WEB</small>
                 </a>
-                <a class="mobile-drawer-link" href="/docs">
+                <a class="mobile-drawer-link" href="/projects/docs">
                     <span>11</span> Technical Documentation <small class="badge-mini yellow">DOCS</small>
                 </a>
             </nav>
@@ -1012,7 +1036,7 @@
                     <a class="button button-yellow" href="/asset/appdownload/app-arm64-v8a-release.apk" download="Unmurce-Android.apk">
                         Download APK (Android) <span aria-hidden="true">↓</span>
                     </a>
-                    <a class="button button-white" href="/docs">Technical Docs ↗</a>
+                    <a class="button button-white" href="/projects/docs">Technical Docs ↗</a>
                 </div>
 
                 <!-- Quick Tech Pills -->
@@ -1512,7 +1536,7 @@
                                     <span>Azure AI</span>
                                     <span>Auto Tax Split</span>
                                 </div>
-                                <a class="button button-aqua slide-cta" href="/docs">Read OCR Tech Docs ↗</a>
+                                <a class="button button-aqua slide-cta" href="/projects/docs">Read OCR Tech Docs ↗</a>
                             </div>
                         </div>
 
@@ -1534,7 +1558,7 @@
                                     <span>MongoDB Atlas</span>
                                     <span>REST Security</span>
                                 </div>
-                                <a class="button button-yellow slide-cta" href="/docs">View Full Specs ↗</a>
+                                <a class="button button-yellow slide-cta" href="/projects/docs">View Full Specs ↗</a>
                             </div>
                         </div>
                     </div>
@@ -1729,7 +1753,7 @@
                         <span class="btn-arrow">↓</span>
                     </a>
 
-                    <a class="contact-btn-card btn-linkedin" href="/docs">
+                    <a class="contact-btn-card btn-linkedin" href="/projects/docs">
                         <div class="contact-icon" style="background: var(--card-white); color: #000;">
                             📖
                         </div>
@@ -1763,7 +1787,7 @@
         <div class="footer-links">
             <a href="/">← Orlando's Portfolio</a>
             <a href="/expenses">Live App</a>
-            <a href="/docs">Technical Docs</a>
+            <a href="/projects/docs">Technical Docs</a>
             <a href="https://wa.me/6285810008115" target="_blank">Contact Orlando</a>
             <a class="back-to-top" href="#top">Back to top ↑</a>
         </div>
@@ -1963,8 +1987,42 @@
             let lastScrollY = window.scrollY;
             const headerWrapper = document.getElementById('site-header-wrapper');
 
+            // Dropdown Navbar Handler (One at a time, Close on click outside, Close on link click, Close on scroll)
+            const navDropdowns = document.querySelectorAll('.nav-dropdown');
+
+            function closeAllDropdowns() {
+                navDropdowns.forEach(dropdown => {
+                    if (dropdown.open) dropdown.open = false;
+                });
+            }
+
+            navDropdowns.forEach(dropdown => {
+                dropdown.addEventListener('toggle', () => {
+                    if (dropdown.open) {
+                        navDropdowns.forEach(other => {
+                            if (other !== dropdown && other.open) {
+                                other.open = false;
+                            }
+                        });
+                    }
+                });
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!e.target.closest('.nav-dropdown')) {
+                    closeAllDropdowns();
+                }
+            });
+
+            document.querySelectorAll('.dropdown-menu a').forEach(link => {
+                link.addEventListener('click', () => {
+                    closeAllDropdowns();
+                });
+            });
+
             function handleNavbarScroll() {
                 const currentScrollY = window.scrollY;
+                closeAllDropdowns();
 
                 if (currentScrollY <= 20) {
                     headerWrapper.classList.add('is-top');

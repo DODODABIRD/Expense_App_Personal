@@ -242,7 +242,7 @@
                     Fullstack Developer based in
                     <strong class="hero-flutter">Flutter</strong>
                     and
-                    <strong class="hero-django">Django</strong>
+                    <strong class="hero-express">Express</strong>
                 </h1>
                 <p class="hero-lede">Hello there, my name is <strong>Orlando</strong>, a software engineer and product
                     builder from
@@ -385,7 +385,7 @@
                     <div class="fact-box"><span>PRIMARY SPECIALTY</span><strong>Web, Mobile & AI Systems</strong></div>
                     <div class="fact-box"><span>FLAGSHIP PROJECT</span><a href="/projects/unmurce"
                             style="text-decoration: underline; font-weight: 800;">Unmurce Showcase ↗</a></div>
-                    <div class="fact-box"><span>DOCUMENTATION</span><a href="/docs"
+                    <div class="fact-box"><span>DOCUMENTATION</span><a href="/projects/docs"
                             style="text-decoration: underline; font-weight: 800;">View Tech Docs ↗</a></div>
                 </div>
 
@@ -607,7 +607,7 @@
                                 <a class="button button-yellow" style="padding: 7px 16px; font-size: 0.82rem;"
                                     href="/expenses">Launch App ↗</a>
                                 <a class="button button-white" style="padding: 7px 16px; font-size: 0.82rem;"
-                                    href="/docs">Tech Specs ↗</a>
+                                    href="/projects/docs">Tech Specs ↗</a>
                             </div>
                         </div>
                         <a class="project-arrow" href="/projects/unmurce" aria-label="View Unmurce Showcase">↗</a>
@@ -615,7 +615,7 @@
                 </div>
 
                 <!-- Project 02: Documentation -->
-                <a class="project-card neo-card" href="/docs">
+                <a class="project-card neo-card" href="/projects/docs">
                     <div class="project-visual placeholder-visual tech-stack-visual">
                         <span class="visual-tag">DOCUMENTATION</span>
                         <div class="tech-stack-header">
@@ -1097,7 +1097,7 @@
         <div class="footer-links">
             <a href="/projects/unmurce">Unmurce Showcase</a>
             <a href="/expenses">Live App</a>
-            <a href="/docs">Technical Docs</a>
+            <a href="/projects/docs">Technical Docs</a>
             <a href="https://wa.me/6285810008115" target="_blank">WhatsApp</a>
             <a class="back-to-top" href="#top">Back to top ↑</a>
         </div>
@@ -1560,6 +1560,39 @@
                 let currentTypewriterTimer = null;
                 let returnToIdleTimer = null;
                 let manualTimeOverride = null; // null = use real time; 'day' | 'night' for testing toggle
+                let dialogueAudioContext = null;
+
+                function unlockDialogueAudio() {
+                    const AudioContextConstructor = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContextConstructor) return;
+
+                    if (!dialogueAudioContext) {
+                        dialogueAudioContext = new AudioContextConstructor();
+                    }
+                    if (dialogueAudioContext.state === 'suspended') {
+                        dialogueAudioContext.resume().catch((err) => {
+                            console.warn('Could not resume dialogue audio.', err);
+                        });
+                    }
+                }
+
+                function playDialogueBlip(character) {
+                    if (!dialogueAudioContext || dialogueAudioContext.state !== 'running' || /\s/.test(character)) return;
+
+                    const now = dialogueAudioContext.currentTime;
+                    const oscillator = dialogueAudioContext.createOscillator();
+                    const gain = dialogueAudioContext.createGain();
+                    const duration = 0.035;
+
+                    oscillator.type = 'square';
+                    oscillator.frequency.setValueAtTime(460 + Math.random() * 180, now);
+                    gain.gain.setValueAtTime(0.025, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                    oscillator.connect(gain);
+                    gain.connect(dialogueAudioContext.destination);
+                    oscillator.start(now);
+                    oscillator.stop(now + duration);
+                }
 
                 // Load RAG Knowledge Base from asset folder
                 async function loadKnowledgeBase() {
@@ -1719,6 +1752,7 @@
                             if (chatBubbleText) {
                                 chatBubbleText.innerHTML = `"${visible}"<span class="cursor-blink"></span>`;
                             }
+                            playDialogueBlip(text[index - 1]);
                             const charDelay = (text[index - 1] === '.' || text[index - 1] === '!' || text[index - 1] === '?') ? 140 : 25;
                             currentTypewriterTimer = setTimeout(typeNextChar, charDelay);
                         } else {
@@ -1801,6 +1835,7 @@
                 // User Clicks on Face or Chat Bubble -> Open Spotlight & Speak
                 function handleFaceClick(e) {
                     if (e) e.preventDefault();
+                    unlockDialogueAudio();
                     openSpotlight();
 
                     const { isSleeping } = getTimeInfo();
@@ -1879,6 +1914,7 @@
                 async function handleChatQuery(rawQuery) {
                     const query = String(rawQuery || '').trim();
                     if (!query) return;
+                    unlockDialogueAudio();
 
                     // Scroll hero into view if user is further down
                     const heroArt = document.getElementById('orlando-avatar-section');
