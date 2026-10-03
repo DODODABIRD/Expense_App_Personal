@@ -2805,6 +2805,14 @@ h1 {
     border-color: #64748b;
 }
 
+[data-theme="dark"] .my-name {
+    color: rgb(0, 140, 255)
+}
+
+.my-name{
+    color: rgb(0, 72, 255)
+}
+
 [data-theme="dark"] .service-badge {
     background: var(--card-yellow);
     color: #000000;
