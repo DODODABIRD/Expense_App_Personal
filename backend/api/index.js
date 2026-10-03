@@ -1,4 +1,6 @@
 const express = require("express");
+const fs = require("fs");
+const path = require("path");
 const mongoose = require("mongoose");
 const admin = require("firebase-admin");
 const cors = require("cors");
@@ -135,6 +137,121 @@ app.get("/api/public-config", (_req, res) => {
     GROQ_MODEL: groqModel || null,
     GROQ_NOTIFICATION_MODEL: groqNotificationModel || null,
   });
+});
+
+let cachedRagKnowledge = null;
+function getRagKnowledge() {
+  if (cachedRagKnowledge) return cachedRagKnowledge;
+  try {
+    const filePath = path.join(__dirname, "../public/asset/rag_knowledge.json");
+    if (fs.existsSync(filePath)) {
+      cachedRagKnowledge = JSON.parse(fs.readFileSync(filePath, "utf-8"));
+      return cachedRagKnowledge;
+    }
+  } catch (err) {
+    console.error("Failed to load rag_knowledge.json:", err.message);
+  }
+  return null;
+}
+
+app.post("/api/rag-chat", async (req, res) => {
+  try {
+    const rawMessage = String(req.body?.message || "").trim();
+    if (!rawMessage) {
+      return res.status(400).json({ error: "Message is required" });
+    }
+    const message = rawMessage.slice(0, 500);
+    const knowledge = getRagKnowledge();
+
+    const lower = message.toLowerCase();
+    const interestingKeywords = [
+      "project", "unmurce", "ai", "machine learning", "flutter", "groq", "gemini",
+      "architecture", "hire", "job", "internship", "collab", "kerja sama", "binus",
+      "gonzaga", "portfolio", "database", "mongodb", "cool", "keren", "menarik",
+      "ocr", "receipt", "backend", "fullstack", "expense", "teknologi", "tech"
+    ];
+    let isInteresting = interestingKeywords.some((k) => lower.includes(k));
+
+    if (groqApiKey) {
+      const modelToUse = groqModel || "llama-3.3-70b-versatile";
+      const systemPrompt = `You are Orlando Diamond Prasetyo, an enthusiastic, friendly, and skilled software engineer and product builder from Indonesia.
+You study Computer Science at Binus University (class of 2025-2029) and previously went to SMA Kolese Gonzaga.
+Your flagship product is the Unmurce Expense Tracker app (Flutter, Node.js/Express, MongoDB Atlas, Groq/Gemini/Azure OCR).
+Speak in first person ("I", "my", "saya", "project saya").
+Match the language of the user: if they write in Indonesian, respond in natural, friendly Indonesian. If they write in English, respond in English.
+Keep your response concise (1-3 conversational sentences max) because this displays in an animated speech bubble on your portfolio website.
+Do not use markdown formatting like asterisks or bullets; make it sound like natural spoken dialogue.
+Evaluate if the user's question or statement is interesting, technical, about collaboration, hiring, Unmurce, AI, or creative.
+
+Knowledge Base:
+${JSON.stringify(knowledge || {})}
+
+Return a valid JSON object strictly matching this format:
+{
+  "reply": "your conversational reply here",
+  "interested": true or false
+}`;
+
+      try {
+        const response = await fetchWithTimeout(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${groqApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: modelToUse,
+              messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: message },
+              ],
+              response_format: { type: "json_object" },
+              temperature: 0.7,
+              max_tokens: 300,
+            }),
+          },
+          AI_PROVIDER_TIMEOUT_MS
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          const parsed = JSON.parse(data.choices?.[0]?.message?.content || "{}");
+          if (parsed.reply) {
+            return res.json({
+              reply: parsed.reply,
+              interested: typeof parsed.interested === "boolean" ? parsed.interested : isInteresting,
+            });
+          }
+        }
+      } catch (err) {
+        console.warn("Groq chat failed, falling back to local RAG:", err.message);
+      }
+    }
+
+    // Fallback: Smart local RAG response from knowledge base
+    let reply = "";
+    if (knowledge && Array.isArray(knowledge.faqs)) {
+      const match = knowledge.faqs.find((faq) =>
+        faq.keywords.some((kw) => lower.includes(kw))
+      );
+      if (match) {
+        reply = match.answer;
+      }
+    }
+    if (!reply) {
+      if (lower.includes("halo") || lower.includes("hi") || lower.includes("hello")) {
+        reply = "Halo! Senang bertemu denganmu. Ada yang ingin kamu tanyakan seputar project, stack, atau pengalamanku?";
+      } else {
+        reply = "Terima kasih pertanyaannya! Saya Orlando, Fullstack Developer dengan fokus di Flutter dan arsitektur backend. Kamu bisa cek showcase Unmurce atau hubungi saya langsung lewat WhatsApp!";
+      }
+    }
+
+    res.json({ reply, interested: isInteresting });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to process chat" });
+  }
 });
 
 app.put("/api/ai-notification-reference", requireAuth, async (req, res) => {

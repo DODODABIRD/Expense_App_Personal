@@ -128,8 +128,19 @@ class _ExpenseEditState extends State<ExpenseEdit> {
 
   Future<void> _loadExpenseData() async {
     try {
-      final data = await getDataById(widget.expenseId!);
-      if (data != null && mounted) {
+      final expenseId = widget.expenseId;
+      if (expenseId == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      final data = await getDataById(expenseId);
+      if (data == null) {
+        if (mounted) setState(() => _isLoading = false);
+        return;
+      }
+
+      if (mounted) {
         final category = data['category']?.toString().trim().toLowerCase();
         final type = data['type']?.toString().trim().toLowerCase();
         final amountNum = data['amount']?.toString() ?? '0';

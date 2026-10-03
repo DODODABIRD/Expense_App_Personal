@@ -30,6 +30,36 @@ void main() {
     },
   );
 
+  testWidgets('shows proportional expense type segments', (tester) async {
+    await _pumpSummary(tester, [
+      _expense(1, 'Planned', 50),
+      _expense(2, 'Unexpected', 30, type: 'unexpected'),
+      _expense(3, 'Other', 20, type: 'others'),
+    ]);
+    await tester.drag(find.byType(ListView), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+
+    final chart = find.byKey(const ValueKey('expense-type-distribution-bar'));
+    final segments = tester.widgetList<Flexible>(
+      find.descendant(of: chart, matching: find.byType(Flexible)),
+    );
+
+    expect(chart, findsOneWidget);
+    expect(segments.map((segment) => segment.flex), [500, 300, 200]);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('shows an empty state when there are no expenses', (
+    tester,
+  ) async {
+    await _pumpSummary(tester, []);
+    await tester.drag(find.byType(ListView), const Offset(0, -3000));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Belum ada tipe pengeluaran tercatat'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('detects an outlier with interpolated quartiles', (tester) async {
     await _pumpSummary(tester, [
       _expense(1, 'Ordinary expense 1', 100),
@@ -56,13 +86,18 @@ Future<void> _pumpSummary(
   await tester.pumpAndSettle();
 }
 
-ExpenseModel _expense(int expenseId, String name, int amount) {
+ExpenseModel _expense(
+  int expenseId,
+  String name,
+  int amount, {
+  String type = 'expected',
+}) {
   return ExpenseModel(
     id: expenseId,
     name: name,
     amount: amount,
     date: DateTime(2026, 9, 28),
     category: 'makanan',
-    type: 'expected',
+    type: type,
   );
 }

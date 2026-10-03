@@ -16,8 +16,8 @@
     <meta property="og:description"
         content="Portfolio and software projects by Orlando Diamond Prasetyo, including the Unmurce expense tracker.">
     <meta property="og:site_name" content="Orlando Diamond Prasetyo">
-    <meta property="og:image" content="https://dododabird.us/asset/myface.jpg">
-    <meta property="og:image:secure_url" content="https://dododabird.us/asset/myface.jpg">
+    <meta property="og:image" content="https://dododabird.us/asset/orlando-profile-photo.jpg">
+    <meta property="og:image:secure_url" content="https://dododabird.us/asset/orlando-profile-photo.jpg">
     <meta property="og:image:type" content="image/jpeg">
     <meta property="og:image:width" content="3392">
     <meta property="og:image:height" content="2544">
@@ -29,9 +29,9 @@
     <meta name="twitter:title" content="Orlando Diamond Prasetyo | Software & Product Builder">
     <meta name="twitter:description"
         content="Portfolio and software projects by Orlando Diamond Prasetyo, including the Unmurce expense tracker.">
-    <meta name="twitter:image" content="https://dododabird.us/asset/myface.jpg">
+    <meta name="twitter:image" content="https://dododabird.us/asset/orlando-profile-photo.jpg">
     <meta name="twitter:image:alt" content="Orlando Diamond Prasetyo">
-    <link rel="icon" type="image/png" href="asset/webicon1.png">
+    <link rel="icon" type="image/png" href="asset/orlando-brand-logo.png">
     <title>Orlando Diamond Prasetyo | Software & Product Builder</title>
     <script type="application/ld+json">
         {
@@ -54,7 +54,7 @@
                     "familyName": "Prasetyo",
                     "jobTitle": "Software and Product Builder",
                     "url": "https://dododabird.us/",
-                    "image": "https://dododabird.us/asset/myface.jpg",
+                    "image": "https://dododabird.us/asset/orlando-profile-photo.jpg",
                     "homeLocation": {
                         "@type": "Country",
                         "name": "Indonesia"
@@ -82,6 +82,19 @@
         href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="portfolio.css">
+    <script>
+        (function () {
+            try {
+                const savedTheme = localStorage.getItem('theme');
+                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                }
+            } catch (e) { }
+        })();
+    </script>
     <script src="/model-status.js" defer></script>
 </head>
 
@@ -92,7 +105,7 @@
             <div class="preloader-header-row">
                 <div class="preloader-logo-wrapper">
                     <div class="logo-pulse-ring"></div>
-                    <img src="asset/webicon1.png" alt="Orlando D. Prasetyo Logo" class="preloader-logo">
+                    <img src="asset/orlando-brand-logo.png" alt="Orlando D. Prasetyo Logo" class="preloader-logo">
                 </div>
                 <div class="preloader-brand">
                     <strong>ORLANDO D. PRASETYO</strong>
@@ -102,11 +115,12 @@
 
             <div class="preloader-terminal neo-card">
                 <div class="terminal-bar">
-                    <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
-                    <span class="terminal-title">ASSET_LOADER_CONSOLE.sh</span>
+                    <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span
+                        class="dot-btn green"></span>
+                    <span class="terminal-title">ORLANDO_DEV_KERNEL.sh</span>
                 </div>
                 <div class="terminal-body" id="preloader-terminal-body">
-                    <div class="term-line log-info">> INITIALIZING ENGINE...</div>
+                    <div class="term-line log-info">> INITIALIZING DEVELOPER ENVIRONMENT...</div>
                 </div>
             </div>
 
@@ -115,16 +129,17 @@
             </div>
             <div class="preloader-percent-row">
                 <span id="preloader-percent">0%</span>
-                <span class="status-indicator" id="preloader-status-text"><i class="status-dot"></i> Preloading Images</span>
+                <span class="status-indicator" id="preloader-status-text"><i class="status-dot"></i> Preloading
+                    Assets</span>
             </div>
         </div>
     </div>
 
     <!-- Fancy Floating Header -->
-    <div class="site-header-wrapper" id="site-header-wrapper">
+    <div class="site-header-wrapper is-top" id="site-header-wrapper">
         <header class="site-header">
             <a class="brand" href="/" aria-label="Orlando Diamond Prasetyo home">
-                <img class="brand-avatar" src="asset/myface.jpg" alt="Orlando Diamond Prasetyo">
+                <img class="brand-avatar" src="asset/orlando-profile-photo.jpg" alt="Orlando Diamond Prasetyo">
                 <div class="brand-text">
                     <strong>ORLANDO D. PRASETYO</strong>
                     <small>SOFTWARE & PRODUCT BUILDER</small>
@@ -132,29 +147,26 @@
             </a>
             <nav class="site-nav" aria-label="Primary navigation">
                 <a href="#about">About</a>
+                <a href="#skills">Skills</a>
                 <details class="nav-dropdown">
                     <summary>Projects <span aria-hidden="true">▾</span></summary>
                     <div class="dropdown-menu">
-                        <a href="/expenses"><strong>Unmurce App</strong><small>Expense tracking web app</small></a>
-                        <a href="/docs"><strong>Technical Docs</strong><small>Unmurce documentation</small></a>
-                        <a href="#work"><strong>Portfolio Gallery</strong><small>Selected projects</small></a>
-                        <a href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20discuss%20a%20project."
-                            target="_blank"><strong>Start a project</strong><small>Open WhatsApp chat</small></a>
+                        <a href="/projects/unmurce"><strong>Unmurce</strong><small>Showcase, specs & APK ↗</small></a>
                     </div>
                 </details>
-                <details class="nav-dropdown">
-                    <summary>Downloads <span aria-hidden="true">▾</span></summary>
-                    <div class="dropdown-menu">
-                        <a href="asset/appdownload/app-arm64-v8a-release.apk" download="Unmurce-Android.apk">
-                            <strong>Unmurce Expense APP</strong><small>Download APK for Android</small>
-                        </a>
-                    </div>
-                </details>
-                <a href="/docs">Docs</a>
+                <a href="#journey">Journey</a>
+                <a href="#github-activity">Activity</a>
                 <a href="#contact">Contact</a>
             </nav>
             <div class="header-actions-group">
-                <a class="header-action button-aqua" href="/expenses">Open Unmurce <span aria-hidden="true">↗</span></a>
+                <button class="theme-toggle-btn" id="theme-toggle-btn" type="button"
+                    aria-label="Toggle dark/light theme" title="Toggle theme">
+                    <span class="theme-icon-moon">🌙</span>
+                    <span class="theme-icon-sun">☀️</span>
+                </button>
+                <a class="header-action button-yellow"
+                    href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20chat%20about%20a%20project."
+                    target="_blank">Start a Project ↗</a>
                 <button class="mobile-hamburger" id="mobile-menu-toggle" type="button"
                     aria-label="Toggle navigation menu" aria-expanded="false">
                     <span class="hamburger-line"></span>
@@ -170,40 +182,49 @@
         <div class="mobile-drawer-content">
             <div class="mobile-drawer-header">
                 <div class="drawer-user-info">
-                    <img class="drawer-avatar" src="asset/myface.jpg" alt="Orlando Diamond Prasetyo">
+                    <img class="drawer-avatar" src="asset/orlando-profile-photo.jpg" alt="Orlando Diamond Prasetyo">
                     <div>
                         <strong>Orlando D. Prasetyo</strong>
                         <span class="status-indicator"><i class="status-dot"></i> Available</span>
                     </div>
                 </div>
-                <button class="drawer-close-btn" id="close-mobile-drawer" type="button"
-                    aria-label="Close menu">✕</button>
+                <div class="drawer-header-actions">
+                    <button class="theme-toggle-btn" id="drawer-theme-toggle-btn" type="button"
+                        aria-label="Toggle dark/light theme" title="Toggle theme">
+                        <span class="theme-icon-moon">🌙</span>
+                        <span class="theme-icon-sun">☀️</span>
+                    </button>
+                    <button class="drawer-close-btn" id="close-mobile-drawer" type="button"
+                        aria-label="Close menu">✕</button>
+                </div>
             </div>
 
             <nav class="mobile-drawer-nav">
                 <a class="mobile-drawer-link" href="#about">
                     <span>01</span> About Orlando
                 </a>
-                <a class="mobile-drawer-link" href="#work">
-                    <span>02</span> Selected Work
+                <a class="mobile-drawer-link" href="#skills">
+                    <span>02</span> Technical Competencies
                 </a>
-                <a class="mobile-drawer-link" href="/expenses">
-                    <span>03</span> Unmurce App <small class="badge-mini aqua">LIVE</small>
+                <a class="mobile-drawer-link" href="#projects">
+                    <span>03</span> Featured Projects
                 </a>
-                <a class="mobile-drawer-link" href="/docs">
-                    <span>04</span> Technical Docs <small class="badge-mini yellow">DOCS</small>
+                <a class="mobile-drawer-link" href="/projects/unmurce">
+                    <span>04</span> Unmurce <small class="badge-mini aqua">PROJECT</small>
                 </a>
-                <a class="mobile-drawer-link" href="asset/appdownload/app-arm64-v8a-release.apk"
-                    download="Unmurce-Android.apk">
-                    <span>05</span> Download Android App <small class="badge-mini aqua">APK</small>
+                <a class="mobile-drawer-link" href="#journey">
+                    <span>05</span> Journey & Milestones <small class="badge-mini yellow">TIMELINE</small>
+                </a>
+                <a class="mobile-drawer-link" href="#github-activity">
+                    <span>06</span> GitHub Activity <small class="badge-mini aqua">LIVE</small>
                 </a>
                 <a class="mobile-drawer-link" href="#contact">
-                    <span>06</span> Get In Touch
+                    <span>07</span> Get In Touch
                 </a>
             </nav>
 
             <div class="mobile-drawer-footer">
-                <a class="button button-aqua drawer-cta" href="/expenses">Open Unmurce App ↗</a>
+                <a class="button button-aqua drawer-cta" href="/projects/unmurce">View Unmurce Showcase ↗</a>
                 <a class="button button-yellow drawer-cta" href="https://wa.me/6285810008115" target="_blank">
                     Chat on WhatsApp <img class="whatsapp-button-icon" src="asset/whatsapp.svg" alt="">
                 </a>
@@ -215,33 +236,34 @@
         <!-- Hero Section -->
         <section class="hero page-section">
             <div class="hero-copy">
-                <div class="profile-hero-badge">
-                    <img class="profile-face-img" src="asset/myface.jpg" alt="Orlando Diamond Prasetyo">
-                    <div class="profile-badge-text">
-                        <strong>Orlando Diamond Prasetyo</strong>
-                        <span class="status-indicator"><i class="status-dot"></i> Available for work</span>
-                    </div>
-                </div>
 
-                <h1>Building bold, tactile & intuitive software.</h1>
-                <p class="hero-lede">Hey! I'm <strong>Orlando</strong>. Welcome to my personal portfolio and home of
-                    <strong>Unmurce</strong> — a private expense tracker built with modern web tech and Neo-Brutalist
-                    UI.
-                </p>
+
+                <h1>
+                    Fullstack Developer based in
+                    <strong style="color:#42A5F5;">Flutter</strong>
+                    and
+                    <strong style="color:#004d08;">Django</strong>
+                </h1>
+                <p class="hero-lede">Hello there, my name is <strong>Orlando</strong>, a software engineer and product
+                    builder from
+                    Indonesia. I build useful applications for everyday needs. My strong suite is Flutter application
+                    design and Native Database control.</p>
 
                 <div class="hero-actions">
-                    <a class="button button-aqua" href="#work">See selected work <span aria-hidden="true">↓</span></a>
+                    <a class="button button-aqua" href="#projects">Featured projects <span
+                            aria-hidden="true">↓</span></a>
                     <a class="button button-yellow"
                         href="https://wa.me/6285810008115?text=Hi%20Orlando!%20I'd%20like%20to%20chat%20about%20a%20project."
                         target="_blank">Chat on WhatsApp <img class="whatsapp-button-icon" src="asset/whatsapp.svg"
                             alt=""></a>
+                    <a class="button button-white" href="/projects/unmurce">Unmurce App ↗</a>
                 </div>
 
                 <!-- Quick Contact Pills -->
                 <div class="hero-social-pills" aria-label="Social links">
                     <a class="social-pill btn-email" href="mailto:orlandodiamondprasetyo@gmail.com" title="Email me">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
-                            stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
                             </path>
                             <polyline points="22,6 12,13 2,6"></polyline>
@@ -257,8 +279,8 @@
                     <a class="social-pill btn-linkedin"
                         href="https://www.linkedin.com/in/orlando-diamond-prasetyo-6b3bb5362/" target="_blank"
                         title="LinkedIn">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
-                            stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z">
                             </path>
                             <rect x="2" y="9" width="4" height="12"></rect>
@@ -267,8 +289,8 @@
                     </a>
                     <a class="social-pill btn-instagram" href="https://www.instagram.com/prasetyoorlando/?hl=en"
                         target="_blank" title="Instagram">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
-                            stroke-linecap="round" stroke-linejoin="round">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                             <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                             <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                             <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
@@ -284,27 +306,60 @@
                 </div>
             </div>
 
-            <!-- Hero Art: Real App Preview Screenshots -->
-            <div class="hero-art" aria-label="Unmurce app preview screenshots">
-                <div class="stamp-tag neo-card">ORLANDO<br><span>2026</span></div>
+            <!-- Hero Art: Interactive Orlando RAG Chatbot & Avatar -->
+            <div class="hero-art" id="orlando-avatar-section" aria-label="Interactive Orlando AI Avatar & Chatbot">
 
-                <div class="app-screenshots-wrapper">
-                    <!-- Main Screenshot -->
-                    <div class="app-frame main-frame neo-card">
-                        <div class="frame-bar">
-                            <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span
-                                class="dot-btn green"></span>
-                            <span class="frame-title">Unmurce - Dashboard</span>
+                <!-- Chat Bubble (Shows Orlando's dialogue) -->
+                <div class="orlando-chat-bubble neo-card" id="orlando-chat-bubble" role="status" aria-live="polite">
+                    <div class="chat-bubble-content" id="chat-bubble-text">
+                        "Hi! I'm Orlando. Click my face or the bar below to ask me anything!"
+                    </div>
+                    <div class="chat-bubble-tail"></div>
+                </div>
+
+                <!-- Face Viewport with 3D Mouse Tracking & State Switching (No Card Frame) -->
+                <div class="orlando-face-viewport" id="orlando-face-viewport" role="button" tabindex="0"
+                    aria-label="Click Orlando to chat">
+                    <div class="face-canvas-3d" id="face-canvas-3d">
+                        <!-- Idle State Image -->
+                        <div class="face-state face-idle active" id="face-state-idle">
+                            <img src="asset/rag_chatbot/idle_state.png" alt="Orlando Idle Face" class="face-img"
+                                id="face-img-idle">
                         </div>
-                        <img class="app-screen-img" src="asset/main.jpg" alt="Unmurce Expense Dashboard Screenshot">
+
+                        <!-- Sleeping State Image with Zzz animations -->
+                        <div class="face-state face-sleeping" id="face-state-sleeping">
+                            <img src="asset/rag_chatbot/sleeping_state.png" alt="Orlando Sleeping Face" class="face-img"
+                                id="face-img-sleeping">
+                            <div class="zzz-container">
+                                <span class="zzz z1">Z</span>
+                                <span class="zzz z2">z</span>
+                                <span class="zzz z3">z</span>
+                            </div>
+                        </div>
+
+                        <!-- Interested / Listening State Image (Spoon & wide eyes) -->
+                        <div class="face-state face-interested" id="face-state-interested">
+                            <img src="asset/rag_chatbot/listening_state.png" alt="Orlando Interested Face"
+                                class="face-img" id="face-img-interested">
+                            <div class="interested-sparkle-tag">✨ INTERESTED!</div>
+                        </div>
+
+                        <!-- Talking State Puppet Head (top_part.png & bottom_part.png) -->
+                        <div class="face-state face-talking" id="face-state-talking">
+                            <div class="mouth-interior">
+                                <div class="mouth-tongue"></div>
+                            </div>
+                            <img src="asset/rag_chatbot/bottom_part.png" alt="Orlando Talking Jaw"
+                                class="talking-part talking-bottom">
+                            <img src="asset/rag_chatbot/top_part.png" alt="Orlando Talking Upper Head"
+                                class="talking-part talking-top">
+                        </div>
                     </div>
 
-                    <!-- Overlay Screenshot (Add Expense Screen) -->
-                    <div class="app-frame secondary-frame neo-card">
-                        <div class="frame-bar">
-                            <span class="frame-title">Add Expense</span>
-                        </div>
-                        <img class="app-screen-img" src="asset/ae_1.jpg" alt="Unmurce Add Expense Screen Screenshot">
+                    <!-- Click Hint Overlay -->
+                    <div class="avatar-click-hint" id="avatar-click-hint">
+                        <span>💬 Click to Talk</span>
                     </div>
                 </div>
             </div>
@@ -315,69 +370,196 @@
             <div class="neo-card intro-card">
                 <div class="intro-header">
                     <p class="section-index">01 / ABOUT ME</p>
-                    <div class="profile-about-tag">
-                        <img src="asset/myface.jpg" alt="Orlando Diamond Prasetyo avatar">
-                        <div>
-                            <h3>Orlando Diamond Prasetyo</h3>
-                            <p>Full-Stack Builder & UI Specialist</p>
-                        </div>
-                    </div>
+
                 </div>
 
                 <div>
-                    <h2>Turning complex ideas into sharp, delightful digital products.</h2>
+                    <h2>Crafting digital systems with intention, speed, and character.</h2>
                     <p>I blend full-stack engineering with high-impact visual design systems. Specializing in responsive
-                        web apps, REST APIs, database architectures, and crisp Neo-Brutalist interfaces.</p>
+                        web apps, cross-platform Flutter mobile applications, RESTful APIs, database architectures, and
+                        crisp Neo-Brutalist interfaces.</p>
                 </div>
 
                 <div class="about-facts">
                     <div class="fact-box"><span>LOCATION</span><strong>Indonesia</strong></div>
-                    <div class="fact-box"><span>FOCUS</span><strong>Web & Mobile Systems</strong></div>
-                    <div class="fact-box"><span>PRIMARY PROJECT</span><strong>Unmurce Expense App</strong></div>
+                    <div class="fact-box"><span>PRIMARY SPECIALTY</span><strong>Web, Mobile & AI Systems</strong></div>
+                    <div class="fact-box"><span>FLAGSHIP PROJECT</span><a href="/projects/unmurce"
+                            style="text-decoration: underline; font-weight: 800;">Unmurce Showcase ↗</a></div>
                     <div class="fact-box"><span>DOCUMENTATION</span><a href="/docs"
                             style="text-decoration: underline; font-weight: 800;">View Tech Docs ↗</a></div>
                 </div>
 
-                <div class="model-config">
-                    <div class="model-config-heading">
-                        <span>LIVE MODEL ROUTING</span>
-                        <span>ACTIVE VERCEL DEPLOYMENT</span>
+                <!-- GitHub Live Activity (part of About) -->
+                <div id="github-activity" class="about-github">
+                    <div class="about-github-head">
+                        <div class="github-profile-group">
+                            <div class="github-avatar-box">
+                                <img src="asset/github-mark.png" alt="GitHub Logo">
+                            </div>
+                            <div>
+                                <div class="github-badge-tag">LIVE GITHUB ACTIVITY</div>
+                                <h3 class="github-title">Open Source &amp; Repositories</h3>
+                                <p class="github-subtitle">Real-time public activity from <a
+                                        href="https://github.com/DODODABIRD" target="_blank"
+                                        rel="noreferrer"><strong>@DODODABIRD</strong></a></p>
+                            </div>
+                        </div>
+                        <a class="button button-yellow github-profile-btn" href="https://github.com/DODODABIRD"
+                            target="_blank" rel="noreferrer">
+                            View GitHub Profile ↗
+                        </a>
                     </div>
-                    <div class="model-config-grid">
-                        <div class="fact-box model-fact model-fact-aqua">
-                            <span>GROQ_MODEL / RECEIPTS</span>
-                            <strong data-runtime-model="GROQ_MODEL" aria-live="polite">Loading...</strong>
-                            <small>Default model used for receipt parsing</small>
-                        </div>
-                        <div class="fact-box model-fact model-fact-yellow">
-                            <span>GROQ_NOTIFICATION_MODEL</span>
-                            <strong data-runtime-model="GROQ_NOTIFICATION_MODEL" aria-live="polite">Loading...</strong>
-                            <small>Effective model; defaults to GROQ_MODEL</small>
-                        </div>
+
+                    <div id="github-repos-grid" class="github-repos-grid" aria-live="polite">
+                        <!-- Default Resilient Cards (shown immediately and as fallback) -->
+                        <a class="github-repo-card neo-card" href="https://github.com/DODODABIRD/Expense_App_Personal"
+                            target="_blank" rel="noreferrer">
+                            <div class="repo-card-top">
+                                <span class="repo-type-tag">PRIMARY REPO</span>
+                                <span class="repo-stars">★ Active</span>
+                            </div>
+                            <h3 class="repo-name">Expense_App_Personal</h3>
+                            <p class="repo-desc">Unmurce personal expense tracking application with receipt scanning,
+                                Firebase auth, and multi-model AI OCR engine.</p>
+                            <div class="repo-meta">
+                                <span class="repo-lang"><span class="lang-color flutter"></span> Dart / Flutter</span>
+                                <span class="repo-link-arrow">↗</span>
+                            </div>
+                        </a>
+                        <a class="github-repo-card neo-card" href="https://github.com/DODODABIRD" target="_blank"
+                            rel="noreferrer">
+                            <div class="repo-card-top">
+                                <span class="repo-type-tag">API BACKEND</span>
+                                <span class="repo-stars">★ Active</span>
+                            </div>
+                            <h3 class="repo-name">Expense-Tracker-API</h3>
+                            <p class="repo-desc">Serverless REST API powered by Express, MongoDB Atlas, and Gemini/Groq
+                                document processing pipelines.</p>
+                            <div class="repo-meta">
+                                <span class="repo-lang"><span class="lang-color js"></span> JavaScript / Node</span>
+                                <span class="repo-link-arrow">↗</span>
+                            </div>
+                        </a>
+                        <a class="github-repo-card neo-card" href="https://github.com/DODODABIRD" target="_blank"
+                            rel="noreferrer">
+                            <div class="repo-card-top">
+                                <span class="repo-type-tag">WEB PORTFOLIO</span>
+                                <span class="repo-stars">★ Active</span>
+                            </div>
+                            <h3 class="repo-name">dododabird.us</h3>
+                            <p class="repo-desc">Personal web hub and software portfolio featuring custom Neo-Brutalist
+                                UI
+                                and live model status telemetry.</p>
+                            <div class="repo-meta">
+                                <span class="repo-lang"><span class="lang-color html"></span> HTML / CSS</span>
+                                <span class="repo-link-arrow">↗</span>
+                            </div>
+                        </a>
+                    </div>
+
+                    <div class="github-footer-note">
+
+                        <span id="github-sync-time" class="github-sync-time">Live sync active</span>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Work Section -->
-        <section id="work" class="work-section page-section">
+        <!-- Skills & Technical Competencies Section -->
+        <section id="skills" class="skills-section page-section">
             <div class="section-heading">
                 <div>
-                    <p class="section-index">02 / SELECTED WORK</p>
-                    <h2>Featured Projects</h2>
+                    <p class="section-index">02 / TECHNICAL SCOPE</p>
+                    <h2>Tools, Frameworks & Core Stack</h2>
                 </div>
-                <p class="section-note">High-contrast, high-performance web applications built for real usability.</p>
+                <p class="section-note">My Frameworks of choice for Software Development</p>
+            </div>
+
+            <div class="skills-grid">
+                <div class="skill-category-card neo-card">
+                    <div class="skill-category-header">
+                        <span class="skill-cat-icon">📱</span>
+                        <h3>Mobile & Native</h3>
+                    </div>
+                    <div class="skill-tag-list">
+                        <span class="skill-tag">Flutter 3.x</span>
+                        <span class="skill-tag">Dart</span>
+                        <span class="skill-tag">Kotlin Native</span>
+                        <span class="skill-tag">Android SDK</span>
+                        <span class="skill-tag">SQLite Local Cache</span>
+                        <span class="skill-tag">Notification Intent Hooks</span>
+                    </div>
+                </div>
+
+                <div class="skill-category-card neo-card">
+                    <div class="skill-category-header">
+                        <span class="skill-cat-icon">⚡</span>
+                        <h3>Backend & APIs</h3>
+                    </div>
+                    <div class="skill-tag-list">
+                        <span class="skill-tag">Node.js</span>
+                        <span class="skill-tag">ExpressJS</span>
+                        <span class="skill-tag">RESTful Architecture</span>
+                        <span class="skill-tag">Mongoose ORM</span>
+                        <span class="skill-tag">Vercel Serverless</span>
+                        <span class="skill-tag">NDJSON Streams</span>
+                    </div>
+                </div>
+
+                <div class="skill-category-card neo-card">
+                    <div class="skill-category-header">
+                        <span class="skill-cat-icon">🛡️</span>
+                        <h3>Database & Security</h3>
+                    </div>
+                    <div class="skill-tag-list">
+                        <span class="skill-tag">MongoDB Atlas</span>
+                        <span class="skill-tag">Firebase Bearer Auth</span>
+                        <span class="skill-tag">Security Rules</span>
+                        <span class="skill-tag">Per-User Data Isolation</span>
+                        <span class="skill-tag">Cloudflare Edge</span>
+                    </div>
+                </div>
+
+                <div class="skill-category-card neo-card">
+                    <div class="skill-category-header">
+                        <span class="skill-cat-icon">🎨</span>
+                        <h3>Frontend & Applied AI</h3>
+                    </div>
+                    <div class="skill-tag-list">
+                        <span class="skill-tag">Neo-Brutalist UI</span>
+                        <span class="skill-tag">CSS3 / Flexbox & Grid</span>
+                        <span class="skill-tag">Google Gemini 3.6</span>
+                        <span class="skill-tag">Groq Vision & LLMs</span>
+                        <span class="skill-tag">Azure Doc Intelligence</span>
+                        <span class="skill-tag">Client-side PDF (jsPDF)</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        </div>
+        </div>
+        </section>
+
+        <!-- Featured Projects Section -->
+        <section id="projects" class="work-section page-section">
+            <div class="section-heading">
+                <div>
+                    <p class="section-index">03 / FEATURED PROJECTS</p>
+                    <h2>Selected Engineering Work</h2>
+                </div>
+                <p class="section-note">High-contrast, high-performance web applications and mobile architectures built
+                    for real usability.</p>
             </div>
 
             <!-- Featured Cards Grid -->
             <div class="project-grid">
                 <!-- Project 01: Unmurce -->
-                <a class="project-card neo-card neo-card-yellow project-featured" href="/expenses">
+                <div class="project-card neo-card neo-card-yellow project-featured">
                     <div class="project-visual unmurce-visual">
                         <div class="visual-tag-group">
-                            <span class="visual-tag">LIVE APP</span>
+                            <span class="visual-tag">FLAGSHIP PRODUCT</span>
                             <div class="app-logo-pill neo-card">
-                                <img src="asset/android_app_logo.png" alt="Unmurce App Logo">
+                                <img src="asset/unmurce-app-icon.png" alt="Unmurce App Logo">
                                 <span>Unmurce App</span>
                             </div>
                         </div>
@@ -386,26 +568,29 @@
                                 <div class="frame-bar">
                                     <span class="frame-title">Dashboard</span>
                                 </div>
-                                <img class="app-screen-img" src="asset/main.jpg" alt="Unmurce Main Screenshot">
+                                <img class="app-screen-img" src="asset/unmurce-dashboard-preview.jpg"
+                                    alt="Unmurce Main Screenshot">
                             </div>
                             <div class="app-frame combo-frame-sub neo-card">
                                 <div class="frame-bar">
                                     <span class="frame-title">Add Expense</span>
                                 </div>
-                                <img class="app-screen-img" src="asset/ae_1.jpg" alt="Unmurce Add Expense Screenshot">
+                                <img class="app-screen-img" src="asset/unmurce-add-expense-preview.jpg"
+                                    alt="Unmurce Add Expense Screenshot">
                             </div>
                             <div class="app-frame combo-frame-third neo-card">
                                 <div class="frame-bar">
                                     <span class="frame-title">Receipt OCR</span>
                                 </div>
-                                <img class="app-screen-img" src="asset/reciptscan.jpg"
+                                <img class="app-screen-img" src="asset/unmurce-receipt-ocr-preview.jpg"
                                     alt="Unmurce Receipt Scan Screenshot">
                             </div>
                             <div class="app-frame combo-frame-fourth neo-card">
                                 <div class="frame-bar">
                                     <span class="frame-title">Settings</span>
                                 </div>
-                                <img class="app-screen-img" src="asset/settings.jpg" alt="Unmurce Settings Screenshot">
+                                <img class="app-screen-img" src="asset/unmurce-settings-preview.jpg"
+                                    alt="Unmurce Settings Screenshot">
                             </div>
                         </div>
                         <span class="visual-caption">UNMURCE / EXPENSE TRACKER</span>
@@ -416,10 +601,18 @@
                             <h3>Unmurce Expense Tracker</h3>
                             <p>Private personal finance application with receipt scanning, Firebase auth, and instant
                                 monthly balance breakdowns.</p>
+                            <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;">
+                                <a class="button button-aqua" style="padding: 7px 16px; font-size: 0.82rem;"
+                                    href="/projects/unmurce">Explore Showcase ↗</a>
+                                <a class="button button-yellow" style="padding: 7px 16px; font-size: 0.82rem;"
+                                    href="/expenses">Launch App ↗</a>
+                                <a class="button button-white" style="padding: 7px 16px; font-size: 0.82rem;"
+                                    href="/docs">Tech Specs ↗</a>
+                            </div>
                         </div>
-                        <span class="project-arrow" aria-hidden="true">↗</span>
+                        <a class="project-arrow" href="/projects/unmurce" aria-label="View Unmurce Showcase">↗</a>
                     </div>
-                </a>
+                </div>
 
                 <!-- Project 02: Documentation -->
                 <a class="project-card neo-card" href="/docs">
@@ -555,39 +748,76 @@
                         <div class="service-stack-header">
                             <div class="badge-tag" style="background: var(--card-white);">ENGINEERING SERVICES</div>
                             <h3>Services & Capabilities</h3>
-                            <p class="preview-text" style="color: #000;">Tailored digital solutions, full-stack architecture, and mobile engineering.</p>
+                            <p class="preview-text" style="color: #000;">Tailored digital solutions, full-stack
+                                architecture, and mobile engineering.</p>
                         </div>
                         <div class="service-stack-grid" aria-label="Orlando Engineering Services">
                             <span class="service-chip chip-white" title="Custom Software Development">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <polyline points="16 18 22 12 16 6" />
+                                    <polyline points="8 6 2 12 8 18" />
+                                </svg>
                                 Custom Software Development
                             </span>
                             <span class="service-chip chip-yellow" title="Web Design">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20" />
+                                    <path d="M2 12h20" />
+                                </svg>
                                 Web Design
                             </span>
                             <span class="service-chip chip-dark" title="Application Development">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="3" y="3" width="18" height="18" rx="2" />
+                                    <path d="M3 9h18" />
+                                    <path d="M9 21V9" />
+                                </svg>
                                 Application Development
                             </span>
                             <span class="service-chip chip-white" title="Database Development">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <ellipse cx="12" cy="5" rx="9" ry="3" />
+                                    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+                                    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+                                </svg>
                                 Database Development
                             </span>
                             <span class="service-chip chip-yellow" title="Cloud Application Development">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z" />
+                                </svg>
                                 Cloud Application Development
                             </span>
                             <span class="service-chip chip-dark" title="Web Development">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="2" y="3" width="20" height="14" rx="2" />
+                                    <line x1="8" y1="21" x2="16" y2="21" />
+                                    <line x1="12" y1="17" x2="12" y2="21" />
+                                </svg>
                                 Web Development
                             </span>
                             <span class="service-chip chip-white" title="Android Development">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10a8 8 0 0 1 16 0v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7z"/><line x1="7" y1="4" x2="9" y2="7"/><line x1="17" y1="4" x2="15" y2="7"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M4 10a8 8 0 0 1 16 0v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-7z" />
+                                    <line x1="7" y1="4" x2="9" y2="7" />
+                                    <line x1="17" y1="4" x2="15" y2="7" />
+                                </svg>
                                 Android Development
                             </span>
                             <span class="service-chip chip-yellow" title="Mobile Application Development">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    stroke-linecap="round" stroke-linejoin="round">
+                                    <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                                    <line x1="12" y1="18" x2="12.01" y2="18" />
+                                </svg>
                                 Mobile Application Development
                             </span>
                         </div>
@@ -604,158 +834,82 @@
                     </div>
                 </a>
             </div>
+        </section>
 
-            <!-- Project Carousel Component -->
-            <div class="carousel-section page-section-sm">
-                <div class="carousel-header">
-                    <div>
-                        <p class="section-index">GALLERY CAROUSEL</p>
-                        <h2>Explore App Screens & Features</h2>
-                    </div>
-                    <div class="carousel-controls">
-                        <button id="carousel-prev" class="carousel-nav-btn btn-aqua" type="button"
-                            aria-label="Previous Slide">← Prev</button>
-                        <button id="carousel-next" class="carousel-nav-btn btn-yellow" type="button"
-                            aria-label="Next Slide">Next →</button>
-                    </div>
+        <!-- Journey & Milestones Section -->
+        <section id="journey" class="timeline-section page-section">
+            <div class="section-heading">
+                <div>
+                    <p class="section-index">04 / EXPERIENCE & MILESTONES</p>
+                    <h2>My Journey</h2>
                 </div>
+                <p class="section-note">Gonzaga &rarr; Binus</p>
+            </div>
 
-                <div class="carousel-container neo-card">
-                    <div class="carousel-track-wrapper">
-                        <div class="carousel-track" id="carousel-track">
-                            <!-- Slide 1: Main Dashboard -->
-                            <div class="carousel-slide">
-                                <div class="slide-mockup-wrapper">
-                                    <div class="phone-mockup-frame">
-                                        <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
-                                        <div class="phone-mockup-screen">
-                                            <img src="asset/main.jpg" alt="Unmurce Expense Dashboard Screenshot">
-                                        </div>
-                                        <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
-                                    </div>
-                                </div>
-                                <div class="slide-details">
-                                    <span class="slide-badge">SCREEN 01</span>
-                                    <h3>Expense Dashboard View</h3>
-                                    <p>Lists transactions in sunny yellow Neo-Brutalist cards with cumulative balance
-                                        calculations, icons, and filter badges.</p>
-                                    <div class="slide-tags">
-                                        <span>Neo-Brutalist UI</span>
-                                        <span>Realtime Sync</span>
-                                        <span>Category Icons</span>
-                                    </div>
-                                    <a class="button button-aqua slide-cta" href="/expenses">Open App Live ↗</a>
-                                </div>
-                            </div>
-
-                            <!-- Slide 2: Add Expense Form -->
-                            <div class="carousel-slide">
-                                <div class="slide-mockup-wrapper">
-                                    <div class="phone-mockup-frame">
-                                        <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
-                                        <div class="phone-mockup-screen">
-                                            <img src="asset/ae_1.jpg" alt="Unmurce Add Expense Form Screenshot">
-                                        </div>
-                                        <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
-                                    </div>
-                                </div>
-                                <div class="slide-details">
-                                    <span class="slide-badge">SCREEN 02</span>
-                                    <h3>Add Expense Screen</h3>
-                                    <p>Quick transaction entry with title, amount in IDR, category selector, transaction
-                                        type (Expected/Unexpected), and date picker.</p>
-                                    <div class="slide-tags">
-                                        <span>Fast Entry</span>
-                                        <span>Category Selector</span>
-                                        <span>Date Picker</span>
-                                    </div>
-                                    <a class="button button-yellow slide-cta" href="/expenses">Try Add Expense ↗</a>
-                                </div>
-                            </div>
-
-                            <!-- Slide 3: Settings Screen -->
-                            <div class="carousel-slide">
-                                <div class="slide-mockup-wrapper">
-                                    <div class="phone-mockup-frame">
-                                        <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
-                                        <div class="phone-mockup-screen">
-                                            <img src="asset/settings.jpg" alt="Unmurce Settings Screen Screenshot">
-                                        </div>
-                                        <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
-                                    </div>
-                                </div>
-                                <div class="slide-details">
-                                    <span class="slide-badge">SCREEN 03</span>
-                                    <h3>App Settings & Profile View</h3>
-                                    <p>Configure personal account details, Firebase security tokens, display
-                                        preferences, and instant data reset actions.</p>
-                                    <div class="slide-tags">
-                                        <span>Account Preferences</span>
-                                        <span>Firebase Security</span>
-                                        <span>Data Control</span>
-                                    </div>
-                                    <a class="button button-aqua slide-cta" href="/expenses">Open App Live ↗</a>
-                                </div>
-                            </div>
-
-                            <!-- Slide 4: Receipt OCR -->
-                            <div class="carousel-slide">
-                                <div class="slide-mockup-wrapper">
-                                    <div class="phone-mockup-frame">
-                                        <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
-                                        <div class="phone-mockup-screen">
-                                            <img src="asset/reciptscan.jpg" alt="Unmurce Receipt Scan Screenshot">
-                                        </div>
-                                        <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
-                                    </div>
-                                </div>
-                                <div class="slide-details">
-                                    <span class="slide-badge">FEATURE 04</span>
-                                    <h3>Automated Receipt Parsing</h3>
-                                    <p>Snap a photo of any receipt to automatically extract line items, prices, and tax
-                                        distribution using Gemini 3.6 Flash and Azure Document Intelligence.</p>
-                                    <div class="slide-tags">
-                                        <span>Gemini 3.6 Flash</span>
-                                        <span>Azure AI</span>
-                                        <span>Auto Tax Split</span>
-                                    </div>
-                                    <a class="button button-aqua slide-cta" href="/docs#ocr">Read OCR Tech Docs ↗</a>
-                                </div>
-                            </div>
-
-                            <!-- Slide 5: Firebase Auth & MongoDB -->
-                            <div class="carousel-slide">
-                                <div class="slide-mockup-wrapper">
-                                    <div class="feature-graphic-box graphic-aqua">
-                                        <div class="graphic-icon">🔒</div>
-                                        <strong>Security & Database</strong>
-                                        <span class="graphic-sub">Firebase & MongoDB</span>
-                                    </div>
-                                </div>
-                                <div class="slide-details">
-                                    <span class="slide-badge">ARCHITECTURE 05</span>
-                                    <h3>Private Data Isolation</h3>
-                                    <p>Every transaction query is authenticated via Firebase Bearer ID Tokens and
-                                        enforced against MongoDB Atlas collection schemas.</p>
-                                    <div class="slide-tags">
-                                        <span>Firebase Auth</span>
-                                        <span>MongoDB Atlas</span>
-                                        <span>REST Security</span>
-                                    </div>
-                                    <a class="button button-yellow slide-cta" href="/docs#architecture">View
-                                        Architecture ↗</a>
-                                </div>
-                            </div>
+            <div class="timeline-container">
+                <!-- Milestone 1: 2023 - 2025 -->
+                <div class="timeline-item">
+                    <div class="timeline-badge-wrapper">
+                        <div class="timeline-year-badge neo-card">2023</div>
+                    </div>
+                    <div class="timeline-card neo-card">
+                        <div class="timeline-card-header">
+                            <span class="timeline-tag">2023 &ndash; 2025</span>
+                            <span class="timeline-role">High School Foundation</span>
+                        </div>
+                        <h3>SMA di Gonzaga (2023 - 2025)</h3>
+                        <p>Saya berfokus pada pelajaran-pelajaran yang mendukung saya masuk ke dalam jurusan computer
+                            science karena sejak kecil sudah ingin masuk jurusan tsb. Belum ada project.</p>
+                        <div class="timeline-tech-tags">
+                            <span>Computer Science Prep</span>
+                            <span>Mathematics</span>
+                            <span>SMA Kolese Gonzaga</span>
                         </div>
                     </div>
                 </div>
 
-                <div class="carousel-dots" id="carousel-dots">
-                    <span class="dot active" data-index="0"></span>
-                    <span class="dot" data-index="1"></span>
-                    <span class="dot" data-index="2"></span>
-                    <span class="dot" data-index="3"></span>
-                    <span class="dot" data-index="4"></span>
+                <!-- Milestone 2: 2025 - 2029 -->
+                <div class="timeline-item">
+                    <div class="timeline-badge-wrapper">
+                        <div class="timeline-year-badge neo-card">2025</div>
+                    </div>
+                    <div class="timeline-card neo-card neo-card-aqua">
+                        <div class="timeline-card-header">
+                            <span class="timeline-tag">2025 &ndash; 2029</span>
+                            <span class="timeline-role">Undergraduate Student</span>
+                        </div>
+                        <h3>Undergraduate di Binus sbg Computer Scientist (2025 - 2029)</h3>
+                        <p>Saat permulaan saya mempelajari konsep-konsep dasar cara komputer berpikir, saya mempelajari
+                            basics di programming C++/C.</p>
+                        <div class="timeline-tech-tags">
+                            <span>C / C++</span>
+                            <span>CS Fundamentals</span>
+                            <span>Computational Thinking</span>
+                            <span>Binus University</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Milestone 3: 2026 -->
+                <div class="timeline-item">
+                    <div class="timeline-badge-wrapper">
+                        <div class="timeline-year-badge neo-card">2026</div>
+                    </div>
+                    <div class="timeline-card neo-card neo-card-yellow">
+                        <div class="timeline-card-header">
+                            <span class="timeline-tag">CURRENT FOCUS</span>
+                            <span class="timeline-role">Product Engineer & Creator</span>
+                        </div>
+                        <h3>Unmurce & Portofolio Website</h3>
+                        <p>Pada awal tahun 2026 saya memulai project Unmurce saya.</p>
+                        <div class="timeline-tech-tags">
+                            <span>Unmurce</span>
+                            <span>Portfolio Website</span>
+                            <span>Flutter</span>
+                            <span>Node.js / Express</span>
+                            <span>Firebase</span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -763,7 +917,7 @@
         <!-- Contact Section -->
         <section id="contact" class="contact-section page-section">
             <div class="neo-card contact-card">
-                <p class="section-index">03 / GET IN TOUCH</p>
+                <p class="section-index">05 / GET IN TOUCH</p>
                 <div class="contact-layout">
                     <div>
                         <h2>Let's build something great together.</h2>
@@ -779,8 +933,8 @@
                 <div class="contact-buttons-grid">
                     <a class="contact-btn-card btn-email" href="mailto:orlandodiamondprasetyo@gmail.com">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
-                                stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
                                 </path>
                                 <polyline points="22,6 12,13 2,6"></polyline>
@@ -812,8 +966,8 @@
                     <a class="contact-btn-card btn-linkedin"
                         href="https://www.linkedin.com/in/orlando-diamond-prasetyo-6b3bb5362/" target="_blank">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
-                                stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path
                                     d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z">
                                 </path>
@@ -831,8 +985,8 @@
                     <a class="contact-btn-card btn-instagram" href="https://www.instagram.com/prasetyoorlando/?hl=en"
                         target="_blank">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
-                                stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                                 <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                                 <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
@@ -847,8 +1001,8 @@
 
                     <a class="contact-btn-card btn-line" href="https://line.me/ti/p/~orlandoprasetyo" target="_blank">
                         <div class="contact-icon">
-                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2"
-                                stroke-linecap="round" stroke-linejoin="round">
+                            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                                 <path
                                     d="M21 11.5C21 7.36 16.97 4 12 4S3 7.36 3 11.5c0 3.7 3.23 6.8 7.6 7.36.3.06.7.2.8.46.1.28.06.72.03 1.01l-.14.86c-.04.26-.2.98.86.54 1.06-.44 5.73-3.38 7.82-5.78C20.6 14.5 21 13.06 21 11.5z">
                                 </path>
@@ -877,6 +1031,53 @@
         </section>
     </main>
 
+    <!-- macOS Spotlight-Style Glassmorphic Search / RAG Chat Bar -->
+    <div class="macos-spotlight-bar-wrapper" id="macos-spotlight-bar-wrapper" aria-hidden="true">
+        <div class="macos-spotlight-bar">
+            <!-- Left AI icon / status -->
+            <div class="spotlight-icon-box" title="AI Orlando RAG Engine">
+                <span class="spotlight-ai-sparkle">✨</span>
+            </div>
+
+            <!-- Input area -->
+            <form id="macos-chat-form" class="spotlight-input-form" onsubmit="return false;">
+                <input type="text" id="macos-chat-input" class="spotlight-input"
+                    placeholder="Ask Orlando anything about his projects, skills, or experience..." autocomplete="off"
+                    aria-label="Ask Orlando anything">
+                <div class="spotlight-actions">
+                    <span class="spotlight-shortcut-badge" title="Press Enter to send">↵ Enter</span>
+                    <button type="submit" id="macos-chat-send-btn" class="spotlight-send-btn"
+                        aria-label="Send question">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="22" y1="2" x2="11" y2="13"></line>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+
+            <!-- Close button to dismiss/hide bar -->
+            <button type="button" class="spotlight-close-btn" id="spotlight-close-btn" aria-label="Close search bar"
+                title="Close (Esc)">
+                ✕
+            </button>
+        </div>
+
+        <!-- Suggestion Chips pill bar attached above/below search bar -->
+        <div class="spotlight-suggestions">
+            <span class="suggestions-label">Quick Ask:</span>
+            <button type="button" class="spotlight-chip"
+                data-query="Tell me about your flagship project Unmurce!">Unmurce 📱</button>
+            <button type="button" class="spotlight-chip" data-query="What is your primary tech stack?">Tech Stack
+                ⚡</button>
+            <button type="button" class="spotlight-chip" data-query="Where do you study computer science?">Education
+                🎓</button>
+            <button type="button" class="spotlight-chip"
+                data-query="Are you available for freelance projects or hiring?">Hire Orlando 💼</button>
+        </div>
+    </div>
+
     <footer class="site-footer">
         <div class="footer-left">
             <strong>Orlando Diamond Prasetyo</strong>
@@ -894,7 +1095,8 @@
             </small>
         </div>
         <div class="footer-links">
-            <a href="/expenses">Unmurce App</a>
+            <a href="/projects/unmurce">Unmurce Showcase</a>
+            <a href="/expenses">Live App</a>
             <a href="/docs">Technical Docs</a>
             <a href="https://wa.me/6285810008115" target="_blank">WhatsApp</a>
             <a class="back-to-top" href="#top">Back to top ↑</a>
@@ -907,10 +1109,12 @@
         <div class="ui-lightbox-container neo-card">
             <div class="ui-lightbox-header">
                 <div class="ui-lightbox-badge">
-                    <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
+                    <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span
+                        class="dot-btn green"></span>
                     <strong id="lightbox-title">UI Preview</strong>
                 </div>
-                <button id="close-lightbox-btn" class="lightbox-close-btn" type="button" aria-label="Close Preview">✕</button>
+                <button id="close-lightbox-btn" class="lightbox-close-btn" type="button"
+                    aria-label="Close Preview">✕</button>
             </div>
             <div class="ui-lightbox-body">
                 <img id="lightbox-img" src="" alt="UI Screen Preview">
@@ -937,10 +1141,10 @@
             const lightboxBackdrop = document.querySelector('.ui-lightbox-backdrop');
 
             const uiScenes = [
-                { title: 'Dashboard View', src: 'asset/main.jpg' },
-                { title: 'Add Expense Screen', src: 'asset/ae_1.jpg' },
-                { title: 'Receipt OCR Parser', src: 'asset/reciptscan.jpg' },
-                { title: 'App Settings & Profile', src: 'asset/settings.jpg' }
+                { title: 'Dashboard View', src: 'asset/unmurce-dashboard-preview.jpg' },
+                { title: 'Add Expense Screen', src: 'asset/unmurce-add-expense-preview.jpg' },
+                { title: 'Receipt OCR Parser', src: 'asset/unmurce-receipt-ocr-preview.jpg' },
+                { title: 'App Settings & Profile', src: 'asset/unmurce-settings-preview.jpg' }
             ];
 
             let activeSceneIndex = 0;
@@ -992,69 +1196,6 @@
                 if (e.key === 'ArrowRight') openLightbox(activeSceneIndex + 1);
             });
 
-            const track = document.getElementById('carousel-track');
-            const slides = document.querySelectorAll('.carousel-slide');
-            const prevBtn = document.getElementById('carousel-prev');
-            const nextBtn = document.getElementById('carousel-next');
-            const dots = document.querySelectorAll('#carousel-dots .dot');
-            const trackWrapper = document.querySelector('.carousel-track-wrapper');
-            let currentIndex = 0;
-            let swipeStartX = 0;
-            let swipeStartY = 0;
-            let suppressClick = false;
-
-            function updateCarousel(index) {
-                if (index < 0) index = slides.length - 1;
-                if (index >= slides.length) index = 0;
-                currentIndex = index;
-                const offset = -currentIndex * 100;
-                track.style.transform = `translateX(${offset}%)`;
-                dots.forEach((dot, i) => {
-                    dot.classList.toggle('active', i === currentIndex);
-                });
-            }
-
-            if (prevBtn) prevBtn.addEventListener('click', () => updateCarousel(currentIndex - 1));
-            if (nextBtn) nextBtn.addEventListener('click', () => updateCarousel(currentIndex + 1));
-            if (trackWrapper) {
-                trackWrapper.addEventListener('pointerdown', (event) => {
-                    swipeStartX = event.clientX;
-                    swipeStartY = event.clientY;
-                });
-
-                trackWrapper.addEventListener('pointerup', (event) => {
-                    const deltaX = event.clientX - swipeStartX;
-                    const deltaY = event.clientY - swipeStartY;
-                    const isHorizontalSwipe = Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY);
-
-                    if (!isHorizontalSwipe) return;
-
-                    suppressClick = true;
-                    updateCarousel(currentIndex + (deltaX < 0 ? 1 : -1));
-                    window.setTimeout(() => {
-                        suppressClick = false;
-                    }, 0);
-                });
-
-                trackWrapper.addEventListener('pointercancel', () => {
-                    swipeStartX = 0;
-                    swipeStartY = 0;
-                });
-
-                trackWrapper.addEventListener('click', (event) => {
-                    if (!suppressClick) return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    suppressClick = false;
-                }, true);
-            }
-            dots.forEach(dot => {
-                dot.addEventListener('click', (e) => {
-                    const idx = parseInt(e.target.getAttribute('data-index'), 10);
-                    updateCarousel(idx);
-                });
-            });
-
             // Dropdown Navbar Handler (One at a time, Close on click outside, Close on scroll)
             const navDropdowns = document.querySelectorAll('.nav-dropdown');
 
@@ -1082,22 +1223,22 @@
                 }
             });
 
-            // Smart Floating Navbar Scroll Handler (Hide on scroll down, Show on scroll up)
-            let lastScrollY = window.scrollY;
+            // Smart Floating Navbar Scroll Handler (Morph to floating pill on scroll)
             const headerWrapper = document.getElementById('site-header-wrapper');
 
-            window.addEventListener('scroll', () => {
+            function handleNavbarScroll() {
                 const currentScrollY = window.scrollY;
                 closeAllDropdowns();
-                if (currentScrollY <= 80) {
-                    headerWrapper.classList.remove('nav-hidden');
-                } else if (currentScrollY > lastScrollY && currentScrollY > 120) {
-                    headerWrapper.classList.add('nav-hidden');
-                } else if (currentScrollY < lastScrollY) {
-                    headerWrapper.classList.remove('nav-hidden');
+
+                if (currentScrollY <= 20) {
+                    headerWrapper.classList.add('is-top');
+                } else {
+                    headerWrapper.classList.remove('is-top');
                 }
-                lastScrollY = currentScrollY;
-            }, { passive: true });
+            }
+
+            window.addEventListener('scroll', handleNavbarScroll, { passive: true });
+            handleNavbarScroll();
 
             // Mobile Navigation Drawer Toggle
             const menuToggleBtn = document.getElementById('mobile-menu-toggle');
@@ -1140,13 +1281,13 @@
             const preloaderStatusText = document.getElementById('preloader-status-text');
 
             const imageAssets = [
-                'asset/webicon1.png',
-                'asset/myface.jpg',
-                'asset/main.jpg',
-                'asset/ae_1.jpg',
-                'asset/reciptscan.jpg',
-                'asset/settings.jpg',
-                'asset/android_app_logo.png',
+                'asset/orlando-brand-logo.png',
+                'asset/orlando-profile-photo.jpg',
+                'asset/unmurce-dashboard-preview.jpg',
+                'asset/unmurce-add-expense-preview.jpg',
+                'asset/unmurce-receipt-ocr-preview.jpg',
+                'asset/unmurce-settings-preview.jpg',
+                'asset/unmurce-app-icon.png',
                 'asset/github-mark.png',
                 'asset/whatsapp.svg',
                 'asset/email.svg',
@@ -1211,8 +1352,583 @@
                 };
                 img.src = src;
             });
+
+            // Preloader fallback safety timeout (max 4 seconds)
+            setTimeout(() => {
+                if (preloader && !preloader.classList.contains('loaded')) {
+                    appendTerminalLog('TIMEOUT SAFEGUARD ACTIVATED. MOUNTING UI...', 'done');
+                    preloader.classList.add('loaded');
+                }
+            }, 4000);
+
+            // Theme Toggle Controller (Light / Dark)
+            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+            const drawerThemeToggleBtn = document.getElementById('drawer-theme-toggle-btn');
+
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                try {
+                    localStorage.setItem('theme', theme);
+                } catch (e) { }
+
+                const isDark = theme === 'dark';
+                const label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+                if (themeToggleBtn) {
+                    themeToggleBtn.setAttribute('aria-label', label);
+                    themeToggleBtn.setAttribute('title', label);
+                }
+                if (drawerThemeToggleBtn) {
+                    drawerThemeToggleBtn.setAttribute('aria-label', label);
+                    drawerThemeToggleBtn.setAttribute('title', label);
+                }
+            }
+
+            function toggleTheme() {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(nextTheme);
+            }
+
+            if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
+            if (drawerThemeToggleBtn) drawerThemeToggleBtn.addEventListener('click', toggleTheme);
+
+            // GitHub Live Activity Fetcher with Resilient Fallback
+            function escapeHtml(str) {
+                if (!str) return '';
+                return str
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            }
+
+            async function fetchGitHubRepos() {
+                const reposContainer = document.getElementById('github-repos-grid');
+                const syncTimeText = document.getElementById('github-sync-time');
+                if (!reposContainer) return;
+
+                try {
+                    const response = await fetch('https://api.github.com/users/DODODABIRD/repos?sort=updated&per_page=6');
+                    if (!response.ok) throw new Error('Status ' + response.status);
+                    const data = await response.json();
+
+                    const validRepos = Array.isArray(data) ? data.filter(r => !r.fork || data.length <= 3).slice(0, 3) : [];
+                    if (validRepos.length > 0) {
+                        reposContainer.innerHTML = '';
+                        validRepos.forEach(repo => {
+                            const card = document.createElement('a');
+                            card.className = 'github-repo-card neo-card';
+                            card.href = repo.html_url;
+                            card.target = '_blank';
+                            card.rel = 'noreferrer';
+
+                            const rawLang = repo.language || 'Code';
+                            const langClass = rawLang.toLowerCase().replace(/[^a-z]/g, '');
+                            const stars = repo.stargazers_count || 0;
+                            const desc = repo.description || 'Public repository by @DODODABIRD';
+
+                            card.innerHTML = `
+                                <div class="repo-card-top">
+                                    <span class="repo-type-tag">${repo.visibility ? repo.visibility.toUpperCase() : 'PUBLIC'}</span>
+                                    <span class="repo-stars">★ ${stars}</span>
+                                </div>
+                                <h3 class="repo-name">${escapeHtml(repo.name)}</h3>
+                                <p class="repo-desc">${escapeHtml(desc)}</p>
+                                <div class="repo-meta">
+                                    <span class="repo-lang"><span class="lang-color ${langClass}"></span> ${escapeHtml(rawLang)}</span>
+                                    <span class="repo-link-arrow">↗</span>
+                                </div>
+                            `;
+                            reposContainer.appendChild(card);
+                        });
+
+                        if (syncTimeText) {
+                            const now = new Date();
+                            syncTimeText.textContent = `Synced: ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+                        }
+                    }
+                } catch (err) {
+                    if (syncTimeText) {
+                        syncTimeText.textContent = 'Using cached highlights (API rate-limit safe)';
+                    }
+                }
+            }
+
+            fetchGitHubRepos();
+
+            // Quick Toast Feedback for Copied Items
+            const toastEl = document.getElementById('toast-notify');
+            let toastTimer = null;
+            function showToast(msg) {
+                if (!toastEl) return;
+                const span = toastEl.querySelector('span');
+                if (span) span.textContent = msg;
+                toastEl.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => {
+                    toastEl.classList.remove('show');
+                }, 2400);
+            }
+
+            function copyText(text, label) {
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showToast(`✓ Copied ${label} to clipboard!`);
+                    }).catch(() => {
+                        showToast(`✓ ${label}: ${text}`);
+                    });
+                } else {
+                    showToast(`✓ ${label}: ${text}`);
+                }
+            }
+
+            document.querySelectorAll('.btn-email').forEach(el => {
+                el.addEventListener('click', () => {
+                    copyText('orlandodiamondprasetyo@gmail.com', 'Email');
+                });
+            });
+
+            document.querySelectorAll('.btn-line').forEach(el => {
+                el.addEventListener('click', () => {
+                    copyText('orlandoprasetyo', 'LINE ID');
+                });
+            });
+
+            // ========================================
+            // Orlando RAG Chatbot & Avatar Controller
+            // ========================================
+            (function initOrlandoChatbot() {
+                const faceViewport = document.getElementById('orlando-face-viewport') || document.getElementById('orlando-avatar-card');
+                const faceCanvas = document.getElementById('face-canvas-3d') || faceViewport;
+                const avatarCard = faceViewport;
+                const faceIdle = document.getElementById('face-state-idle');
+                const faceSleeping = document.getElementById('face-state-sleeping');
+                const faceInterested = document.getElementById('face-state-interested');
+                const faceTalking = document.getElementById('face-state-talking');
+                const faceImgIdle = document.getElementById('face-img-idle');
+
+                const chatBubble = document.getElementById('orlando-chat-bubble');
+                const chatBubbleText = document.getElementById('chat-bubble-text');
+                const chatBubbleBadge = document.getElementById('chat-bubble-badge');
+                const chatStatusText = document.getElementById('chat-status-text');
+
+                const avatarModeTitle = document.getElementById('avatar-mode-title');
+                const avatarTimeBadge = document.getElementById('avatar-time-badge');
+                const avatarTimeIcon = document.getElementById('avatar-time-icon');
+                const avatarTimeText = document.getElementById('avatar-time-text');
+
+                const spotlightWrapper = document.getElementById('macos-spotlight-bar-wrapper');
+                const spotlightInput = document.getElementById('macos-chat-input');
+                const spotlightForm = document.getElementById('macos-chat-form');
+                const spotlightCloseBtn = document.getElementById('spotlight-close-btn');
+
+                if (!faceViewport) {
+                    console.warn('Orlando face viewport element not found.');
+                    return;
+                }
+
+                let cachedKnowledge = null;
+                let isSpeaking = false;
+                let currentTypewriterTimer = null;
+                let returnToIdleTimer = null;
+                let manualTimeOverride = null; // null = use real time; 'day' | 'night' for testing toggle
+
+                // Load RAG Knowledge Base from asset folder
+                async function loadKnowledgeBase() {
+                    try {
+                        const res = await fetch('asset/rag_knowledge.json');
+                        if (res.ok) {
+                            cachedKnowledge = await res.json();
+                        }
+                    } catch (e) {
+                        console.warn('Could not load local rag_knowledge.json', e);
+                    }
+                }
+                loadKnowledgeBase();
+
+                // Check Time of Day (6:00 - 22:00 = Idle/Awake, < 6:00 or >= 22:00 = Sleeping)
+                function getTimeInfo() {
+                    const now = new Date();
+                    const hours = manualTimeOverride === 'day' ? 14 : (manualTimeOverride === 'night' ? 23 : now.getHours());
+                    const mins = String(now.getMinutes()).padStart(2, '0');
+                    const isSleeping = hours < 6 || hours >= 22;
+                    return { hours, mins, isSleeping };
+                }
+
+                let currentFaceState = 'idle';
+
+                function updateTimeBadge() {
+                    const { hours, mins, isSleeping } = getTimeInfo();
+                    if (avatarTimeText) avatarTimeText.textContent = `${hours}:${mins} WIB`;
+                    if (avatarTimeIcon) avatarTimeIcon.textContent = isSleeping ? '🌙' : '☀️';
+                }
+                updateTimeBadge();
+                setInterval(updateTimeBadge, 60000);
+
+                // Allow clicking time badge to toggle day/night mode for testing
+                if (avatarTimeBadge) {
+                    avatarTimeBadge.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        if (manualTimeOverride === 'night') {
+                            manualTimeOverride = 'day';
+                            showToast('☀️ Switched to Day Mode (Awake & Active)');
+                            setFaceState('idle');
+                            setBubbleText("Good day! I'm awake and ready to chat. Click my face anytime!");
+                        } else {
+                            manualTimeOverride = 'night';
+                            showToast('🌙 Switched to Night Mode (Sleeping 22:00 - 6:00)');
+                            setFaceState('sleeping');
+                            setBubbleText("Zzz... 😴 (Sleeping! Click my face to wake me up).");
+                        }
+                        updateTimeBadge();
+                    });
+                }
+
+                function setFaceState(state) {
+                    currentFaceState = state;
+                    [faceIdle, faceSleeping, faceInterested, faceTalking].forEach(el => {
+                        if (el) el.classList.remove('active');
+                    });
+
+                    if (state === 'sleeping') {
+                        if (faceSleeping) faceSleeping.classList.add('active');
+                        if (avatarModeTitle) avatarModeTitle.textContent = 'ORLANDO_AI // SLEEPING (Zzz)';
+                        if (chatStatusText) chatStatusText.textContent = 'SLEEPING (CLICK TO WAKE)';
+                        if (chatBubbleBadge) chatBubbleBadge.classList.remove('is-interested');
+                    } else if (state === 'interested') {
+                        if (faceInterested) faceInterested.classList.add('active');
+                        if (avatarModeTitle) avatarModeTitle.textContent = 'ORLANDO_AI // INTERESTED! 👀';
+                        if (chatStatusText) chatStatusText.textContent = 'INTERESTED! ✨';
+                        if (chatBubbleBadge) chatBubbleBadge.classList.add('is-interested');
+                    } else if (state === 'talking') {
+                        if (faceTalking) faceTalking.classList.add('active');
+                        if (avatarModeTitle) avatarModeTitle.textContent = 'ORLANDO_AI // SPEAKING';
+                        if (chatStatusText) chatStatusText.textContent = 'SPEAKING 💬';
+                        if (chatBubbleBadge) chatBubbleBadge.classList.remove('is-interested');
+                    } else {
+                        // idle
+                        currentFaceState = 'idle';
+                        if (faceIdle) faceIdle.classList.add('active');
+                        if (avatarModeTitle) avatarModeTitle.textContent = 'ORLANDO_AI // IDLE (ONLINE)';
+                        if (chatStatusText) chatStatusText.textContent = 'CLICK TO TALK';
+                        if (chatBubbleBadge) chatBubbleBadge.classList.remove('is-interested');
+                    }
+                }
+
+                // Initial state based on current hour
+                const initialTime = getTimeInfo();
+                if (initialTime.isSleeping) {
+                    setFaceState('sleeping');
+                    if (chatBubbleText) chatBubbleText.innerHTML = '"Zzz... 😴 <em>(I\'m sleeping! Click my face to wake me up).</em>"';
+                } else {
+                    setFaceState('idle');
+                    if (chatBubbleText) chatBubbleText.textContent = '"Hi! I\'m Orlando. Click my face or the bar below to ask me anything!"';
+                }
+
+                // 3D Mouse Parallax Tracking (Dynamic 3D perspective & translation across states)
+                let targetRotX = 0, targetRotY = 0;
+                let targetTransX = 0, targetTransY = 0;
+                let curRotX = 0, curRotY = 0;
+                let curTransX = 0, curTransY = 0;
+
+                window.addEventListener('mousemove', (e) => {
+                    if (!faceViewport) return;
+                    const rect = faceViewport.getBoundingClientRect();
+                    const centerX = rect.left + rect.width / 2;
+                    const centerY = rect.top + rect.height / 2;
+
+                    const deltaX = (e.clientX - centerX) / (window.innerWidth / 2);
+                    const deltaY = (e.clientY - centerY) / (window.innerHeight / 2);
+
+                    const clampedX = Math.max(-1.3, Math.min(1.3, deltaX));
+                    const clampedY = Math.max(-1.3, Math.min(1.3, deltaY));
+
+                    // If sleeping, subtle breathing tilt; otherwise full responsive 3D tracking
+                    const intensity = (currentFaceState === 'sleeping') ? 0.35 : 1.0;
+
+                    targetRotY = clampedX * 22 * intensity;
+                    targetRotX = -clampedY * 18 * intensity;
+                    targetTransX = clampedX * 14 * intensity;
+                    targetTransY = clampedY * 10 * intensity;
+                }, { passive: true });
+
+                document.addEventListener('mouseleave', () => {
+                    targetRotX = 0;
+                    targetRotY = 0;
+                    targetTransX = 0;
+                    targetTransY = 0;
+                });
+
+                function renderMouseFollow() {
+                    curRotX += (targetRotX - curRotX) * 0.12;
+                    curRotY += (targetRotY - curRotY) * 0.12;
+                    curTransX += (targetTransX - curTransX) * 0.12;
+                    curTransY += (targetTransY - curTransY) * 0.12;
+
+                    if (faceCanvas) {
+                        faceCanvas.style.transform = `perspective(900px) rotateX(${curRotX.toFixed(2)}deg) rotateY(${curRotY.toFixed(2)}deg) translate3d(${curTransX.toFixed(1)}px, ${curTransY.toFixed(1)}px, 15px)`;
+                    }
+                    requestAnimationFrame(renderMouseFollow);
+                }
+                requestAnimationFrame(renderMouseFollow);
+
+                // Speech Typewriter and Puppet Talking Mouth Animation
+                function speakText(text, options = {}) {
+                    clearTimeout(currentTypewriterTimer);
+                    clearTimeout(returnToIdleTimer);
+                    isSpeaking = true;
+
+                    setFaceState('talking');
+                    if (faceTalking) faceTalking.classList.add('is-talking');
+
+                    let index = 0;
+                    if (chatBubbleText) chatBubbleText.innerHTML = '<span class="cursor-blink"></span>';
+
+                    function typeNextChar() {
+                        if (index < text.length) {
+                            index++;
+                            const visible = text.slice(0, index);
+                            if (chatBubbleText) {
+                                chatBubbleText.innerHTML = `"${visible}"<span class="cursor-blink"></span>`;
+                            }
+                            const charDelay = (text[index - 1] === '.' || text[index - 1] === '!' || text[index - 1] === '?') ? 140 : 25;
+                            currentTypewriterTimer = setTimeout(typeNextChar, charDelay);
+                        } else {
+                            // Finished speaking
+                            isSpeaking = false;
+                            if (faceTalking) faceTalking.classList.remove('is-talking');
+                            if (chatBubbleText) chatBubbleText.innerHTML = `"${text}"`;
+
+                            if (typeof options.onComplete === 'function') {
+                                options.onComplete();
+                            }
+
+                            // Return to neutral after 5 seconds of inactivity
+                            returnToIdleTimer = setTimeout(() => {
+                                const { isSleeping } = getTimeInfo();
+                                setFaceState(isSleeping ? 'sleeping' : 'idle');
+                            }, 5000);
+                        }
+                    }
+                    typeNextChar();
+                }
+
+                function setBubbleText(text) {
+                    if (chatBubbleText) chatBubbleText.textContent = `"${text}"`;
+                }
+
+                // Spotlight Bar Open / Close
+                function openSpotlight() {
+                    if (spotlightWrapper) {
+                        spotlightWrapper.classList.add('active');
+                        spotlightWrapper.setAttribute('aria-hidden', 'false');
+                    }
+                    if (spotlightInput) {
+                        setTimeout(() => {
+                            spotlightInput.focus();
+                            spotlightInput.select();
+                        }, 120);
+                    }
+                }
+
+                function closeSpotlight() {
+                    if (spotlightWrapper) {
+                        spotlightWrapper.classList.remove('active');
+                        spotlightWrapper.setAttribute('aria-hidden', 'true');
+                    }
+                }
+
+                if (spotlightCloseBtn) {
+                    spotlightCloseBtn.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        closeSpotlight();
+                    });
+                }
+
+                // Click outside to dismiss spotlight bar
+                document.addEventListener('click', (e) => {
+                    if (!spotlightWrapper || !spotlightWrapper.classList.contains('active')) return;
+                    if (spotlightWrapper.contains(e.target) || (faceViewport && faceViewport.contains(e.target)) || (chatBubble && chatBubble.contains(e.target))) {
+                        return;
+                    }
+                    closeSpotlight();
+                });
+
+                // Keyboard Shortcuts (Cmd+K / Ctrl+K / Esc)
+                document.addEventListener('keydown', (e) => {
+                    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+                        e.preventDefault();
+                        if (spotlightWrapper && spotlightWrapper.classList.contains('active')) {
+                            closeSpotlight();
+                        } else {
+                            openSpotlight();
+                        }
+                    }
+                    if (e.key === 'Escape' && spotlightWrapper && spotlightWrapper.classList.contains('active')) {
+                        closeSpotlight();
+                    }
+                });
+
+                // User Clicks on Face or Chat Bubble -> Open Spotlight & Speak
+                function handleFaceClick(e) {
+                    if (e) e.preventDefault();
+                    openSpotlight();
+
+                    const { isSleeping } = getTimeInfo();
+                    if (currentFaceState === 'sleeping' || isSleeping) {
+                        // Wake up!
+                        speakText("Yaaawn... 😴 You woke me up! But hey, I'm Orlando. What's on your mind? Ask me anything!");
+                    } else if (!isSpeaking) {
+                        speakText("Hi, I'm Orlando! What would you like to know about my projects, stack, or experience?");
+                    }
+                }
+
+                if (faceViewport) {
+                    faceViewport.addEventListener('click', handleFaceClick);
+                    faceViewport.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            handleFaceClick(e);
+                        }
+                    });
+                }
+
+                if (chatBubble) {
+                    chatBubble.addEventListener('click', handleFaceClick);
+                }
+
+                // Client-side Fallback RAG Engine
+                function clientSideRagAnswer(query) {
+                    const q = query.toLowerCase();
+                    const kb = cachedKnowledge || {};
+
+                    const interestingTerms = [
+                        'ai', 'machine learning', 'flutter', 'groq', 'gemini', 'unmurce', 'architecture',
+                        'hire', 'job', 'internship', 'collab', 'kerja sama', 'binus', 'gonzaga', 'database',
+                        'mongodb', 'cool', 'keren', 'menarik', 'ocr', 'receipt', 'backend', 'fullstack'
+                    ];
+                    const isInteresting = interestingTerms.some(term => q.includes(term));
+
+                    if (Array.isArray(kb.faqs)) {
+                        const matchedFaq = kb.faqs.find(f => f.keywords && f.keywords.some(kw => q.includes(kw)));
+                        if (matchedFaq) {
+                            return { reply: matchedFaq.answer, interested: isInteresting };
+                        }
+                    }
+
+                    if (q.includes('unmurce') || q.includes('expense') || q.includes('keuangan')) {
+                        return {
+                            reply: "Unmurce adalah aplikasi pencatat pengeluaran pribadi flagship saya! Dilengkapi pemindai struk AI OCR (Groq & Gemini), autentikasi Firebase, dan analisis balance bulanan.",
+                            interested: true
+                        };
+                    }
+                    if (q.includes('stack') || q.includes('teknologi') || q.includes('bahasa') || q.includes('tools')) {
+                        return {
+                            reply: "Stack utama saya: Flutter & Dart untuk mobile app, Node.js/Express & Django untuk backend, MongoDB Atlas untuk database, dan Groq / Gemini / Azure untuk pipeline AI.",
+                            interested: true
+                        };
+                    }
+                    if (q.includes('kuliah') || q.includes('binus') || q.includes('sekolah') || q.includes('education')) {
+                        return {
+                            reply: "Saya sedang menempuh studi S1 Computer Science di Binus University (angkatan 2025 - 2029). Sebelumnya saya bersekolah di SMA Kolese Gonzaga Jakarta!",
+                            interested: false
+                        };
+                    }
+                    if (q.includes('contact') || q.includes('kontak') || q.includes('hubungi') || q.includes('email') || q.includes('hire') || q.includes('kerja')) {
+                        return {
+                            reply: "Kamu bisa menghubungi saya langsung lewat WhatsApp di +62 85810008115 atau email ke orlandodiamondprasetyo@gmail.com. Saya terbuka untuk proyek kolaborasi!",
+                            interested: true
+                        };
+                    }
+
+                    return {
+                        reply: "Terima kasih pertanyaannya! Saya Orlando Diamond Prasetyo, software engineer & product builder dari Indonesia. Kamu bisa tanya tentang Unmurce, stack saya, atau langsung klik tombol WhatsApp!",
+                        interested: isInteresting
+                    };
+                }
+
+                // Handle Question Submission
+                async function handleChatQuery(rawQuery) {
+                    const query = String(rawQuery || '').trim();
+                    if (!query) return;
+
+                    // Scroll hero into view if user is further down
+                    const heroArt = document.getElementById('orlando-avatar-section');
+                    if (heroArt) {
+                        const rect = heroArt.getBoundingClientRect();
+                        if (rect.top < -100 || rect.bottom > window.innerHeight + 100) {
+                            heroArt.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        }
+                    }
+
+                    // Show thinking state
+                    clearTimeout(returnToIdleTimer);
+                    if (chatStatusText) chatStatusText.textContent = 'THINKING...';
+                    setBubbleText("Thinking...");
+
+                    let result = null;
+                    try {
+                        const res = await fetch('/api/rag-chat', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message: query })
+                        });
+                        if (res.ok) {
+                            result = await res.json();
+                        }
+                    } catch (err) {
+                        console.warn('API chat request error, using client-side RAG:', err);
+                    }
+
+                    if (!result || !result.reply) {
+                        result = clientSideRagAnswer(query);
+                    }
+
+                    // Handle "Interested" Reaction
+                    if (result.interested) {
+                        setFaceState('interested');
+                        setBubbleText("Ooh, that's interesting! 👀");
+                        // Give user time to see Orlando's spoon/wide-eyes expression!
+                        setTimeout(() => {
+                            speakText(result.reply);
+                        }, 1300);
+                    } else {
+                        speakText(result.reply);
+                    }
+                }
+
+                // Form submit handler
+                if (spotlightForm) {
+                    spotlightForm.addEventListener('submit', (e) => {
+                        e.preventDefault();
+                        if (!spotlightInput) return;
+                        const query = spotlightInput.value;
+                        if (!query.trim()) return;
+                        spotlightInput.value = '';
+                        handleChatQuery(query);
+                    });
+                }
+
+                // Prompt Chips (in Spotlight Bar and on Avatar Card)
+                document.querySelectorAll('.quick-prompt-btn, .spotlight-chip').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const query = btn.getAttribute('data-query');
+                        if (query) {
+                            openSpotlight();
+                            handleChatQuery(query);
+                        }
+                    });
+                });
+            })();
         });
     </script>
+
+    <!-- Floating Toast Notification -->
+    <div id="toast-notify" class="toast-notification neo-card" role="status" aria-live="polite">
+        <span>✓ Copied to clipboard!</span>
+    </div>
 </body>
 
 </html>

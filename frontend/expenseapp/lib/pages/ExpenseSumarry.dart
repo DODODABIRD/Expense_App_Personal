@@ -966,6 +966,10 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
 
   Widget _buildTypeSection(bool isDark) {
     final types = _typeSummaries;
+    final maxPercentage = types.fold<double>(
+      0.0,
+      (max, type) => type.percentage > max ? type.percentage : max,
+    );
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -1011,75 +1015,118 @@ class _ExpenseSumarryPageState extends State<ExpenseSumarryPage> {
 
           const SizedBox(height: 14),
 
-          // 3-Way Ratio Row
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: types.asMap().entries.map((entry) {
-              final index = entry.key;
-              final t = entry.value;
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(
-                    left: index == 0 ? 0 : 8,
-                    right: index == types.length - 1 ? 0 : 8,
+          if (types.isNotEmpty && _grandTotal > 0) ...[
+            Container(
+              key: const ValueKey('expense-type-distribution-bar'),
+              height: 24,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.black, width: 2.2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(2, 2),
+                    blurRadius: 0,
                   ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Container(
-                        width: 24,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: t.color,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          t.label,
-                          style: GoogleFonts.itim(
-                            fontSize: 13,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          '${t.percentage.toStringAsFixed(1)}%',
-                          style: GoogleFonts.itim(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : Colors.black,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      FittedBox(
-                        fit: BoxFit.scaleDown,
-                        child: Text(
-                          _formatCurrency(t.totalAmount),
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(9.8),
+                child: Row(
+                  children: types.map((type) {
+                    return Flexible(
+                      flex: (type.percentage * 10).round().clamp(1, 1000),
+                      child: Container(color: type.color),
+                    );
+                  }).toList(),
                 ),
-              );
-            }).toList(),
-          ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
 
-          const SizedBox(height: 14),
-
-          // Financial Discipline Advice Pill
-          _buildDisciplineInsight(types, isDark),
+          if (types.isEmpty)
+            Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text(
+                  'Belum ada tipe pengeluaran tercatat',
+                  style: TextStyle(color: Colors.grey[500]),
+                ),
+              ),
+            )
+          else ...[
+            // 3-Way Ratio Row
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: types.asMap().entries.map((entry) {
+                final index = entry.key;
+                final t = entry.value;
+                return Expanded(
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      left: index == 0 ? 0 : 8,
+                      right: index == types.length - 1 ? 0 : 8,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          width: maxPercentage > 0
+                              ? (t.percentage / maxPercentage * 40)
+                                    .clamp(8.0, 40.0)
+                                    .toDouble()
+                              : 8,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: t.color,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            t.label,
+                            style: GoogleFonts.itim(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            '${t.percentage.toStringAsFixed(1)}%',
+                            style: GoogleFonts.itim(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          child: Text(
+                            _formatCurrency(t.totalAmount),
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 14),
+            _buildDisciplineInsight(types, isDark),
+          ],
         ],
       ),
     );

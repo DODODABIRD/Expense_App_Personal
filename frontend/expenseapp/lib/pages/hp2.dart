@@ -27,24 +27,6 @@ import 'developer_logs_page.dart';
 import 'notification_permission_page.dart';
 import 'PendingNotificationReviewPage.dart';
 
-// FIXME
-
-/*
-Database Logic
-
-If Database Doesnt Exist
-  Create Database
-  Initialize Database
-
-If Database Empty:
-  Display "List Is Empty, create new Expense"
-Else
-  For Item in Database:
-    var item = databaseItem[index]
-    make cardlist of Ite
-
-*/
-
 class HomePage2 extends StatefulWidget {
   const HomePage2({super.key});
 
@@ -61,6 +43,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   int _settingsTapCount = 0;
   DateTime? _settingsTapStartedAt;
   bool _isChangingCurrency = false;
+  bool _isLoadingOnlineExpenses = false;
   int _pendingNotificationCount = 0;
 
   @override
@@ -94,10 +77,9 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   Future<void> _handlePendingNotificationAdded() async {
     await _loadPendingNotificationCount();
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('A parsed notification is ready for review.'),
-        ),
+      _showNotificationSnackBar(
+        context,
+        'A parsed notification is ready for review.',
       );
     }
   }
@@ -133,8 +115,10 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
 
   Future<void> _showNotificationParserError(String error) async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Could not parse notification: $error')),
+    _showNotificationSnackBar(
+      context,
+      'Could not parse notification: $error',
+      isError: true,
     );
   }
 
@@ -209,7 +193,10 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
               onSelected: _onNavigationSelected,
             ),
           ),
-          if (_isChangingCurrency) const _CurrencyLoadingOverlay(),
+          if (_isChangingCurrency)
+            const _LoadingOverlay(message: 'Getting newest exchange rate...'),
+          if (_isLoadingOnlineExpenses)
+            const _LoadingOverlay(message: 'Loading online expenses...'),
         ],
       ),
     );
@@ -236,17 +223,43 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    IconButton(
-                      tooltip: 'Review parsed notifications',
-                      onPressed: _openPendingNotificationReview,
-                      icon: Badge(
-                        isLabelVisible: _pendingNotificationCount > 0,
-                        label: Text(
-                          _pendingNotificationCount > 99
-                              ? '99+'
-                              : '$_pendingNotificationCount',
+                    Tooltip(
+                      message: 'Review parsed notifications',
+                      child: NeoBouncy(
+                        onTap: _openPendingNotificationReview,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainer,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: Colors.black, width: 2),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Colors.black,
+                                offset: Offset(2, 2),
+                                blurRadius: 0,
+                              ),
+                            ],
+                          ),
+                          child: Center(
+                            child: Badge(
+                              isLabelVisible: _pendingNotificationCount > 0,
+                              label: Text(
+                                _pendingNotificationCount > 99
+                                    ? '99+'
+                                    : '$_pendingNotificationCount',
+                              ),
+                              child: Icon(
+                                Icons.receipt_long_outlined,
+                                color: Theme.of(context).colorScheme.onSurface,
+                                size: 21,
+                              ),
+                            ),
+                          ),
                         ),
-                        child: const Icon(Icons.receipt_long_outlined),
                       ),
                     ),
                     _buildSortDropdown(),
@@ -455,19 +468,39 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete all expenses?'),
-        content: const Text(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Colors.black, width: 2),
+        ),
+        title: Text(
+          'Delete all expenses?',
+          style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
           'This will permanently delete every expense from this account. This action cannot be undone.',
+          style: GoogleFonts.itim(),
         ),
         actions: [
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+            ),
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: GoogleFonts.itim()),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.black, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete all'),
+            child: Text('Delete all', style: GoogleFonts.itim()),
           ),
         ],
       ),
@@ -1665,29 +1698,29 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   }
 
   Future<void> _retrySync() async {
-    await Throw.syncPendingExpenses();
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Sync retry completed.')));
+    try {
+      await Throw.syncPendingExpenses();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Sync retry completed.')));
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Retry expense sync');
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Could not retry sync: $error')));
+    }
   }
 
   Future<void> _loadOnlineExpenses() async {
-    var loadingShown = false;
+    if (!mounted || _isLoadingOnlineExpenses) return;
+    setState(() => _isLoadingOnlineExpenses = true);
     try {
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(child: CircularProgressIndicator()),
-      );
-      loadingShown = true;
-
       final onlineExpenses = await Throw.getOnlineExpenses();
       final imported = await DatabaseHelp.importMissingExpenses(onlineExpenses);
 
       if (!mounted) return;
-      if (loadingShown) Navigator.pop(context);
-      loadingShown = false;
       listKey.currentState?._loadData();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -1701,10 +1734,11 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Load online expenses');
       if (!mounted) return;
-      if (loadingShown) Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not load online expenses: $error')),
       );
+    } finally {
+      if (mounted) setState(() => _isLoadingOnlineExpenses = false);
     }
   }
 
@@ -1743,19 +1777,39 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete account?'),
-        content: const Text(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Colors.black, width: 2),
+        ),
+        title: Text(
+          'Delete account?',
+          style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+        ),
+        content: Text(
           'This permanently deletes your account and all local expenses.',
+          style: GoogleFonts.itim(),
         ),
         actions: [
           TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+            ),
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
+            child: Text('Cancel', style: GoogleFonts.itim()),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: Colors.red),
+            style: FilledButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              side: const BorderSide(color: Colors.black, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete account'),
+            child: Text('Delete account', style: GoogleFonts.itim()),
           ),
         ],
       ),
@@ -1808,7 +1862,16 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Change password'),
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Colors.black, width: 2),
+      ),
+      title: Text(
+        'Change password',
+        style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+      ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1829,23 +1892,36 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
       ),
       actions: [
         TextButton(
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+          ),
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text('Cancel', style: GoogleFonts.itim()),
         ),
         FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: const Color(0xFF5DF9FF),
+            foregroundColor: Colors.black,
+            side: const BorderSide(color: Colors.black, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
           onPressed: () => Navigator.pop(context, [
             _oldPasswordController.text,
             _newPasswordController.text,
           ]),
-          child: const Text('Update'),
+          child: Text('Update', style: GoogleFonts.itim()),
         ),
       ],
     );
   }
 }
 
-class _CurrencyLoadingOverlay extends StatelessWidget {
-  const _CurrencyLoadingOverlay();
+class _LoadingOverlay extends StatelessWidget {
+  final String message;
+
+  const _LoadingOverlay({required this.message});
 
   @override
   Widget build(BuildContext context) {
@@ -1867,14 +1943,14 @@ class _CurrencyLoadingOverlay extends StatelessWidget {
                 ),
               ],
             ),
-            child: const Column(
+            child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                CircularProgressIndicator(color: Colors.black),
-                SizedBox(height: 16),
+                const CircularProgressIndicator(color: Colors.black),
+                const SizedBox(height: 16),
                 Text(
-                  'Getting newest exchange rate...',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  message,
+                  style: GoogleFonts.itim(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -1883,6 +1959,47 @@ class _CurrencyLoadingOverlay extends StatelessWidget {
       ),
     );
   }
+}
+
+void _showNotificationSnackBar(
+  BuildContext context,
+  String message, {
+  bool isError = false,
+}) {
+  final foregroundColor = isError ? Colors.black : Colors.white;
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      behavior: SnackBarBehavior.floating,
+      backgroundColor: isError
+          ? const Color(0xFFFFD6D6)
+          : const Color(0xFF22262B),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: Colors.black, width: 1.5),
+      ),
+      content: Row(
+        children: [
+          Icon(
+            isError
+                ? Icons.error_outline_rounded
+                : Icons.notifications_active_rounded,
+            color: isError ? const Color(0xFFFF5D5D) : const Color(0xFF5DF9FF),
+            size: 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              message,
+              style: GoogleFonts.itim(
+                color: foregroundColor,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
 }
 
 class SettingsPage extends StatefulWidget {
@@ -1975,8 +2092,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _showParserError(String error) async {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Could not parse notification: $error')),
+    _showNotificationSnackBar(
+      context,
+      'Could not parse notification: $error',
+      isError: true,
     );
   }
 
@@ -2004,8 +2123,17 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _retrySync() async {
-    await widget.onRetrySync();
-    await _loadSyncStatus();
+    try {
+      await widget.onRetrySync();
+      if (!mounted) return;
+      await _loadSyncStatus();
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Refresh expense sync status');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not refresh sync status: $error')),
+      );
+    }
   }
 
   Future<void> _updateAiNotificationReference() async {
@@ -2015,20 +2143,17 @@ class _SettingsPageState extends State<SettingsPage> {
       final count = await NotificationExpenseService.instance
           .updateAiNotificationReference();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'AI notification reference updated with $count expenses.',
-          ),
-        ),
+      _showNotificationSnackBar(
+        context,
+        'AI notification reference updated with $count expenses.',
       );
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Update AI notification reference');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Could not update AI notification reference: $error'),
-        ),
+      _showNotificationSnackBar(
+        context,
+        'Could not update AI notification reference: $error',
+        isError: true,
       );
     } finally {
       if (mounted) setState(() => _isUpdatingAiReference = false);
@@ -2117,6 +2242,13 @@ class _SettingsPageState extends State<SettingsPage> {
             color: Theme.of(context).colorScheme.surfaceContainer,
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: Colors.black, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black,
+                offset: Offset(4, 4),
+                blurRadius: 0,
+              ),
+            ],
           ),
           child: Row(
             children: [
@@ -2125,7 +2257,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Expanded(
                 child: Text(
                   AuthService.currentUser?.email ?? 'Signed-in account',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+                  style: GoogleFonts.itim(fontWeight: FontWeight.bold),
                 ),
               ),
               IconButton(
@@ -2138,11 +2270,34 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         const SizedBox(height: 28),
         _buildSectionTitle('About'),
-        const ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.info_outline),
-          title: Text('Expense App'),
-          subtitle: Text('Version 1.6.0'),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainer,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.black, width: 2),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black,
+                offset: Offset(4, 4),
+                blurRadius: 0,
+              ),
+            ],
+          ),
+          child: ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.info_outline),
+            title: Text(
+              'Expense App',
+              style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              'Version 1.6.0',
+              style: GoogleFonts.itim(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
         ),
       ],
     );
@@ -2153,7 +2308,11 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.only(bottom: 10),
       child: Text(
         title,
-        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+        style: GoogleFonts.itim(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Theme.of(context).colorScheme.onSurface,
+        ),
       ),
     );
   }
@@ -2248,9 +2407,16 @@ class _SettingsPageState extends State<SettingsPage> {
           const Divider(height: 1),
           SwitchListTile(
             secondary: const Icon(Icons.notifications_none_outlined),
-            title: const Text('Expense reminders'),
-            subtitle: const Text('Enable reminders to record expenses'),
+            title: Text(
+              'Expense reminders',
+              style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+            ),
+            subtitle: Text(
+              'Enable reminders to record expenses',
+              style: GoogleFonts.itim(),
+            ),
             value: _notificationsEnabled,
+            activeThumbColor: const Color(0xFF5DF9FF),
             onChanged: (enabled) async {
               setState(() => _notificationsEnabled = enabled);
               await DatabaseHelp.setSetting(
@@ -2265,6 +2431,7 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildAutoExpenseParserCard() {
+    final colors = Theme.of(context).colorScheme;
     return Container(
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainer,
@@ -2278,29 +2445,57 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           SwitchListTile(
             secondary: const Icon(Icons.auto_awesome_outlined),
-            title: const Text('Auto Expense parser'),
-            subtitle: const Text(
+            title: Text(
+              'Auto Expense parser',
+              style: GoogleFonts.itim(
+                fontWeight: FontWeight.bold,
+                color: colors.onSurface,
+              ),
+            ),
+            subtitle: Text(
               'Read selected payment notifications automatically.',
+              style: GoogleFonts.itim(color: colors.onSurfaceVariant),
             ),
             value: _autoExpenseParserEnabled,
+            activeThumbColor: const Color(0xFF5DF9FF),
             onChanged: _toggleAutoExpenseParser,
           ),
           const Divider(height: 1),
           ExpansionTile(
             leading: const Icon(Icons.filter_alt_outlined),
-            title: const Text('Allowed payment apps'),
+            iconColor: colors.onSurface,
+            collapsedIconColor: colors.onSurface,
+            title: Text(
+              'Allowed payment apps',
+              style: GoogleFonts.itim(
+                fontWeight: FontWeight.bold,
+                color: colors.onSurface,
+              ),
+            ),
             subtitle: Text(
               _allowedNotificationApps.contains(
                     NotificationExpenseService.allNotificationsKey,
                   )
                   ? 'All notifications selected'
                   : '${_allowedNotificationApps.length} selected',
+              style: GoogleFonts.itim(color: colors.onSurfaceVariant),
             ),
             children: [
               CheckboxListTile(
                 dense: true,
-                title: const Text('All notifications'),
-                subtitle: const Text('Include notifications from every app'),
+                activeColor: const Color(0xFF5DF9FF),
+                checkColor: Colors.black,
+                title: Text(
+                  'All notifications',
+                  style: GoogleFonts.itim(
+                    fontWeight: FontWeight.bold,
+                    color: colors.onSurface,
+                  ),
+                ),
+                subtitle: Text(
+                  'Include notifications from every app',
+                  style: GoogleFonts.itim(color: colors.onSurfaceVariant),
+                ),
                 value: _allowedNotificationApps.contains(
                   NotificationExpenseService.allNotificationsKey,
                 ),
@@ -2316,8 +2511,22 @@ class _SettingsPageState extends State<SettingsPage> {
               ...NotificationExpenseService.supportedApps.entries.map(
                 (entry) => CheckboxListTile(
                   dense: true,
-                  title: Text(entry.value),
-                  subtitle: Text(entry.key),
+                  activeColor: const Color(0xFF5DF9FF),
+                  checkColor: Colors.black,
+                  title: Text(
+                    entry.value,
+                    style: GoogleFonts.itim(
+                      fontWeight: FontWeight.bold,
+                      color: colors.onSurface,
+                    ),
+                  ),
+                  subtitle: Text(
+                    entry.key,
+                    style: GoogleFonts.itim(
+                      fontSize: 12,
+                      color: colors.onSurfaceVariant,
+                    ),
+                  ),
                   value: _allowedNotificationApps.contains(entry.key),
                   onChanged: (allowed) {
                     if (allowed != null) {
@@ -2368,7 +2577,18 @@ class _SettingsAction extends StatelessWidget {
             Container(
               width: 52,
               height: 52,
-              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: color,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.black, width: 2),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black,
+                    offset: Offset(2, 2),
+                    blurRadius: 0,
+                  ),
+                ],
+              ),
               child: Icon(icon, color: Colors.black),
             ),
             const SizedBox(width: 16),
@@ -2378,7 +2598,7 @@ class _SettingsAction extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: TextStyle(
+                    style: GoogleFonts.itim(
                       color: Theme.of(context).colorScheme.onSurface,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
@@ -2387,7 +2607,7 @@ class _SettingsAction extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: TextStyle(
+                    style: GoogleFonts.itim(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -2509,6 +2729,8 @@ class _ListWithCardsState extends State<ListWithCards>
       setState(() {
         _expenses = data.map((item) => ExpenseModel.fromMap(item)).toList();
       });
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Sync pending expenses');
     } finally {
       _isSyncing = false;
     }
@@ -2522,7 +2744,6 @@ class _ListWithCardsState extends State<ListWithCards>
       unawaited(_syncPendingExpenses());
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Initialize expense database');
-      print("Nigga The Database Aint Initialized");
     }
 
     try {
@@ -2537,7 +2758,6 @@ class _ListWithCardsState extends State<ListWithCards>
       });
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Load expenses');
-      print("Error loading data: $error");
       setState(() => _isLoading = false);
     }
   }
@@ -2776,7 +2996,7 @@ class _ListWithCardsState extends State<ListWithCards>
                   ),
                   if (isCompact)
                     Padding(
-                      padding: const EdgeInsets.only(top: 8),
+                      padding: const EdgeInsets.only(top: 4),
                       child: Align(
                         alignment: Alignment.centerRight,
                         child: currencyChip,
@@ -2786,16 +3006,16 @@ class _ListWithCardsState extends State<ListWithCards>
               );
             },
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           FittedBox(
             fit: BoxFit.scaleDown,
             alignment: Alignment.centerLeft,
             child: Text(
               formatter.format(totalIdr * appExchangeRate.value),
               style: GoogleFonts.itim(
-                fontSize: 34,
+                fontSize: 42,
                 fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+                letterSpacing: 0,
                 color: isDark ? Colors.white : Colors.black,
               ),
             ),

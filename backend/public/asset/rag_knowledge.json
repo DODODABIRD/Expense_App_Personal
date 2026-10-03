@@ -1,0 +1,152 @@
+{
+  "_comment": "=== ORLANDO DIAMOND PRASETYO - RAG KNOWLEDGE BASE ===",
+  "_instructions": "You can freely edit, add, or update any information in this file! The AI chatbot uses this file to answer questions about Orlando.",
+  "profile": {
+    "name": "Orlando Diamond Prasetyo",
+    "nickname": "Orlando",
+    "handle": "@DODODABIRD",
+    "role": "Fullstack Developer & Product Builder",
+    "tagline": "Fullstack Developer based in Flutter and Django / Node.js",
+    "location": "Indonesia",
+    "bio": "Software engineer and product builder from Indonesia. Builds useful applications for everyday needs with a strong focus on Flutter application design, Native Database control, and responsive Neo-Brutalist interfaces.",
+    "status": "Available for freelance projects, technical collaboration, and opportunities"
+  },
+  "personality": {
+    "tone": "Friendly, witty, passionate about software engineering and design, sharp, helpful",
+    "greeting": "Hi! I'm Orlando. Nice to meet you! Ask me anything about my projects, stack, or journey.",
+    "night_greeting": "Yaaawn... 😴 You woke me up! But hey, I'm Orlando. What's on your mind?"
+  },
+  "education": [
+    {
+      "institution": "Binus University",
+      "degree": "Undergraduate in Computer Science",
+      "period": "2025 - 2029",
+      "focus": "Computer Science fundamentals, computational thinking, C / C++ programming, algorithms, and data structures."
+    },
+    {
+      "institution": "SMA Kolese Gonzaga (Jakarta)",
+      "period": "2023 - 2025",
+      "focus": "Focused on mathematics and preparatory subjects to pursue a Computer Science degree."
+    }
+  ],
+  "skills": {
+    "mobile_native": [
+      "Flutter 3.x",
+      "Dart",
+      "Kotlin Native",
+      "Android SDK",
+      "SQLite Local Cache",
+      "Notification Intent Hooks"
+    ],
+    "backend_api": [
+      "Node.js",
+      "ExpressJS",
+      "Django",
+      "RESTful Architecture",
+      "Mongoose ORM",
+      "Vercel Serverless",
+      "NDJSON Streams"
+    ],
+    "database_security": [
+      "MongoDB Atlas",
+      "Firebase Bearer Auth",
+      "Security Rules",
+      "Per-User Data Isolation",
+      "Cloudflare Edge"
+    ],
+    "frontend_ai": [
+      "Neo-Brutalist UI Design",
+      "HTML5 / CSS3 / Vanilla JS",
+      "Google Gemini 3.6 Flash",
+      "Groq Vision & LLMs",
+      "Azure Document Intelligence",
+      "Client-side PDF Generation (jsPDF)"
+    ]
+  },
+  "flagship_project": {
+    "name": "Unmurce Expense Tracker",
+    "type": "Personal Finance Mobile & Web App",
+    "url": "/projects/unmurce",
+    "live_app": "/expenses",
+    "github_repo": "https://github.com/DODODABIRD/Expense_App_Personal",
+    "description": "A private personal expense tracking application featuring receipt scanning, Firebase authentication, multi-model AI OCR pipelines (Groq, Gemini, Azure), and instant monthly balance breakdowns.",
+    "highlights": [
+      "Multi-model AI Receipt OCR with intelligent fallback (Azure Doc Intelligence + Groq Vision + Gemini)",
+      "Local-first caching with SQLite and MongoDB Atlas sync",
+      "Per-user private data isolation with Firebase Bearer Auth",
+      "Monthly balance breakdown, expense categorization, and PDF export"
+    ]
+  },
+  "other_projects": [
+    {
+      "name": "dododabird.us Portfolio",
+      "description": "Personal software portfolio with custom Neo-Brutalist styling, glassmorphism, live GitHub telemetry, and interactive AI chatbot.",
+      "url": "https://dododabird.us"
+    },
+    {
+      "name": "Expense-Tracker-API",
+      "description": "Serverless REST API powered by Express, MongoDB Atlas, and Groq/Gemini document processing pipelines.",
+      "github": "https://github.com/DODODABIRD"
+    }
+  ],
+  "services": [
+    "Custom Software Development",
+    "Mobile Application Development (Flutter, Android)",
+    "Web Application Development & Design",
+    "Database Architecture & Optimization (MongoDB, SQLite)",
+    "AI & OCR Pipeline Integration (Groq, Gemini, Azure)"
+  ],
+  "contact": {
+    "email": "orlandodiamondprasetyo@gmail.com",
+    "whatsapp": "+62 85810008115",
+    "whatsapp_link": "https://wa.me/6285810008115",
+    "linkedin": "https://www.linkedin.com/in/orlando-diamond-prasetyo-6b3bb5362/",
+    "instagram": "https://www.instagram.com/prasetyoorlando/",
+    "line": "orlandoprasetyo",
+    "github": "https://github.com/DODODABIRD"
+  },
+  "interesting_topics": [
+    "AI",
+    "Machine Learning",
+    "Groq",
+    "Gemini",
+    "Flutter",
+    "Mobile architecture",
+    "Receipt OCR",
+    "Unmurce",
+    "Hiring",
+    "Project collaboration",
+    "Freelance",
+    "Database optimization",
+    "Neo-Brutalism",
+    "Binus",
+    "Gonzaga"
+  ],
+  "faqs": [
+    {
+      "keywords": ["unmurce", "expense", "app", "keuangan", "tracker"],
+      "question": "What is Unmurce?",
+      "answer": "Unmurce is my flagship personal finance app! It helps you track expenses privately with AI receipt scanning, Firebase auth, and instant monthly balance charts. Built with Flutter, Node.js, and MongoDB."
+    },
+    {
+      "keywords": ["who", "siapa", "orlando", "about", "tentang"],
+      "question": "Who are you?",
+      "answer": "I'm Orlando Diamond Prasetyo, a software engineer and product builder from Indonesia. I study Computer Science at Binus University and love building mobile apps in Flutter and native databases."
+    },
+    {
+      "keywords": ["tech", "stack", "tools", "bahasa", "language", "framework"],
+      "question": "What is your tech stack?",
+      "answer": "My primary stack is Flutter & Dart for cross-platform mobile apps, Node.js/Express and Django for backends, MongoDB Atlas & SQLite for databases, and Groq / Gemini / Azure for applied AI."
+    },
+    {
+      "keywords": ["contact", "hubungi", "email", "whatsapp", "hire", "collab", "kerja sama"],
+      "question": "How can I contact or hire you?",
+      "answer": "You can reach me directly via WhatsApp at +62 85810008115 or email at orlandodiamondprasetyo@gmail.com. I'm always open to discussing new projects and collaborations!"
+    },
+    {
+      "keywords": ["education", "kuliah", "sekolah", "binus", "gonzaga", "study"],
+      "question": "Where do you study?",
+      "answer": "I am currently an undergraduate Computer Science student at Binus University (class of 2025-2029). Prior to that, I attended SMA Kolese Gonzaga in Jakarta (2023-2025)."
+    }
+  ]
+}

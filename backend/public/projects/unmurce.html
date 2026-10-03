@@ -1,0 +1,2364 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f3f5f8">
+    <meta name="description"
+        content="Unmurce is a private personal expense tracker and AI receipt scanner built with Flutter, Firebase, Node.js, and Neo-Brutalist UI by Orlando Diamond Prasetyo.">
+    <meta name="author" content="Orlando Diamond Prasetyo">
+    <link rel="canonical" href="https://dododabird.us/projects/unmurce">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dododabird.us/projects/unmurce">
+    <meta property="og:title" content="Unmurce Expense Tracker | Private Personal Finance & AI OCR">
+    <meta property="og:description"
+        content="Explore Unmurce: private personal finance with automated receipt scanning, multi-model AI routing, and Neo-Brutalist interface.">
+    <meta property="og:site_name" content="Orlando Diamond Prasetyo">
+    <meta property="og:image" content="https://dododabird.us/asset/unmurce-dashboard-preview.jpg">
+    <meta property="og:image:alt" content="Unmurce App Dashboard Preview">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Unmurce Expense Tracker | Product Showcase">
+    <meta name="twitter:description"
+        content="Explore Unmurce: private personal finance with automated receipt scanning, multi-model AI routing, and Neo-Brutalist interface.">
+    <meta name="twitter:image" content="https://dododabird.us/asset/unmurce-dashboard-preview.jpg">
+    <link rel="icon" type="image/png" href="/asset/orlando-brand-logo.png">
+    <title>Unmurce Expense Tracker | Product Showcase & Architecture</title>
+
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "SoftwareApplication",
+            "name": "Unmurce Expense Tracker",
+            "operatingSystem": "Android, Web",
+            "applicationCategory": "FinanceApplication",
+            "author": {
+                "@type": "Person",
+                "name": "Orlando Diamond Prasetyo",
+                "url": "https://dododabird.us/"
+            },
+            "offers": {
+                "@type": "Offer",
+                "price": "0",
+                "priceCurrency": "USD"
+            },
+            "description": "Private personal finance app with AI receipt scanning, Firebase auth, and instant monthly balance breakdowns."
+        }
+    </script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/portfolio.css">
+
+    <!-- Scoped Styles for Unmurce Showcase Enhancements -->
+    <style>
+        /* Hero & Metrics Enhancements */
+        .hero-metric-strip {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-top: 32px;
+            width: 100%;
+        }
+
+        .metric-card {
+            background: var(--card-white);
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            padding: 16px 20px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .metric-icon-box {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: var(--border-thin);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+            flex-shrink: 0;
+            background: var(--card-yellow);
+        }
+
+        .metric-card:nth-child(2) .metric-icon-box { background: var(--card-aqua); }
+        .metric-card:nth-child(3) .metric-icon-box { background: #ff9ee2; }
+        .metric-card:nth-child(4) .metric-icon-box { background: #b4f762; }
+
+        .metric-content strong {
+            display: block;
+            font-size: 1.15rem;
+            font-weight: 800;
+            line-height: 1.2;
+        }
+
+        .metric-content small {
+            color: var(--muted);
+            font-size: 0.78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        /* Click to Zoom cue on Hero Frames */
+        .app-frame {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .app-frame::after {
+            content: "🔍 Inspect Screenshot";
+            position: absolute;
+            bottom: 14px;
+            right: 14px;
+            background: rgba(0, 0, 0, 0.85);
+            color: #ffffff;
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            opacity: 0;
+            transform: translateY(6px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+
+        .app-frame:hover::after {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* 3-Column Model Config Grid */
+        .model-config-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        /* OCR Interactive Simulator Section */
+        .simulator-layout {
+            display: grid;
+            grid-template-columns: minmax(310px, 360px) 1fr;
+            gap: 32px;
+            align-items: start;
+        }
+
+        @media (max-width: 900px) {
+            .simulator-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Thermal Receipt Paper Style */
+        .receipt-paper-wrap {
+            position: relative;
+            background: #fffdf5;
+            color: #1a1a1a;
+            border: var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            padding: 24px 20px 30px;
+            font-family: 'JetBrains Mono', monospace, monospace;
+            overflow: hidden;
+        }
+
+        [data-theme="dark"] .receipt-paper-wrap {
+            background: #1e2430;
+            color: #f1f5f9;
+        }
+
+        /* Laser Scanner Beam Effect */
+        .scan-laser-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: #00ffcc;
+            box-shadow: 0 0 12px 3px #00ffcc, 0 0 24px 6px rgba(0, 255, 204, 0.5);
+            top: 0;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        .scan-laser-line.scanning {
+            opacity: 1;
+            animation: laserScanAnim 1.6s cubic-bezier(0.4, 0, 0.2, 1) infinite alternate;
+        }
+
+        @keyframes laserScanAnim {
+            0% { top: 4%; }
+            100% { top: 96%; }
+        }
+
+        .receipt-header-stub {
+            text-align: center;
+            border-bottom: 2px dashed #bbb;
+            padding-bottom: 12px;
+            margin-bottom: 14px;
+        }
+
+        .receipt-store-title {
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            margin: 0;
+        }
+
+        .receipt-store-meta {
+            font-size: 0.74rem;
+            color: #666;
+            margin-top: 4px;
+        }
+
+        [data-theme="dark"] .receipt-store-meta {
+            color: #94a3b8;
+        }
+
+        .receipt-line-items {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            font-size: 0.82rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .receipt-line-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .receipt-item-desc {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .receipt-sub-totals {
+            margin-top: 14px;
+            padding-top: 12px;
+            border-top: 2px dashed #bbb;
+            font-size: 0.85rem;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .receipt-total-row {
+            font-weight: 800;
+            font-size: 1.05rem;
+            border-top: 2px solid #000;
+            padding-top: 6px;
+            margin-top: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        [data-theme="dark"] .receipt-total-row {
+            border-top-color: #64748b;
+        }
+
+        .receipt-barcode {
+            margin-top: 20px;
+            text-align: center;
+            opacity: 0.75;
+            font-size: 0.7rem;
+            letter-spacing: 0.25em;
+        }
+
+        /* Preset Switcher Pills */
+        .simulator-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 18px;
+        }
+
+        .preset-btn {
+            padding: 8px 16px;
+            border: var(--border-thin);
+            border-radius: var(--radius-pill);
+            background: var(--card-white);
+            color: var(--ink);
+            font-weight: 700;
+            font-size: 0.82rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.15s ease;
+        }
+
+        .preset-btn:hover {
+            transform: translate(-1.5px, -1.5px);
+            box-shadow: var(--shadow);
+        }
+
+        .preset-btn.active {
+            background: var(--card-yellow);
+            transform: translate(-1.5px, -1.5px);
+            box-shadow: var(--shadow);
+            color: #000;
+        }
+
+        /* Extracted Data Stage Card */
+        .extracted-stage {
+            background: var(--card-white);
+            border: var(--border);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-lg);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .stage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-bottom: var(--border-thin);
+            padding-bottom: 16px;
+        }
+
+        .stage-badges {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge-model-tag {
+            padding: 4px 10px;
+            border-radius: 8px;
+            border: var(--border-thin);
+            background: var(--card-aqua);
+            color: #000;
+            font-size: 0.72rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+        }
+
+        .badge-latency {
+            padding: 4px 8px;
+            border-radius: 8px;
+            border: var(--border-thin);
+            background: #b4f762;
+            color: #000;
+            font-size: 0.72rem;
+            font-weight: 800;
+        }
+
+        .view-toggle-group {
+            display: inline-flex;
+            border: var(--border-thin);
+            border-radius: var(--radius-pill);
+            background: var(--card-nav);
+            padding: 3px;
+        }
+
+        .view-toggle-btn {
+            background: transparent;
+            border: none;
+            padding: 4px 14px;
+            font-size: 0.78rem;
+            font-weight: 700;
+            border-radius: var(--radius-pill);
+            cursor: pointer;
+            color: var(--ink);
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+
+        .view-toggle-btn.active {
+            background: var(--card-yellow);
+            color: #000;
+            box-shadow: 1px 1px 0 #000;
+        }
+
+        /* Extracted Itemized Cards */
+        .extracted-items-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .parsed-item-card {
+            background: var(--card-nav);
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            padding: 14px 16px;
+            box-shadow: var(--shadow-sm);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            transition: transform 0.15s ease;
+        }
+
+        .parsed-item-card:hover {
+            transform: translateX(4px);
+        }
+
+        .item-main-details strong {
+            display: block;
+            font-size: 0.95rem;
+            font-weight: 800;
+        }
+
+        .item-tax-split-note {
+            display: inline-block;
+            margin-top: 4px;
+            font-size: 0.74rem;
+            color: #0284c7;
+            font-weight: 700;
+        }
+
+        [data-theme="dark"] .item-tax-split-note {
+            color: #38bdf8;
+        }
+
+        .item-final-price {
+            text-align: right;
+        }
+
+        .item-final-price .price-val {
+            font-size: 1.05rem;
+            font-weight: 800;
+            display: block;
+        }
+
+        .item-final-price small {
+            font-size: 0.72rem;
+            color: var(--muted);
+        }
+
+        /* Raw JSON Stream Box */
+        .raw-json-box {
+            display: none;
+            background: #0f172a;
+            color: #38bdf8;
+            padding: 18px;
+            border-radius: var(--radius-md);
+            border: var(--border-thin);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.8rem;
+            line-height: 1.6;
+            overflow-x: auto;
+            max-height: 340px;
+        }
+
+        .raw-json-box.active {
+            display: block;
+        }
+
+        /* Proportional Tax Math Callout */
+        .tax-split-banner {
+            background: #fef9c3;
+            color: #854d0e;
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        [data-theme="dark"] .tax-split-banner {
+            background: #2e2610;
+            color: #fde047;
+            border-color: #854d0e;
+        }
+
+        /* Architecture Bento Grid */
+        .arch-bento-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 24px;
+        }
+
+        .arch-card {
+            background: var(--card-white);
+            border: var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .arch-card:hover {
+            transform: translate(-3px, -3px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .arch-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .arch-card-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            border: var(--border-thin);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.4rem;
+        }
+
+        .arch-card-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 14px;
+        }
+
+        .arch-card-pills span {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 3px 9px;
+            border: var(--border-thin);
+            border-radius: var(--radius-pill);
+            background: var(--card-nav);
+        }
+
+        /* Interactive Math & Tax Engine Widget */
+        .tax-engine-widget {
+            background: var(--card-white);
+            border: var(--border);
+            border-radius: var(--radius-xl);
+            padding: 32px;
+            box-shadow: var(--shadow-lg);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 36px;
+            align-items: center;
+        }
+
+        @media (max-width: 860px) {
+            .tax-engine-widget {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .calc-input-group {
+            margin-bottom: 14px;
+        }
+
+        .calc-input-group label {
+            display: block;
+            font-weight: 800;
+            font-size: 0.84rem;
+            margin-bottom: 6px;
+        }
+
+        .calc-input-control {
+            width: 100%;
+            padding: 10px 14px;
+            border: var(--border-thin);
+            border-radius: var(--radius-md);
+            background: var(--card-nav);
+            color: var(--ink);
+            font-family: inherit;
+            font-size: 0.95rem;
+            font-weight: 700;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .calc-input-control:focus {
+            outline: none;
+            border-color: #000;
+            background: #fff;
+        }
+
+        [data-theme="dark"] .calc-input-control:focus {
+            background: #0f172a;
+        }
+
+        .calc-results-card {
+            background: var(--card-yellow);
+            color: #000;
+            border: var(--border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            box-shadow: var(--shadow);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .calc-results-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-size: 0.95rem;
+            border-bottom: 1.5px dashed rgba(0, 0, 0, 0.25);
+            padding-bottom: 8px;
+        }
+
+        .calc-results-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+            font-size: 1.25rem;
+            font-weight: 800;
+            padding-top: 8px;
+            border-top: 2px solid #000;
+        }
+
+        /* Gallery Quick Tabs */
+        .gallery-jump-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+
+        .gallery-tab-pill {
+            padding: 8px 18px;
+            border: var(--border-thin);
+            border-radius: var(--radius-pill);
+            background: var(--card-white);
+            color: var(--ink);
+            font-weight: 800;
+            font-size: 0.82rem;
+            cursor: pointer;
+            box-shadow: var(--shadow-sm);
+            transition: all 0.15s ease;
+        }
+
+        .gallery-tab-pill:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        .gallery-tab-pill.active {
+            background: var(--card-aqua);
+            color: #000;
+            transform: translateY(-2px);
+            box-shadow: var(--shadow);
+        }
+
+        /* Click to Zoom indicator for Carousel mockups */
+        .phone-mockup-frame {
+            cursor: pointer;
+            position: relative;
+        }
+
+        .phone-mockup-frame::after {
+            content: "🔍 Zoom";
+            position: absolute;
+            bottom: 28px;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 3px 8px;
+            font-size: 0.68rem;
+            font-weight: 700;
+            border-radius: 12px;
+            opacity: 0;
+            transform: translateY(4px);
+            transition: all 0.2s ease;
+            pointer-events: none;
+        }
+
+        .phone-mockup-frame:hover::after {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Interactive FAQ Accordion */
+        .faq-accordion-group {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            margin-top: 24px;
+        }
+
+        .faq-item {
+            border: var(--border);
+            border-radius: var(--radius-lg);
+            background: var(--card-white);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            transition: box-shadow 0.2s ease;
+        }
+
+        .faq-item:hover {
+            box-shadow: var(--shadow-lg);
+        }
+
+        .faq-trigger {
+            width: 100%;
+            text-align: left;
+            padding: 18px 22px;
+            background: transparent;
+            border: none;
+            font-family: inherit;
+            font-size: 1.05rem;
+            font-weight: 800;
+            color: var(--ink);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .faq-icon-indicator {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            border: var(--border-thin);
+            background: var(--card-yellow);
+            color: #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 800;
+            transition: transform 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .faq-item.open .faq-icon-indicator {
+            transform: rotate(45deg);
+            background: var(--card-aqua);
+        }
+
+        .faq-content {
+            padding: 0 22px 18px 22px;
+            display: none;
+            color: var(--muted);
+            font-size: 0.95rem;
+            line-height: 1.6;
+        }
+
+        .faq-item.open .faq-content {
+            display: block;
+        }
+
+        /* Developer Quick-Start CLI Card */
+        .cli-terminal-card {
+            background: #0b0f17;
+            color: #f8fafc;
+            border: var(--border);
+            border-radius: var(--radius-xl);
+            padding: 24px 28px;
+            box-shadow: var(--shadow-lg);
+            margin-top: 28px;
+        }
+
+        .cli-terminal-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #1e293b;
+            padding-bottom: 12px;
+            margin-bottom: 16px;
+        }
+
+        .cli-code-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #161e2e;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid #293548;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.88rem;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .cli-copy-btn {
+            background: var(--card-yellow);
+            color: #000;
+            border: var(--border-thin);
+            border-radius: 8px;
+            padding: 4px 10px;
+            font-size: 0.72rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            flex-shrink: 0;
+        }
+
+        .cli-copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Toast feedback */
+        .toast-notification {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: #000000;
+            color: #ffffff;
+            border: 2px solid var(--card-yellow);
+            border-radius: var(--radius-pill);
+            padding: 10px 20px;
+            font-weight: 800;
+            font-size: 0.85rem;
+            box-shadow: var(--shadow);
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            pointer-events: none;
+        }
+
+        .toast-notification.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Dark mode overrides for new components */
+        [data-theme="dark"] .metric-card {
+            background: #161e2e;
+        }
+        [data-theme="dark"] .preset-btn {
+            background: #161e2e;
+            color: #f8fafc;
+        }
+        [data-theme="dark"] .extracted-stage {
+            background: #161e2e;
+        }
+        [data-theme="dark"] .parsed-item-card {
+            background: #1f293d;
+        }
+        [data-theme="dark"] .arch-card {
+            background: #161e2e;
+        }
+        [data-theme="dark"] .tax-engine-widget {
+            background: #161e2e;
+        }
+        [data-theme="dark"] .gallery-tab-pill {
+            background: #161e2e;
+            color: #f8fafc;
+        }
+        [data-theme="dark"] .faq-item {
+            background: #161e2e;
+        }
+    </style>
+
+    <script>
+        (function() {
+            try {
+                const savedTheme = localStorage.getItem('theme');
+                const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                }
+            } catch (e) {}
+        })();
+    </script>
+    <script src="/model-status.js" defer></script>
+</head>
+
+<body id="top">
+    <!-- Fancy Floating Header -->
+    <div class="site-header-wrapper is-top" id="site-header-wrapper">
+        <header class="site-header">
+            <a class="brand" href="/" aria-label="Back to Orlando's Portfolio">
+                <img class="brand-avatar" src="/asset/unmurce-app-icon.png" alt="Unmurce App Logo">
+                <div class="brand-text">
+                    <strong>UNMURCE APP</strong>
+                    <small>BY ORLANDO D. PRASETYO</small>
+                </div>
+            </a>
+            <nav class="site-nav" aria-label="Primary navigation">
+                <a href="/">← Portfolio</a>
+                <a href="#overview">Overview</a>
+                <a href="#features">Features</a>
+                <a href="#ocr-simulator">OCR Simulator</a>
+                <a href="#architecture">Architecture</a>
+                <a href="#gallery">Screenshots</a>
+                <a href="#tax-engine">Tax Engine</a>
+                <a href="#faq">FAQ</a>
+                <a href="#download">Download</a>
+            </nav>
+            <div class="header-actions-group">
+                <button class="theme-toggle-btn" id="theme-toggle-btn" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
+                    <span class="theme-icon-moon">🌙</span>
+                    <span class="theme-icon-sun">☀️</span>
+                </button>
+                <a class="header-action button-aqua" href="/expenses">Open App <span aria-hidden="true">↗</span></a>
+                <button class="mobile-hamburger" id="mobile-menu-toggle" type="button"
+                    aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
+        </header>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div class="mobile-drawer" id="mobile-drawer" aria-hidden="true">
+        <div class="mobile-drawer-content">
+            <div class="mobile-drawer-header">
+                <div class="drawer-user-info">
+                    <img class="drawer-avatar" src="/asset/unmurce-app-icon.png" alt="Unmurce App Logo">
+                    <div>
+                        <strong>Unmurce App</strong>
+                        <span class="status-indicator"><i class="status-dot"></i> Production Ready</span>
+                    </div>
+                </div>
+                <div class="drawer-header-actions">
+                    <button class="theme-toggle-btn" id="drawer-theme-toggle-btn" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
+                        <span class="theme-icon-moon">🌙</span>
+                        <span class="theme-icon-sun">☀️</span>
+                    </button>
+                    <button class="drawer-close-btn" id="close-mobile-drawer" type="button"
+                        aria-label="Close menu">✕</button>
+                </div>
+            </div>
+
+            <nav class="mobile-drawer-nav">
+                <a class="mobile-drawer-link" href="/">
+                    <span>01</span> Return to Portfolio Home
+                </a>
+                <a class="mobile-drawer-link" href="#overview">
+                    <span>02</span> Product Overview
+                </a>
+                <a class="mobile-drawer-link" href="#features">
+                    <span>03</span> Architecture & Features
+                </a>
+                <a class="mobile-drawer-link" href="#ocr-simulator">
+                    <span>04</span> AI OCR Live Simulator <small class="badge-mini aqua">DEMO</small>
+                </a>
+                <a class="mobile-drawer-link" href="#architecture">
+                    <span>05</span> System Architecture Bento
+                </a>
+                <a class="mobile-drawer-link" href="#gallery">
+                    <span>06</span> App Screenshots Gallery
+                </a>
+                <a class="mobile-drawer-link" href="#tax-engine">
+                    <span>07</span> Proportional Tax Calculator
+                </a>
+                <a class="mobile-drawer-link" href="#faq">
+                    <span>08</span> Technical FAQ
+                </a>
+                <a class="mobile-drawer-link" href="#download">
+                    <span>09</span> Download Android APK <small class="badge-mini aqua">APK</small>
+                </a>
+                <a class="mobile-drawer-link" href="/expenses">
+                    <span>10</span> Open Live Web App <small class="badge-mini aqua">WEB</small>
+                </a>
+                <a class="mobile-drawer-link" href="/docs">
+                    <span>11</span> Technical Documentation <small class="badge-mini yellow">DOCS</small>
+                </a>
+            </nav>
+
+            <div class="mobile-drawer-footer">
+                <a class="button button-aqua drawer-cta" href="/expenses">Open Unmurce Web App ↗</a>
+                <a class="button button-yellow drawer-cta" href="/asset/appdownload/app-arm64-v8a-release.apk" download="Unmurce-Android.apk">
+                    Download APK (Android) ↓
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <main>
+        <!-- Hero Section -->
+        <section id="overview" class="hero page-section">
+            <div class="hero-copy">
+                <div class="profile-hero-badge">
+                    <img class="profile-face-img" src="/asset/unmurce-app-icon.png" alt="Unmurce App Logo">
+                    <div class="profile-badge-text">
+                        <strong>Unmurce Expense Tracker</strong>
+                        <span class="status-indicator"><i class="status-dot"></i> Production Ready v2.4</span>
+                    </div>
+                </div>
+
+                <h1>Private finances, clear insights, bold design.</h1>
+                <p class="hero-lede"><strong>Unmurce</strong> is a high-speed personal finance ecosystem built for ultimate speed, privacy, and tangible control. Equipped with automated multi-model receipt OCR (Groq Vision & Gemini 3.6 Flash), strict Firebase data isolation, and a high-contrast Neo-Brutalist interface.</p>
+
+                <div class="hero-actions">
+                    <a class="button button-aqua" href="/expenses">Launch Web App <span aria-hidden="true">↗</span></a>
+                    <a class="button button-yellow" href="/asset/appdownload/app-arm64-v8a-release.apk" download="Unmurce-Android.apk">
+                        Download APK (Android) <span aria-hidden="true">↓</span>
+                    </a>
+                    <a class="button button-white" href="/docs">Technical Docs ↗</a>
+                </div>
+
+                <!-- Quick Tech Pills -->
+                <div class="hero-social-pills" aria-label="Core Technologies">
+                    <span class="social-pill" style="cursor: default;">
+                        <span class="lang-color flutter" style="margin-right: 4px;"></span> Flutter 3.x
+                    </span>
+                    <span class="social-pill" style="cursor: default;">
+                        <span class="lang-color js" style="margin-right: 4px;"></span> Node.js & Express
+                    </span>
+                    <span class="social-pill" style="cursor: default;">
+                        <span class="lang-color html" style="margin-right: 4px;"></span> MongoDB Atlas
+                    </span>
+                    <span class="social-pill" style="cursor: default;">
+                        <span class="lang-color kotlin" style="margin-right: 4px;"></span> Firebase Auth
+                    </span>
+                    <a class="social-pill btn-github" href="https://github.com/DODODABIRD/Expense_App_Personal" target="_blank" rel="noreferrer" title="GitHub Repository">
+                        <span class="social-pill-icon">
+                            <img src="/asset/github-mark.png" alt="">
+                        </span>
+                        Source Code
+                    </a>
+                </div>
+
+                <!-- Key Metrics & Engineering Highlights -->
+                <div class="hero-metric-strip">
+                    <div class="metric-card">
+                        <div class="metric-icon-box">⚡</div>
+                        <div class="metric-content">
+                            <strong>&lt; 1.2s</strong>
+                            <small>OCR Vision Latency</small>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box">🔒</div>
+                        <div class="metric-content">
+                            <strong>100% Isolated</strong>
+                            <small>Per-User Sandboxed</small>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box">📱</div>
+                        <div class="metric-content">
+                            <strong>Offline-First</strong>
+                            <small>Local SQLite Cache</small>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon-box">📊</div>
+                        <div class="metric-content">
+                            <strong>Client-Side PDF</strong>
+                            <small>Zero Data Leaks</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hero Art: Real App Preview Screenshots -->
+            <div class="hero-art" aria-label="Unmurce app preview screenshots">
+                <div class="stamp-tag neo-card">UNMURCE<br><span>PROD</span></div>
+
+                <div class="app-screenshots-wrapper">
+                    <!-- Main Screenshot -->
+                    <div class="app-frame main-frame neo-card" data-lightbox-index="0" title="Click to inspect Dashboard">
+                        <div class="frame-bar">
+                            <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
+                            <span class="frame-title">Unmurce - Dashboard</span>
+                        </div>
+                        <img class="app-screen-img" src="/asset/unmurce-dashboard-preview.jpg" alt="Unmurce Expense Dashboard Screenshot">
+                    </div>
+
+                    <!-- Overlay Screenshot (Add Expense Screen) -->
+                    <div class="app-frame secondary-frame neo-card" data-lightbox-index="1" title="Click to inspect Add Expense Form">
+                        <div class="frame-bar">
+                            <span class="frame-title">Add Expense</span>
+                        </div>
+                        <img class="app-screen-img" src="/asset/unmurce-add-expense-preview.jpg" alt="Unmurce Add Expense Screen Screenshot">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Live Model Routing Status Band -->
+        <section class="page-section">
+            <div class="neo-card intro-card" style="padding: 28px 32px;">
+                <div class="model-config">
+                    <div class="model-config-heading">
+                        <span>LIVE MULTI-MODEL OCR TELEMETRY</span>
+                        <span data-runtime-status class="status-indicator"><i class="status-dot"></i> ACTIVE RUNTIME CONFIG</span>
+                    </div>
+                    <div class="model-config-grid-3">
+                        <div class="fact-box model-fact model-fact-aqua">
+                            <span>GROQ_MODEL / VISION OCR</span>
+                            <strong data-runtime-model="GROQ_MODEL" aria-live="polite">Loading...</strong>
+                            <small>Primary model for sub-second receipt extraction</small>
+                        </div>
+                        <div class="fact-box model-fact model-fact-yellow">
+                            <span>NOTIFICATION & SMS ENGINE</span>
+                            <strong data-runtime-model="GROQ_NOTIFICATION_MODEL" aria-live="polite">Loading...</strong>
+                            <small>Contextual parser for bank SMS alerts</small>
+                        </div>
+                        <div class="fact-box model-fact" style="background: var(--card-nav);">
+                            <span>FAILOVER & RESILIENCE</span>
+                            <strong>Azure Doc AI + Gemini 3.6 Flash</strong>
+                            <small>Automated zero-downtime fallback pipeline</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Features Deep Dive Section -->
+        <section id="features" class="page-section" style="padding-top: 50px;">
+            <div class="section-heading">
+                <div>
+                    <p class="section-index">01 / ARCHITECTURE & CORE CAPABILITIES</p>
+                    <h2>Engineered for Privacy & Instant Action</h2>
+                </div>
+                <p class="section-note">No third-party trackers, no invasive analytics. Just clean personal financial management.</p>
+            </div>
+
+            <div class="project-grid">
+                <div class="project-card neo-card neo-card-yellow" style="cursor: default;">
+                    <div class="project-info" style="flex-direction: column; align-items: flex-start;">
+                        <span class="timeline-tag">AI INFERENCE</span>
+                        <h3 style="margin-top: 8px;">Multi-Model Receipt OCR</h3>
+                        <p>Take a photo of any printed purchase receipt. The serverless backend leverages Azure Document Intelligence and Gemini 3.6 Flash / Groq LLMs to extract itemized lists, normalize IDR amounts, and split tax & service charges proportionally across items.</p>
+                        <div class="timeline-tech-tags" style="margin-top: 14px;">
+                            <span>Gemini 3.6 Flash</span>
+                            <span>Groq Vision</span>
+                            <span>Azure OCR</span>
+                            <span>NDJSON Stream</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card neo-card neo-card-aqua" style="cursor: default;">
+                    <div class="project-info" style="flex-direction: column; align-items: flex-start;">
+                        <span class="timeline-tag">SECURITY & AUTH</span>
+                        <h3 style="margin-top: 8px;">Per-User Data Isolation</h3>
+                        <p>All database queries and sync operations are strictly authenticated with Firebase Bearer ID Tokens. MongoDB Atlas collections enforce per-user indexing (`ownerId`) to guarantee that financial data remains strictly private and sandboxed.</p>
+                        <div class="timeline-tech-tags" style="margin-top: 14px;">
+                            <span>Firebase Token Auth</span>
+                            <span>MongoDB Atlas</span>
+                            <span>Bearer Verification</span>
+                            <span>Encrypted Transport</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card neo-card" style="cursor: default;">
+                    <div class="project-info" style="flex-direction: column; align-items: flex-start;">
+                        <span class="timeline-tag">MOBILE & ENGINE</span>
+                        <h3 style="margin-top: 8px;">Native Android & Notification Hooks</h3>
+                        <p>Shipped as an optimized Flutter release APK with native Kotlin bridges. Supports bank SMS and local transaction notification parsing to automatically log expenses without manual keyboard entry.</p>
+                        <div class="timeline-tech-tags" style="margin-top: 14px;">
+                            <span>Flutter</span>
+                            <span>Kotlin</span>
+                            <span>Local Notification</span>
+                            <span>Offline SQLite</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="project-card neo-card" style="cursor: default;">
+                    <div class="project-info" style="flex-direction: column; align-items: flex-start;">
+                        <span class="timeline-tag">REPORTING & EXPORT</span>
+                        <h3 style="margin-top: 8px;">Audit & PDF Report Generation</h3>
+                        <p>Filter expenses by date range, category, or transaction type (Expected vs. Unexpected). Generate downloadable client-side PDF statements instantly via jsPDF without sending data to external render engines.</p>
+                        <div class="timeline-tech-tags" style="margin-top: 14px;">
+                            <span>Client-Side PDF</span>
+                            <span>Category Breakdown</span>
+                            <span>IDR Formatting</span>
+                            <span>Realtime Calculations</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Interactive AI Receipt OCR Simulator / Playground Section -->
+        <section id="ocr-simulator" class="page-section" style="padding-top: 50px;">
+            <div class="section-heading">
+                <div>
+                    <p class="section-index">02 / LIVE SIMULATOR & INTERACTION</p>
+                    <h2>Multi-Model Receipt OCR Playground</h2>
+                </div>
+                <p class="section-note">Experience the automated receipt parser right in your browser. Choose a preset or trigger a simulated scan to watch line items, taxes, and service fees get allocated instantly.</p>
+            </div>
+
+            <!-- Preset Buttons -->
+            <div class="simulator-presets">
+                <button class="preset-btn active" data-preset="cafe">☕ Cafe / Kopi Kenangan</button>
+                <button class="preset-btn" data-preset="supermarket">🛒 Supermarket / Indomaret</button>
+                <button class="preset-btn" data-preset="tech">⚡ Tech / Gadget Invoice</button>
+                <button id="trigger-scan-btn" class="preset-btn" style="background: var(--card-aqua); color: #000; margin-left: auto;">
+                    ▶ Re-Scan OCR Simulation
+                </button>
+            </div>
+
+            <!-- Two-Column Interactive Stage -->
+            <div class="simulator-layout">
+                <!-- Left: Physical Thermal Receipt Representation -->
+                <div class="receipt-paper-wrap" id="receipt-paper">
+                    <div class="scan-laser-line" id="scan-laser"></div>
+                    <div class="receipt-header-stub">
+                        <h3 class="receipt-store-title" id="receipt-store-name">KOPI KENANGAN</h3>
+                        <div class="receipt-store-meta">
+                            <span id="receipt-store-loc">Senayan City Mall, Lt. LG</span><br>
+                            <span id="receipt-date-str">2026-10-02 14:32 WIB • TR#88921</span>
+                        </div>
+                    </div>
+
+                    <ul class="receipt-line-items" id="receipt-raw-items">
+                        <!-- Populated dynamically via JS -->
+                    </ul>
+
+                    <div class="receipt-sub-totals">
+                        <div class="receipt-line-item">
+                            <span>SUBTOTAL:</span>
+                            <span id="receipt-subtotal-val">Rp 52.000</span>
+                        </div>
+                        <div class="receipt-line-item">
+                            <span id="receipt-tax-label">PB1 TAX (10%):</span>
+                            <span id="receipt-tax-val">Rp 5.200</span>
+                        </div>
+                        <div class="receipt-line-item" id="receipt-service-row">
+                            <span>SERVICE CHG:</span>
+                            <span id="receipt-service-val">Rp 0</span>
+                        </div>
+                        <div class="receipt-total-row">
+                            <span>TOTAL DUE:</span>
+                            <span id="receipt-grandtotal-val">Rp 57.200</span>
+                        </div>
+                    </div>
+
+                    <div class="receipt-barcode">
+                        ||| | ||||| || |||||| | |||| |||| |||||
+                        <div style="font-size: 0.65rem; margin-top: 2px;">AUTHENTIC THERMAL SLIP</div>
+                    </div>
+                </div>
+
+                <!-- Right: Parsed Expense Card & JSON Stage -->
+                <div class="extracted-stage">
+                    <div class="stage-header">
+                        <div class="stage-badges">
+                            <span class="badge-model-tag" id="active-engine-badge">GROQ LLAMA-3.2-VISION</span>
+                            <span class="badge-latency" id="active-latency-badge">⚡ 840ms Latency</span>
+                            <span class="status-indicator"><i class="status-dot"></i> Parsed OK</span>
+                        </div>
+
+                        <div class="view-toggle-group">
+                            <button class="view-toggle-btn active" id="btn-view-cards">Visual Cards</button>
+                            <button class="view-toggle-btn" id="btn-view-json">Raw JSON</button>
+                        </div>
+                    </div>
+
+                    <!-- Proportional Tax Distribution Explanation Banner -->
+                    <div class="tax-split-banner">
+                        <span>💡</span>
+                        <div id="tax-banner-text">
+                            <strong>Zero-Loss Tax Allocation:</strong> Overhead (Rp 5.200) was split proportionally between items based on base price weights.
+                        </div>
+                    </div>
+
+                    <!-- Visual Cards View -->
+                    <div class="extracted-items-grid" id="extracted-items-container">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+
+                    <!-- Raw JSON View -->
+                    <pre class="raw-json-box" id="raw-json-display"></pre>
+
+                    <!-- Summary Action Footer -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: var(--border-thin); padding-top: 16px; flex-wrap: wrap; gap: 12px;">
+                        <div>
+                            <span style="font-size: 0.8rem; color: var(--muted); font-weight: 700; text-transform: uppercase;">Total Extracted Items</span>
+                            <strong style="display: block; font-size: 1.25rem;" id="total-parsed-amount">Rp 57.200</strong>
+                        </div>
+                        <a class="button button-yellow" href="/expenses" style="padding: 8px 18px; font-size: 0.88rem;">
+                            Test In Live Web App ↗
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Architecture Bento Grid Section -->
+        <section id="architecture" class="page-section" style="padding-top: 50px;">
+            <div class="section-heading">
+                <div>
+                    <p class="section-index">03 / TECHNICAL SPECIFICATIONS</p>
+                    <h2>Full-Stack Resilience & Zero-Leak Security</h2>
+                </div>
+                <p class="section-note">How data travels from local camera shutters to authenticated encrypted persistent storage.</p>
+            </div>
+
+            <div class="arch-bento-grid">
+                <!-- Tier 1: Client Application -->
+                <div class="arch-card">
+                    <div>
+                        <div class="arch-card-header">
+                            <div class="arch-card-icon" style="background: var(--card-yellow);">📱</div>
+                            <span class="slide-badge">CLIENT TIER</span>
+                        </div>
+                        <h3>Flutter 3.x & Kotlin Bridges</h3>
+                        <p style="color: var(--muted); font-size: 0.92rem; margin-top: 6px;">
+                            Built with Dart and Material 3 customized with Neo-Brutalist design tokens. Offline transactions are written directly to SQLite and synced when a data connection is established.
+                        </p>
+                    </div>
+                    <div class="arch-card-pills">
+                        <span>Flutter 3.x</span>
+                        <span>Kotlin Native</span>
+                        <span>SQLite Local</span>
+                        <span>Riverpod State</span>
+                    </div>
+                </div>
+
+                <!-- Tier 2: Edge & Auth Middleware -->
+                <div class="arch-card">
+                    <div>
+                        <div class="arch-card-header">
+                            <div class="arch-card-icon" style="background: var(--card-aqua);">🛡️</div>
+                            <span class="slide-badge">EDGE GATEWAY</span>
+                        </div>
+                        <h3>Serverless & Firebase Token Auth</h3>
+                        <p style="color: var(--muted); font-size: 0.92rem; margin-top: 6px;">
+                            ExpressJS routing hosted on Vercel Serverless. Every transaction mutate endpoint is guarded by Firebase Admin Bearer ID verification. Zero unauthenticated endpoints.
+                        </p>
+                    </div>
+                    <div class="arch-card-pills">
+                        <span>Vercel Edge</span>
+                        <span>Firebase Admin</span>
+                        <span>Bearer Auth</span>
+                        <span>CORS Sandboxing</span>
+                    </div>
+                </div>
+
+                <!-- Tier 3: AI Vision & Ingestion -->
+                <div class="arch-card">
+                    <div>
+                        <div class="arch-card-header">
+                            <div class="arch-card-icon" style="background: #b4f762;">⚡</div>
+                            <span class="slide-badge">AI OCR PIPELINE</span>
+                        </div>
+                        <h3>Dual-Model Vision OCR</h3>
+                        <p style="color: var(--muted); font-size: 0.92rem; margin-top: 6px;">
+                            Primary high-speed parsing through Groq Vision (Llama 3.2 Vision 11B) with automatic failover to Google Gemini 3.6 Flash and Azure Document Intelligence.
+                        </p>
+                    </div>
+                    <div class="arch-card-pills">
+                        <span>Groq Vision</span>
+                        <span>Gemini 3.6 Flash</span>
+                        <span>Azure Doc AI</span>
+                        <span>Auto Failover</span>
+                    </div>
+                </div>
+
+                <!-- Tier 4: Database & Isolation -->
+                <div class="arch-card">
+                    <div>
+                        <div class="arch-card-header">
+                            <div class="arch-card-icon" style="background: #ff9ee2;">🔒</div>
+                            <span class="slide-badge">STORAGE TIER</span>
+                        </div>
+                        <h3>MongoDB Atlas Isolation</h3>
+                        <p style="color: var(--muted); font-size: 0.92rem; margin-top: 6px;">
+                            Collections enforce strict compound indexing on <code>ownerId</code> and <code>transactionDate</code>. Cross-account data leaks are architecturally impossible.
+                        </p>
+                    </div>
+                    <div class="arch-card-pills">
+                        <span>MongoDB Atlas</span>
+                        <span>Strict Compound Index</span>
+                        <span>TLS 1.3 Transport</span>
+                        <span>Zero Telemetry</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Project Carousel & Lightbox Component -->
+        <section id="gallery" class="carousel-section page-section">
+            <div class="carousel-header">
+                <div>
+                    <p class="section-index">04 / INTERACTIVE UI GALLERY</p>
+                    <h2>Explore App Screens & Workflows</h2>
+                </div>
+                <div class="carousel-controls">
+                    <button id="carousel-prev" class="carousel-nav-btn btn-aqua" type="button"
+                        aria-label="Previous Slide">← Prev</button>
+                    <button id="carousel-next" class="carousel-nav-btn btn-yellow" type="button"
+                        aria-label="Next Slide">Next →</button>
+                </div>
+            </div>
+
+            <!-- Quick Jump Category Tabs -->
+            <div class="gallery-jump-tabs">
+                <button class="gallery-tab-pill active" data-slide="0">01 Dashboard</button>
+                <button class="gallery-tab-pill" data-slide="1">02 Add Expense</button>
+                <button class="gallery-tab-pill" data-slide="2">03 App Settings</button>
+                <button class="gallery-tab-pill" data-slide="3">04 Receipt OCR</button>
+                <button class="gallery-tab-pill" data-slide="4">05 Cloud Security</button>
+            </div>
+
+            <div class="carousel-container neo-card">
+                <div class="carousel-track-wrapper">
+                    <div class="carousel-track" id="carousel-track">
+                        <!-- Slide 1: Main Dashboard -->
+                        <div class="carousel-slide">
+                            <div class="slide-mockup-wrapper">
+                                <div class="phone-mockup-frame" data-lightbox-index="0" title="Click to zoom in">
+                                    <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                    <div class="phone-mockup-screen">
+                                        <img src="/asset/unmurce-dashboard-preview.jpg" alt="Unmurce Expense Dashboard Screenshot">
+                                    </div>
+                                    <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
+                                </div>
+                            </div>
+                            <div class="slide-details">
+                                <span class="slide-badge">SCREEN 01</span>
+                                <h3>Expense Dashboard View</h3>
+                                <p>Lists transactions in sunny yellow Neo-Brutalist cards with cumulative balance calculations, category badges, and quick filters.</p>
+                                <div class="slide-tags">
+                                    <span>Neo-Brutalist UI</span>
+                                    <span>Realtime Sync</span>
+                                    <span>Category Icons</span>
+                                </div>
+                                <a class="button button-aqua slide-cta" href="/expenses">Open App Live ↗</a>
+                            </div>
+                        </div>
+
+                        <!-- Slide 2: Add Expense Form -->
+                        <div class="carousel-slide">
+                            <div class="slide-mockup-wrapper">
+                                <div class="phone-mockup-frame" data-lightbox-index="1" title="Click to zoom in">
+                                    <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                    <div class="phone-mockup-screen">
+                                        <img src="/asset/unmurce-add-expense-preview.jpg" alt="Unmurce Add Expense Form Screenshot">
+                                    </div>
+                                    <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
+                                </div>
+                            </div>
+                            <div class="slide-details">
+                                <span class="slide-badge">SCREEN 02</span>
+                                <h3>Add Expense Screen</h3>
+                                <p>Quick transaction entry with title, amount in IDR, category selector, transaction type (Expected/Unexpected), and date picker.</p>
+                                <div class="slide-tags">
+                                    <span>Fast Entry</span>
+                                    <span>Category Selector</span>
+                                    <span>Date Picker</span>
+                                </div>
+                                <a class="button button-yellow slide-cta" href="/expenses">Try Add Expense ↗</a>
+                            </div>
+                        </div>
+
+                        <!-- Slide 3: Settings Screen -->
+                        <div class="carousel-slide">
+                            <div class="slide-mockup-wrapper">
+                                <div class="phone-mockup-frame" data-lightbox-index="2" title="Click to zoom in">
+                                    <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                    <div class="phone-mockup-screen">
+                                        <img src="/asset/unmurce-settings-preview.jpg" alt="Unmurce Settings Screen Screenshot">
+                                    </div>
+                                    <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
+                                </div>
+                            </div>
+                            <div class="slide-details">
+                                <span class="slide-badge">SCREEN 03</span>
+                                <h3>App Settings & Profile View</h3>
+                                <p>Configure personal account details, Firebase security tokens, display preferences, and instant data reset actions.</p>
+                                <div class="slide-tags">
+                                    <span>Account Preferences</span>
+                                    <span>Firebase Security</span>
+                                    <span>Data Control</span>
+                                </div>
+                                <a class="button button-aqua slide-cta" href="/expenses">Open App Live ↗</a>
+                            </div>
+                        </div>
+
+                        <!-- Slide 4: Receipt OCR -->
+                        <div class="carousel-slide">
+                            <div class="slide-mockup-wrapper">
+                                <div class="phone-mockup-frame" data-lightbox-index="3" title="Click to zoom in">
+                                    <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                    <div class="phone-mockup-screen">
+                                        <img src="/asset/unmurce-receipt-ocr-preview.jpg" alt="Unmurce Receipt Scan Screenshot">
+                                    </div>
+                                    <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
+                                </div>
+                            </div>
+                            <div class="slide-details">
+                                <span class="slide-badge">FEATURE 04</span>
+                                <h3>Automated Receipt Parsing</h3>
+                                <p>Snap a photo of any receipt to automatically extract line items, prices, and tax distribution using Gemini 3.6 Flash and Azure Document Intelligence.</p>
+                                <div class="slide-tags">
+                                    <span>Gemini 3.6 Flash</span>
+                                    <span>Azure AI</span>
+                                    <span>Auto Tax Split</span>
+                                </div>
+                                <a class="button button-aqua slide-cta" href="/docs">Read OCR Tech Docs ↗</a>
+                            </div>
+                        </div>
+
+                        <!-- Slide 5: Firebase Auth & MongoDB Security -->
+                        <div class="carousel-slide">
+                            <div class="slide-mockup-wrapper">
+                                <div class="feature-graphic-box graphic-aqua">
+                                    <div class="graphic-icon">🔒</div>
+                                    <strong>Security & Database</strong>
+                                    <span class="graphic-sub">Firebase & MongoDB</span>
+                                </div>
+                            </div>
+                            <div class="slide-details">
+                                <span class="slide-badge">ARCHITECTURE 05</span>
+                                <h3>Private Data Isolation</h3>
+                                <p>Every transaction query is authenticated via Firebase Bearer ID Tokens and enforced against MongoDB Atlas collection schemas.</p>
+                                <div class="slide-tags">
+                                    <span>Firebase Auth</span>
+                                    <span>MongoDB Atlas</span>
+                                    <span>REST Security</span>
+                                </div>
+                                <a class="button button-yellow slide-cta" href="/docs">View Full Specs ↗</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="carousel-dots" id="carousel-dots">
+                <span class="dot active" data-index="0"></span>
+                <span class="dot" data-index="1"></span>
+                <span class="dot" data-index="2"></span>
+                <span class="dot" data-index="3"></span>
+                <span class="dot" data-index="4"></span>
+            </div>
+        </section>
+
+        <!-- Interactive Proportional Tax & Service Math Engine -->
+        <section id="tax-engine" class="page-section" style="padding-top: 50px;">
+            <div class="section-heading">
+                <div>
+                    <p class="section-index">05 / MATHEMATICAL PRECISION</p>
+                    <h2>Zero-Loss Proportional Tax & Service Engine</h2>
+                </div>
+                <p class="section-note">Test how Unmurce distributes taxes (e.g. 11% PPN) and service charges across itemized entries without leaving orphan fractional cents.</p>
+            </div>
+
+            <div class="tax-engine-widget">
+                <!-- Controls Column -->
+                <div>
+                    <h3 style="margin-top: 0; margin-bottom: 18px;">Simulate Overhead Distribution</h3>
+                    <div class="calc-input-group">
+                        <label for="calc-item1">Item 1 Base Price (IDR)</label>
+                        <input type="number" id="calc-item1" class="calc-input-control" value="45000" step="1000">
+                    </div>
+                    <div class="calc-input-group">
+                        <label for="calc-item2">Item 2 Base Price (IDR)</label>
+                        <input type="number" id="calc-item2" class="calc-input-control" value="85000" step="1000">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div class="calc-input-group">
+                            <label for="calc-tax-pct">Tax Rate (%)</label>
+                            <input type="number" id="calc-tax-pct" class="calc-input-control" value="11" min="0" max="100">
+                        </div>
+                        <div class="calc-input-group">
+                            <label for="calc-service-pct">Service Fee (%)</label>
+                            <input type="number" id="calc-service-pct" class="calc-input-control" value="5" min="0" max="100">
+                        </div>
+                    </div>
+                    <small style="color: var(--muted); font-size: 0.78rem;">
+                        Formula: <code>AllocatedOverhead = ItemBase + Round(TotalOverhead * (ItemBase / Subtotal))</code>
+                    </small>
+                </div>
+
+                <!-- Results Column -->
+                <div class="calc-results-card">
+                    <span class="slide-badge" style="background: #000; color: #fff; align-self: flex-start;">LIVE BREAKDOWN</span>
+                    <div class="calc-results-row">
+                        <span>Items Subtotal:</span>
+                        <span id="res-subtotal">Rp 130.000</span>
+                    </div>
+                    <div class="calc-results-row">
+                        <span>Tax & Service Overhead:</span>
+                        <span id="res-overhead">Rp 20.800</span>
+                    </div>
+                    <div class="calc-results-row">
+                        <span>Item 1 Final Record:</span>
+                        <span id="res-item1-final">Rp 52.200</span>
+                    </div>
+                    <div class="calc-results-row">
+                        <span>Item 2 Final Record:</span>
+                        <span id="res-item2-final">Rp 98.600</span>
+                    </div>
+                    <div class="calc-results-row">
+                        <span>Database Sum:</span>
+                        <span id="res-total-due">Rp 150.800</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Technical FAQ Accordion Section -->
+        <section id="faq" class="page-section" style="padding-top: 50px;">
+            <div class="section-heading">
+                <div>
+                    <p class="section-index">06 / FREQUENTLY ASKED QUESTIONS</p>
+                    <h2>Developer & User Insights</h2>
+                </div>
+                <p class="section-note">Clear answers regarding security, offline syncing, and Android deployment.</p>
+            </div>
+
+            <div class="faq-accordion-group">
+                <div class="faq-item open">
+                    <button class="faq-trigger" type="button">
+                        <span>How does the AI OCR guarantee financial data privacy?</span>
+                        <span class="faq-icon-indicator">+</span>
+                    </button>
+                    <div class="faq-content">
+                        Uploaded receipt images are processed entirely in memory via secure serverless functions. Images are converted into temporary memory buffers, passed to the vision inference API through encrypted TLS channels, and never stored on public buckets or sold to third-party data aggregators.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-trigger" type="button">
+                        <span>Can I run Unmurce completely offline without internet?</span>
+                        <span class="faq-icon-indicator">+</span>
+                    </button>
+                    <div class="faq-content">
+                        Yes! The Flutter client features a local SQLite persistent store. You can record transactions, categorize expenses, and review monthly totals without any network connection. As soon as you re-connect, changes sync seamlessly to MongoDB Atlas.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-trigger" type="button">
+                        <span>How does the dual-engine fallback between Groq & Gemini work?</span>
+                        <span class="faq-icon-indicator">+</span>
+                    </button>
+                    <div class="faq-content">
+                        By default, receipts are routed to Groq's high-speed Vision model for sub-second inference. If the upstream provider experiences rate-limiting or latency spikes exceeding 3000ms, the system automatically redirects the payload to Google Gemini 3.6 Flash without interrupting the user.
+                    </div>
+                </div>
+
+                <div class="faq-item">
+                    <button class="faq-trigger" type="button">
+                        <span>How can I install the Android APK on my smartphone?</span>
+                        <span class="faq-icon-indicator">+</span>
+                    </button>
+                    <div class="faq-content">
+                        Simply tap the "Download APK (Android)" button below. Once downloaded on your Android device (arm64-v8a architecture), allow installation from browser sources in your system settings and open the package to start using Unmurce immediately.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Developer Terminal & Quick Start Box -->
+        <section class="page-section" style="padding-top: 30px;">
+            <div class="cli-terminal-card">
+                <div class="cli-terminal-bar">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
+                        <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; font-weight: 700; margin-left: 6px;">UNMURCE_DEVELOPER_CONSOLE.sh</span>
+                    </div>
+                    <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 700;">BASH</span>
+                </div>
+
+                <div class="cli-code-row">
+                    <code>git clone https://github.com/DODODABIRD/Expense_App_Personal.git</code>
+                    <button class="cli-copy-btn" data-copy="git clone https://github.com/DODODABIRD/Expense_App_Personal.git">Copy</button>
+                </div>
+
+                <div class="cli-code-row">
+                    <code>curl -s https://dododabird.us/api/public-config | jq</code>
+                    <button class="cli-copy-btn" data-copy="curl -s https://dododabird.us/api/public-config | jq">Copy</button>
+                </div>
+
+                <div class="cli-code-row">
+                    <code>flutter run -d chrome --web-port 8080</code>
+                    <button class="cli-copy-btn" data-copy="flutter run -d chrome --web-port 8080">Copy</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Download & Access Section -->
+        <section id="download" class="page-section" style="padding-top: 50px;">
+            <div class="neo-card contact-card">
+                <p class="section-index">07 / GET UNMURCE</p>
+                <div class="contact-layout">
+                    <div>
+                        <h2>Ready to track your expenses with clarity?</h2>
+                        <p class="contact-copy">Choose how you want to experience Unmurce — open the web application directly in your browser or install the native Android APK.</p>
+                    </div>
+                </div>
+
+                <div class="contact-buttons-grid">
+                    <a class="contact-btn-card btn-whatsapp" href="/expenses">
+                        <div class="contact-icon" style="background: var(--card-aqua); color: #000;">
+                            🌐
+                        </div>
+                        <div class="contact-detail">
+                            <span>WEB APP</span>
+                            <strong>Launch Unmurce in Browser</strong>
+                        </div>
+                        <span class="btn-arrow">↗</span>
+                    </a>
+
+                    <a class="contact-btn-card btn-email" href="/asset/appdownload/app-arm64-v8a-release.apk" download="Unmurce-Android.apk">
+                        <div class="contact-icon" style="background: var(--card-yellow); color: #000;">
+                            📱
+                        </div>
+                        <div class="contact-detail">
+                            <span>ANDROID RELEASE</span>
+                            <strong>Download APK (arm64-v8a)</strong>
+                        </div>
+                        <span class="btn-arrow">↓</span>
+                    </a>
+
+                    <a class="contact-btn-card btn-linkedin" href="/docs">
+                        <div class="contact-icon" style="background: var(--card-white); color: #000;">
+                            📖
+                        </div>
+                        <div class="contact-detail">
+                            <span>DEVELOPER SPECS</span>
+                            <strong>Read Technical Documentation</strong>
+                        </div>
+                        <span class="btn-arrow">↗</span>
+                    </a>
+
+                    <a class="contact-btn-card btn-github" href="https://github.com/DODODABIRD/Expense_App_Personal" target="_blank" rel="noreferrer">
+                        <div class="contact-icon">
+                            <img src="/asset/github-mark.png" alt="" width="26" height="26">
+                        </div>
+                        <div class="contact-detail">
+                            <span>OPEN SOURCE REPO</span>
+                            <strong>DODODABIRD/Expense_App_Personal</strong>
+                        </div>
+                        <span class="btn-arrow">↗</span>
+                    </a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-left">
+            <strong>Unmurce Personal Finance</strong>
+            <span>Built by Orlando Diamond Prasetyo • Neo-Brutalist UI</span>
+        </div>
+        <div class="footer-links">
+            <a href="/">← Orlando's Portfolio</a>
+            <a href="/expenses">Live App</a>
+            <a href="/docs">Technical Docs</a>
+            <a href="https://wa.me/6285810008115" target="_blank">Contact Orlando</a>
+            <a class="back-to-top" href="#top">Back to top ↑</a>
+        </div>
+    </footer>
+
+    <!-- Interactive UI Scene Preview Lightbox Modal -->
+    <div id="ui-preview-lightbox" class="ui-lightbox-modal" aria-hidden="true" role="dialog">
+        <div class="ui-lightbox-backdrop"></div>
+        <div class="ui-lightbox-container neo-card">
+            <div class="ui-lightbox-header">
+                <div class="ui-lightbox-badge">
+                    <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
+                    <strong id="lightbox-title">UI Preview</strong>
+                </div>
+                <button id="close-lightbox-btn" class="lightbox-close-btn" type="button" aria-label="Close Preview">✕</button>
+            </div>
+            <div class="ui-lightbox-body">
+                <img id="lightbox-img" src="" alt="UI Screen Preview">
+            </div>
+            <div class="ui-lightbox-footer">
+                <button id="lightbox-prev-btn" class="lightbox-btn lightbox-btn-prev" type="button">← Prev</button>
+                <span id="lightbox-counter" class="lightbox-counter">1 / 4</span>
+                <button id="lightbox-next-btn" class="lightbox-btn lightbox-btn-next" type="button">Next →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification for Copy -->
+    <div id="toast-notify" class="toast-notification">Command copied to clipboard! ✓</div>
+
+    <!-- Scripts for All Interactive Components -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Theme Toggle Controller (Light / Dark)
+            const themeToggleBtn = document.getElementById('theme-toggle-btn');
+            const drawerThemeToggleBtn = document.getElementById('drawer-theme-toggle-btn');
+
+            function applyTheme(theme) {
+                document.documentElement.setAttribute('data-theme', theme);
+                try {
+                    localStorage.setItem('theme', theme);
+                } catch (e) {}
+
+                const isDark = theme === 'dark';
+                const label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
+                if (themeToggleBtn) {
+                    themeToggleBtn.setAttribute('aria-label', label);
+                    themeToggleBtn.setAttribute('title', label);
+                }
+                if (drawerThemeToggleBtn) {
+                    drawerThemeToggleBtn.setAttribute('aria-label', label);
+                    drawerThemeToggleBtn.setAttribute('title', label);
+                }
+            }
+
+            function toggleTheme() {
+                const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+                const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(nextTheme);
+            }
+
+            if (themeToggleBtn) themeToggleBtn.addEventListener('click', toggleTheme);
+            if (drawerThemeToggleBtn) drawerThemeToggleBtn.addEventListener('click', toggleTheme);
+
+            // Lightbox Modal Controller
+            const lightboxModal = document.getElementById('ui-preview-lightbox');
+            const lightboxImg = document.getElementById('lightbox-img');
+            const lightboxTitle = document.getElementById('lightbox-title');
+            const lightboxCounter = document.getElementById('lightbox-counter');
+            const lightboxCloseBtn = document.getElementById('close-lightbox-btn');
+            const lightboxPrevBtn = document.getElementById('lightbox-prev-btn');
+            const lightboxNextBtn = document.getElementById('lightbox-next-btn');
+            const lightboxBackdrop = document.querySelector('.ui-lightbox-backdrop');
+
+            const uiScenes = [
+                { title: 'Dashboard View', src: '/asset/unmurce-dashboard-preview.jpg' },
+                { title: 'Add Expense Screen', src: '/asset/unmurce-add-expense-preview.jpg' },
+                { title: 'App Settings & Profile', src: '/asset/unmurce-settings-preview.jpg' },
+                { title: 'Receipt OCR Parser', src: '/asset/unmurce-receipt-ocr-preview.jpg' }
+            ];
+
+            let activeSceneIndex = 0;
+
+            function openLightbox(index) {
+                if (index < 0) index = uiScenes.length - 1;
+                if (index >= uiScenes.length) index = 0;
+                activeSceneIndex = index;
+
+                const scene = uiScenes[activeSceneIndex];
+                if (lightboxImg) lightboxImg.src = scene.src;
+                if (lightboxTitle) lightboxTitle.textContent = scene.title;
+                if (lightboxCounter) lightboxCounter.textContent = `${activeSceneIndex + 1} / ${uiScenes.length}`;
+
+                if (lightboxModal) {
+                    lightboxModal.classList.add('active');
+                    lightboxModal.setAttribute('aria-hidden', 'false');
+                }
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeLightbox() {
+                if (lightboxModal) {
+                    lightboxModal.classList.remove('active');
+                    lightboxModal.setAttribute('aria-hidden', 'true');
+                }
+                document.body.style.overflow = '';
+            }
+
+            // Click to enlarge on all frames & mockups with data-lightbox-index
+            document.querySelectorAll('[data-lightbox-index]').forEach((el) => {
+                el.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const idx = parseInt(el.getAttribute('data-lightbox-index'), 10);
+                    if (!isNaN(idx)) openLightbox(idx);
+                });
+            });
+
+            if (lightboxCloseBtn) lightboxCloseBtn.addEventListener('click', closeLightbox);
+            if (lightboxBackdrop) lightboxBackdrop.addEventListener('click', closeLightbox);
+            if (lightboxPrevBtn) lightboxPrevBtn.addEventListener('click', () => openLightbox(activeSceneIndex - 1));
+            if (lightboxNextBtn) lightboxNextBtn.addEventListener('click', () => openLightbox(activeSceneIndex + 1));
+
+            document.addEventListener('keydown', (e) => {
+                if (!lightboxModal || !lightboxModal.classList.contains('active')) return;
+                if (e.key === 'Escape') closeLightbox();
+                if (e.key === 'ArrowLeft') openLightbox(activeSceneIndex - 1);
+                if (e.key === 'ArrowRight') openLightbox(activeSceneIndex + 1);
+            });
+
+            // Carousel Controller with Quick Jump Tabs
+            const track = document.getElementById('carousel-track');
+            const slides = document.querySelectorAll('.carousel-slide');
+            const prevBtn = document.getElementById('carousel-prev');
+            const nextBtn = document.getElementById('carousel-next');
+            const dots = document.querySelectorAll('#carousel-dots .dot');
+            const galleryTabs = document.querySelectorAll('.gallery-tab-pill');
+            const trackWrapper = document.querySelector('.carousel-track-wrapper');
+            let currentIndex = 0;
+            let swipeStartX = 0;
+            let swipeStartY = 0;
+            let suppressClick = false;
+
+            function updateCarousel(index) {
+                if (index < 0) index = slides.length - 1;
+                if (index >= slides.length) index = 0;
+                currentIndex = index;
+                const offset = -currentIndex * 100;
+                if (track) track.style.transform = `translateX(${offset}%)`;
+                dots.forEach((dot, i) => {
+                    dot.classList.toggle('active', i === currentIndex);
+                });
+                galleryTabs.forEach((tab, i) => {
+                    tab.classList.toggle('active', i === currentIndex);
+                });
+            }
+
+            if (prevBtn) prevBtn.addEventListener('click', () => updateCarousel(currentIndex - 1));
+            if (nextBtn) nextBtn.addEventListener('click', () => updateCarousel(currentIndex + 1));
+
+            galleryTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const idx = parseInt(tab.getAttribute('data-slide'), 10);
+                    updateCarousel(idx);
+                });
+            });
+
+            dots.forEach(dot => {
+                dot.addEventListener('click', (e) => {
+                    const idx = parseInt(e.target.getAttribute('data-index'), 10);
+                    updateCarousel(idx);
+                });
+            });
+
+            // Pointer swipe handler
+            if (trackWrapper) {
+                trackWrapper.addEventListener('pointerdown', (event) => {
+                    swipeStartX = event.clientX;
+                    swipeStartY = event.clientY;
+                });
+
+                trackWrapper.addEventListener('pointerup', (event) => {
+                    const deltaX = event.clientX - swipeStartX;
+                    const deltaY = event.clientY - swipeStartY;
+                    const isHorizontalSwipe = Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY);
+
+                    if (!isHorizontalSwipe) return;
+
+                    suppressClick = true;
+                    updateCarousel(currentIndex + (deltaX < 0 ? 1 : -1));
+                    window.setTimeout(() => {
+                        suppressClick = false;
+                    }, 0);
+                });
+            }
+
+            // Floating Navbar Scroll Handler
+            let lastScrollY = window.scrollY;
+            const headerWrapper = document.getElementById('site-header-wrapper');
+
+            function handleNavbarScroll() {
+                const currentScrollY = window.scrollY;
+
+                if (currentScrollY <= 20) {
+                    headerWrapper.classList.add('is-top');
+                } else {
+                    headerWrapper.classList.remove('is-top');
+                }
+
+                if (currentScrollY <= 80) {
+                    headerWrapper.classList.remove('nav-hidden');
+                } else if (currentScrollY > lastScrollY && currentScrollY > 120) {
+                    headerWrapper.classList.add('nav-hidden');
+                } else if (currentScrollY < lastScrollY) {
+                    headerWrapper.classList.remove('nav-hidden');
+                }
+                lastScrollY = currentScrollY;
+            }
+
+            window.addEventListener('scroll', handleNavbarScroll, { passive: true });
+            handleNavbarScroll();
+
+            // Mobile Navigation Drawer Toggle
+            const menuToggleBtn = document.getElementById('mobile-menu-toggle');
+            const closeDrawerBtn = document.getElementById('close-mobile-drawer');
+            const mobileDrawer = document.getElementById('mobile-drawer');
+            const drawerLinks = document.querySelectorAll('.mobile-drawer-link');
+
+            function openDrawer() {
+                if (mobileDrawer) {
+                    mobileDrawer.classList.add('active');
+                    mobileDrawer.setAttribute('aria-hidden', 'false');
+                }
+                if (menuToggleBtn) menuToggleBtn.setAttribute('aria-expanded', 'true');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeDrawer() {
+                if (mobileDrawer) {
+                    mobileDrawer.classList.remove('active');
+                    mobileDrawer.setAttribute('aria-hidden', 'true');
+                }
+                if (menuToggleBtn) menuToggleBtn.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+            }
+
+            if (menuToggleBtn) menuToggleBtn.addEventListener('click', openDrawer);
+            if (closeDrawerBtn) closeDrawerBtn.addEventListener('click', closeDrawer);
+            if (mobileDrawer) {
+                mobileDrawer.addEventListener('click', (e) => {
+                    if (e.target === mobileDrawer) closeDrawer();
+                });
+            }
+            drawerLinks.forEach(link => link.addEventListener('click', closeDrawer));
+
+            // ==========================================
+            // OCR Interactive Simulator Logic
+            // ==========================================
+            const ocrPresets = {
+                cafe: {
+                    store: 'KOPI KENANGAN',
+                    location: 'Senayan City Mall, Lt. LG',
+                    date: '2026-10-02 14:32 WIB • TR#88921',
+                    model: 'GROQ LLAMA-3.2-VISION',
+                    latency: '⚡ 840ms Latency',
+                    subtotal: 52000,
+                    taxLabel: 'PB1 TAX (10%):',
+                    taxAmount: 5200,
+                    serviceAmount: 0,
+                    items: [
+                        { name: 'Kenangan Mantan (L)', qty: 1, base: 28000, cat: 'Coffee / Beverages' },
+                        { name: 'Almond Croissant', qty: 1, base: 24000, cat: 'Food / Bakery' }
+                    ]
+                },
+                supermarket: {
+                    store: 'INDOMARET POINT',
+                    location: 'Jl. Sudirman No. 45, Jakarta Pusat',
+                    date: '2026-10-02 10:15 WIB • TR#30419',
+                    model: 'GOOGLE GEMINI 3.6 FLASH',
+                    latency: '⚡ 1.1s Latency',
+                    subtotal: 112000,
+                    taxLabel: 'PPN TAX (11%):',
+                    taxAmount: 12320,
+                    serviceAmount: 0,
+                    items: [
+                        { name: 'Ultra Milk 1000ml', qty: 2, base: 42000, cat: 'Groceries' },
+                        { name: 'Oatmeal Choco 500g', qty: 1, base: 36000, cat: 'Breakfast' },
+                        { name: 'Mineral Water 1500ml', qty: 2, base: 14000, cat: 'Drinks' },
+                        { name: 'Hand Soap Refill 400ml', qty: 1, base: 20000, cat: 'Household' }
+                    ]
+                },
+                tech: {
+                    store: 'TOKOPEDIA OFFICIAL STORE',
+                    location: 'Invoice INV/20261002/XXI/89201',
+                    date: '2026-10-01 19:40 WIB • INVOICE',
+                    model: 'AZURE DOC AI + GROQ',
+                    latency: '⚡ 920ms Latency',
+                    subtotal: 340000,
+                    taxLabel: 'PPN TAX (11%):',
+                    taxAmount: 37400,
+                    serviceAmount: 9000,
+                    items: [
+                        { name: 'Baseus 65W GaN Charger', qty: 1, base: 250000, cat: 'Electronics' },
+                        { name: 'USB-C to C 100W Cable 2M', qty: 1, base: 90000, cat: 'Accessories' }
+                    ]
+                }
+            };
+
+            const storeTitle = document.getElementById('receipt-store-name');
+            const storeLoc = document.getElementById('receipt-store-loc');
+            const dateStr = document.getElementById('receipt-date-str');
+            const rawItemsList = document.getElementById('receipt-raw-items');
+            const subtotalVal = document.getElementById('receipt-subtotal-val');
+            const taxLabel = document.getElementById('receipt-tax-label');
+            const taxVal = document.getElementById('receipt-tax-val');
+            const serviceRow = document.getElementById('receipt-service-row');
+            const serviceVal = document.getElementById('receipt-service-val');
+            const grandtotalVal = document.getElementById('receipt-grandtotal-val');
+            const activeEngineBadge = document.getElementById('active-engine-badge');
+            const activeLatencyBadge = document.getElementById('active-latency-badge');
+            const extractedItemsContainer = document.getElementById('extracted-items-container');
+            const rawJsonDisplay = document.getElementById('raw-json-display');
+            const totalParsedAmount = document.getElementById('total-parsed-amount');
+            const taxBannerText = document.getElementById('tax-banner-text');
+            const scanLaser = document.getElementById('scan-laser');
+            const triggerScanBtn = document.getElementById('trigger-scan-btn');
+
+            let currentPresetKey = 'cafe';
+
+            function formatIDR(num) {
+                return 'Rp ' + Math.round(num).toLocaleString('id-ID');
+            }
+
+            function renderPreset(presetKey) {
+                currentPresetKey = presetKey;
+                const data = ocrPresets[presetKey];
+                if (!data) return;
+
+                // Animate laser
+                if (scanLaser) {
+                    scanLaser.classList.add('scanning');
+                    setTimeout(() => scanLaser.classList.remove('scanning'), 1500);
+                }
+
+                // Update receipt slip
+                if (storeTitle) storeTitle.textContent = data.store;
+                if (storeLoc) storeLoc.textContent = data.location;
+                if (dateStr) dateStr.textContent = data.date;
+                if (subtotalVal) subtotalVal.textContent = formatIDR(data.subtotal);
+                if (taxLabel) taxLabel.textContent = data.taxLabel;
+                if (taxVal) taxVal.textContent = formatIDR(data.taxAmount);
+
+                if (serviceRow && serviceVal) {
+                    if (data.serviceAmount > 0) {
+                        serviceRow.style.display = 'flex';
+                        serviceVal.textContent = formatIDR(data.serviceAmount);
+                    } else {
+                        serviceRow.style.display = 'none';
+                    }
+                }
+
+                const totalOverhead = data.taxAmount + data.serviceAmount;
+                const grandTotal = data.subtotal + totalOverhead;
+                if (grandtotalVal) grandtotalVal.textContent = formatIDR(grandTotal);
+                if (totalParsedAmount) totalParsedAmount.textContent = formatIDR(grandTotal);
+
+                // Populate raw items
+                if (rawItemsList) {
+                    rawItemsList.innerHTML = data.items.map(item => `
+                        <li class="receipt-line-item">
+                            <div class="receipt-item-desc">
+                                <strong>${item.name}</strong>
+                                <small>${item.qty} x ${formatIDR(item.base / item.qty)}</small>
+                            </div>
+                            <span>${formatIDR(item.base)}</span>
+                        </li>
+                    `).join('');
+                }
+
+                // Update telemetry badges
+                if (activeEngineBadge) activeEngineBadge.textContent = data.model;
+                if (activeLatencyBadge) activeLatencyBadge.textContent = data.latency;
+
+                // Calculate proportional distribution
+                let distributedSum = 0;
+                const parsedResultItems = data.items.map((item, idx) => {
+                    const ratio = item.base / data.subtotal;
+                    let allocatedTax;
+                    if (idx === data.items.length - 1) {
+                        allocatedTax = totalOverhead - distributedSum;
+                    } else {
+                        allocatedTax = Math.round(totalOverhead * ratio);
+                        distributedSum += allocatedTax;
+                    }
+                    const finalAmount = item.base + allocatedTax;
+                    return {
+                        ...item,
+                        allocatedTax,
+                        finalAmount
+                    };
+                });
+
+                if (taxBannerText) {
+                    taxBannerText.innerHTML = `<strong>Zero-Loss Overhead Split:</strong> Total tax & fees of ${formatIDR(totalOverhead)} distributed proportionally across ${data.items.length} line items with exact IDR balancing.`;
+                }
+
+                // Populate visual parsed cards
+                if (extractedItemsContainer) {
+                    extractedItemsContainer.innerHTML = parsedResultItems.map(item => `
+                        <div class="parsed-item-card">
+                            <div class="item-main-details">
+                                <strong>${item.name}</strong>
+                                <small style="color: var(--muted); font-weight: 600;">Category: ${item.cat}</small>
+                                <span class="item-tax-split-note">+${formatIDR(item.allocatedTax)} overhead split</span>
+                            </div>
+                            <div class="item-final-price">
+                                <span class="price-val">${formatIDR(item.finalAmount)}</span>
+                                <small>Base: ${formatIDR(item.base)}</small>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+
+                // Populate raw JSON
+                if (rawJsonDisplay) {
+                    const jsonPayload = {
+                        provider: data.model,
+                        latency_ms: parseInt(data.latency.replace(/[^0-9]/g, ''), 10) || 840,
+                        merchant: {
+                            name: data.store,
+                            location: data.location,
+                            timestamp: data.date
+                        },
+                        totals: {
+                            subtotal_idr: data.subtotal,
+                            tax_idr: data.taxAmount,
+                            service_idr: data.serviceAmount,
+                            grand_total_idr: grandTotal
+                        },
+                        extracted_items: parsedResultItems.map(i => ({
+                            title: i.name,
+                            quantity: i.qty,
+                            base_idr: i.base,
+                            allocated_overhead_idr: i.allocatedTax,
+                            stored_total_idr: i.finalAmount,
+                            category: i.cat,
+                            transaction_type: "expected"
+                        }))
+                    };
+                    rawJsonDisplay.textContent = JSON.stringify(jsonPayload, null, 2);
+                }
+            }
+
+            // Attach preset button click listeners
+            const presetButtons = document.querySelectorAll('.preset-btn[data-preset]');
+            presetButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    presetButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const key = btn.getAttribute('data-preset');
+                    renderPreset(key);
+                });
+            });
+
+            if (triggerScanBtn) {
+                triggerScanBtn.addEventListener('click', () => {
+                    renderPreset(currentPresetKey);
+                });
+            }
+
+            // View toggle: Visual Cards vs Raw JSON
+            const btnViewCards = document.getElementById('btn-view-cards');
+            const btnViewJson = document.getElementById('btn-view-json');
+
+            if (btnViewCards && btnViewJson) {
+                btnViewCards.addEventListener('click', () => {
+                    btnViewCards.classList.add('active');
+                    btnViewJson.classList.remove('active');
+                    if (extractedItemsContainer) extractedItemsContainer.style.display = 'flex';
+                    if (rawJsonDisplay) rawJsonDisplay.classList.remove('active');
+                });
+
+                btnViewJson.addEventListener('click', () => {
+                    btnViewJson.classList.add('active');
+                    btnViewCards.classList.remove('active');
+                    if (extractedItemsContainer) extractedItemsContainer.style.display = 'none';
+                    if (rawJsonDisplay) rawJsonDisplay.classList.add('active');
+                });
+            }
+
+            // Initialize simulator
+            renderPreset('cafe');
+
+            // ==========================================
+            // Proportional Tax Engine Interactive Calculator
+            // ==========================================
+            const inputItem1 = document.getElementById('calc-item1');
+            const inputItem2 = document.getElementById('calc-item2');
+            const inputTaxPct = document.getElementById('calc-tax-pct');
+            const inputServicePct = document.getElementById('calc-service-pct');
+            const resSubtotal = document.getElementById('res-subtotal');
+            const resOverhead = document.getElementById('res-overhead');
+            const resItem1Final = document.getElementById('res-item1-final');
+            const resItem2Final = document.getElementById('res-item2-final');
+            const resTotalDue = document.getElementById('res-total-due');
+
+            function recalculateTaxDemo() {
+                const item1 = Math.max(0, parseFloat(inputItem1.value) || 0);
+                const item2 = Math.max(0, parseFloat(inputItem2.value) || 0);
+                const taxPct = Math.max(0, parseFloat(inputTaxPct.value) || 0);
+                const servicePct = Math.max(0, parseFloat(inputServicePct.value) || 0);
+
+                const subtotal = item1 + item2;
+                if (subtotal === 0) {
+                    if (resSubtotal) resSubtotal.textContent = 'Rp 0';
+                    if (resOverhead) resOverhead.textContent = 'Rp 0';
+                    if (resItem1Final) resItem1Final.textContent = 'Rp 0';
+                    if (resItem2Final) resItem2Final.textContent = 'Rp 0';
+                    if (resTotalDue) resTotalDue.textContent = 'Rp 0';
+                    return;
+                }
+
+                const totalTax = Math.round(subtotal * (taxPct / 100));
+                const totalService = Math.round(subtotal * (servicePct / 100));
+                const totalOverhead = totalTax + totalService;
+
+                const ratio1 = item1 / subtotal;
+                const overheadItem1 = Math.round(totalOverhead * ratio1);
+                const overheadItem2 = totalOverhead - overheadItem1; // Zero rounding loss
+
+                const finalItem1 = item1 + overheadItem1;
+                const finalItem2 = item2 + overheadItem2;
+                const grandTotal = finalItem1 + finalItem2;
+
+                if (resSubtotal) resSubtotal.textContent = formatIDR(subtotal);
+                if (resOverhead) resOverhead.textContent = formatIDR(totalOverhead) + ` (${taxPct + servicePct}%)`;
+                if (resItem1Final) resItem1Final.textContent = `${formatIDR(finalItem1)} (+${formatIDR(overheadItem1)})`;
+                if (resItem2Final) resItem2Final.textContent = `${formatIDR(finalItem2)} (+${formatIDR(overheadItem2)})`;
+                if (resTotalDue) resTotalDue.textContent = formatIDR(grandTotal);
+            }
+
+            [inputItem1, inputItem2, inputTaxPct, inputServicePct].forEach(input => {
+                if (input) input.addEventListener('input', recalculateTaxDemo);
+            });
+            recalculateTaxDemo();
+
+            // ==========================================
+            // FAQ Accordion Controller
+            // ==========================================
+            const faqItems = document.querySelectorAll('.faq-item');
+            faqItems.forEach(item => {
+                const trigger = item.querySelector('.faq-trigger');
+                if (trigger) {
+                    trigger.addEventListener('click', () => {
+                        const isOpen = item.classList.contains('open');
+                        faqItems.forEach(i => i.classList.remove('open'));
+                        if (!isOpen) {
+                            item.classList.add('open');
+                        }
+                    });
+                }
+            });
+
+            // ==========================================
+            // Terminal Snippet One-Click Copy
+            // ==========================================
+            const copyButtons = document.querySelectorAll('.cli-copy-btn');
+            const toastNotify = document.getElementById('toast-notify');
+
+            function showToast(text) {
+                if (!toastNotify) return;
+                toastNotify.textContent = text;
+                toastNotify.classList.add('active');
+                setTimeout(() => {
+                    toastNotify.classList.remove('active');
+                }, 2200);
+            }
+
+            copyButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const textToCopy = btn.getAttribute('data-copy');
+                    if (textToCopy && navigator.clipboard) {
+                        navigator.clipboard.writeText(textToCopy).then(() => {
+                            btn.textContent = 'Copied! ✓';
+                            showToast(`Copied: "${textToCopy.substring(0, 32)}..."`);
+                            setTimeout(() => {
+                                btn.textContent = 'Copy';
+                            }, 1800);
+                        }).catch(() => {
+                            showToast('Failed to copy to clipboard');
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

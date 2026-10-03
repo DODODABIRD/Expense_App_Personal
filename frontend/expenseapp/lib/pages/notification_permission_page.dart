@@ -9,7 +9,7 @@ class NotificationPermissionPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF14191F) : const Color(0xFFF6F8FA);
+    final bgColor = isDark ? const Color(0xFF14191F) : const Color(0xFFF4F7FB);
     final cardBg = isDark ? const Color(0xFF1E2830) : Colors.white;
 
     return Scaffold(
@@ -47,7 +47,6 @@ class NotificationPermissionPage extends StatelessWidget {
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
-                          letterSpacing: 0.8,
                         ),
                       ),
                     ],
@@ -66,7 +65,7 @@ class NotificationPermissionPage extends StatelessWidget {
                     padding: const EdgeInsets.all(22),
                     decoration: BoxDecoration(
                       color: cardBg,
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(18),
                       border: Border.all(color: Colors.black, width: 2.8),
                       boxShadow: const [
                         BoxShadow(
@@ -202,7 +201,6 @@ class NotificationPermissionPage extends StatelessWidget {
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
                           color: Colors.black,
-                          letterSpacing: 0.4,
                         ),
                       ),
                     ],
@@ -222,6 +220,13 @@ class NotificationPermissionPage extends StatelessWidget {
                     color: isDark ? const Color(0xFF263238) : const Color(0xFFE8ECEF),
                     borderRadius: BorderRadius.circular(14),
                     border: Border.all(color: Colors.black, width: 2),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: Colors.black,
+                        offset: Offset(2, 2),
+                        blurRadius: 0,
+                      ),
+                    ],
                   ),
                   child: Center(
                     child: Text(
