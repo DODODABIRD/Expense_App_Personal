@@ -16,6 +16,11 @@
     "greeting": "Hi! I'm Orlando. Nice to meet you! Ask me anything about my projects, stack, or journey.",
     "night_greeting": "Yaaawn... 😴 You woke me up! But hey, I'm Orlando. What's on your mind?"
   },
+  "personal_preferences": {
+    "liked_foods": ["Nasi Goreng", "Kwetiau Goreng", "Zuppa soup"],
+    "liked_drinks": ["Coffee", "Milo"],
+    "has_girlfriend": true
+  },
   "education": [
     {
       "institution": "Binus University",

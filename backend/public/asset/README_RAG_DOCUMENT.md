@@ -10,6 +10,7 @@ File data utama berada di:
 1. Buka file `public/asset/rag_knowledge.json`.
 2. Anda bisa mengubah:
    - **`profile`**: Bio, status, role, dan tagline Orlando.
+   - **`personal_preferences`**: Makanan dan minuman yang disukai Orlando.
    - **`education`**: Riwayat sekolah dan kuliah (Binus, Gonzaga, dll).
    - **`skills`**: Framework, bahasa pemrograman, dan database yang dikuasai.
    - **`flagship_project`** & **`other_projects`**: Detail project seperti Unmurce atau project baru lainnya.

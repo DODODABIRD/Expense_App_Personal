@@ -3359,10 +3359,10 @@ h1 {
 /* Standalone Face Viewport (Frameless, Transparent & Enlarged) */
 .orlando-face-viewport {
     position: relative;
-    width: 100%;
-    max-width: 600px;
+    width: 90%;
+    max-width: min(540px, 70vh);
     aspect-ratio: 1 / 1;
-    min-height: 520px;
+    min-height: min(520px, 70vh);
     display: flex;
     align-items: center;
     justify-content: center;
