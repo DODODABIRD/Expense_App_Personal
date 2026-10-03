@@ -240,9 +240,9 @@
 
                 <h1>
                     Fullstack Developer based in
-                    <strong style="color:#42A5F5;">Flutter</strong>
+                    <strong class="hero-flutter">Flutter</strong>
                     and
-                    <strong style="color:#004d08;">Django</strong>
+                    <strong class="hero-django">Django</strong>
                 </h1>
                 <p class="hero-lede">Hello there, my name is <strong>Orlando</strong>, a software engineer and product
                     builder from
@@ -746,7 +746,7 @@
                     <div class="project-visual placeholder-visual placeholder-aqua service-stack-visual">
                         <span class="visual-tag">COLLABORATION</span>
                         <div class="service-stack-header">
-                            <div class="badge-tag" style="background: var(--card-white);">ENGINEERING SERVICES</div>
+                            <div class="badge-tag service-badge">ENGINEERING SERVICES</div>
                             <h3>Services & Capabilities</h3>
                             <p class="preview-text" style="color: #000;">Tailored digital solutions, full-stack
                                 architecture, and mobile engineering.</p>
@@ -1130,6 +1130,33 @@
     <!-- Carousel & Lightbox Script -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            const revealTargets = document.querySelectorAll(
+                '.section-heading, #about > .intro-card, .skill-category-card, .project-card, .timeline-item, .contact-card, .site-footer'
+            );
+            const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+            if ('IntersectionObserver' in window && !reduceMotion) {
+                const revealObserver = new IntersectionObserver((entries, observer) => {
+                    entries.forEach(entry => {
+                        if (!entry.isIntersecting) return;
+                        entry.target.classList.add('is-revealed');
+                        observer.unobserve(entry.target);
+                    });
+                }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+                revealTargets.forEach(target => {
+                    const parent = target.parentElement;
+                    const siblingIndex = parent.matches('.skills-grid, .project-grid, .timeline-container')
+                        ? Array.from(parent.children).indexOf(target)
+                        : 0;
+                    target.style.setProperty('--reveal-delay', `${Math.min(siblingIndex, 3) * 75}ms`);
+                    target.classList.add('scroll-reveal');
+                    revealObserver.observe(target);
+                });
+
+                document.documentElement.classList.add('has-scroll-reveal');
+            }
+
             // UI Scene Preview Lightbox Modal Controller
             const lightboxModal = document.getElementById('ui-preview-lightbox');
             const lightboxImg = document.getElementById('lightbox-img');

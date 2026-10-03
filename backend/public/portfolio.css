@@ -69,6 +69,28 @@ a {
     margin-top: 50px;
 }
 
+.has-scroll-reveal .scroll-reveal {
+    opacity: 0;
+    translate: 0 18px;
+    transition:
+        opacity 560ms cubic-bezier(0.2, 0.65, 0.3, 1),
+        translate 560ms cubic-bezier(0.2, 0.65, 0.3, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+}
+
+.has-scroll-reveal .scroll-reveal.is-revealed {
+    opacity: 1;
+    translate: 0 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .has-scroll-reveal .scroll-reveal {
+        opacity: 1;
+        translate: none;
+        transition: none;
+    }
+}
+
 /* Fancy Floating Smart Header */
 .site-header-wrapper {
     position: fixed;
@@ -519,6 +541,14 @@ h1 {
     letter-spacing: -0.03em;
 }
 
+.hero-flutter {
+    color: #1769aa;
+}
+
+.hero-django {
+    color: #004d08;
+}
+
 .hero-lede {
     max-width: 520px;
     margin-bottom: 24px;
@@ -567,7 +597,7 @@ h1 {
 
 .social-pill.btn-email:hover {
     background: #ea4335;
-    color: #ffffff;
+    color: #000000;
 }
 
 .social-pill.btn-whatsapp:hover {
@@ -577,7 +607,7 @@ h1 {
 
 .social-pill.btn-line:hover {
     background: #06c755;
-    color: #ffffff;
+    color: #000000;
 }
 
 .social-pill.btn-linkedin:hover {
@@ -586,13 +616,18 @@ h1 {
 }
 
 .social-pill.btn-instagram:hover {
-    background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    background: linear-gradient(135deg, #9a4f00 0%, #a54427 25%, #a0253c 50%, #941e52 75%, #811c5a 100%);
     color: #ffffff;
 }
 
 .social-pill.btn-github:hover {
     background: #24292f;
     color: #ffffff;
+}
+
+.social-pill.btn-instagram:hover,
+.social-pill.btn-github:hover {
+    border-color: #ffffff;
 }
 
 .social-pill-icon {
@@ -700,7 +735,7 @@ h1 {
 }
 
 .section-index {
-    color: #000;
+    color: var(--ink);
     font-weight: 800;
     font-size: 0.82rem;
     letter-spacing: 0.1em;
@@ -917,6 +952,7 @@ h1 {
     border: var(--border-thin);
     border-radius: var(--radius-pill);
     background: var(--card-white);
+    color: var(--ink);
     box-shadow: var(--shadow-sm);
     font-weight: 800;
     font-size: 0.72rem;
@@ -961,6 +997,7 @@ h1 {
     border: var(--border-thin);
     border-radius: var(--radius-pill);
     background: var(--card-white);
+    color: var(--ink);
     box-shadow: var(--shadow-sm);
     font-weight: 800;
     font-size: 0.75rem;
@@ -1132,10 +1169,16 @@ h1 {
     border: var(--border-thin);
     border-radius: var(--radius-pill);
     background: var(--card-yellow);
+    color: #000000;
     box-shadow: var(--shadow-sm);
     font-weight: 800;
     font-size: 0.75rem;
     margin-bottom: 12px;
+}
+
+.service-badge {
+    background: var(--card-white);
+    color: var(--ink);
 }
 
 .preview-text {
@@ -1498,10 +1541,10 @@ h1 {
 /* Email: Google Red */
 .contact-btn-card.btn-email:hover {
     background: #ea4335;
-    color: #ffffff;
+    color: #000000;
 }
 .contact-btn-card.btn-email:hover .contact-detail span {
-    color: rgba(255, 255, 255, 0.88);
+    color: #000000;
 }
 
 /* WhatsApp: Official Green */
@@ -1519,25 +1562,25 @@ h1 {
     color: #ffffff;
 }
 .contact-btn-card.btn-linkedin:hover .contact-detail span {
-    color: rgba(255, 255, 255, 0.88);
+    color: #ffffff;
 }
 
 /* Instagram: Signature Sunset Gradient */
 .contact-btn-card.btn-instagram:hover {
-    background: linear-gradient(135deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
+    background: linear-gradient(135deg, #9a4f00 0%, #a54427 25%, #a0253c 50%, #941e52 75%, #811c5a 100%);
     color: #ffffff;
 }
 .contact-btn-card.btn-instagram:hover .contact-detail span {
-    color: rgba(255, 255, 255, 0.88);
+    color: #ffffff;
 }
 
 /* Line: Official Line Green */
 .contact-btn-card.btn-line:hover {
     background: #06c755;
-    color: #ffffff;
+    color: #000000;
 }
 .contact-btn-card.btn-line:hover .contact-detail span {
-    color: rgba(255, 255, 255, 0.88);
+    color: #000000;
 }
 
 .contact-btn-card.btn-github:hover {
@@ -1545,7 +1588,20 @@ h1 {
     color: #ffffff;
 }
 .contact-btn-card.btn-github:hover .contact-detail span {
-    color: rgba(255, 255, 255, 0.88);
+    color: #ffffff;
+}
+
+.contact-btn-card.btn-instagram:hover,
+.contact-btn-card.btn-github:hover {
+    border-color: #ffffff;
+}
+
+[data-theme="light"] .contact-btn-card.btn-linkedin:hover .contact-icon {
+    color: #0a66c2;
+}
+
+[data-theme="light"] .contact-btn-card.btn-instagram:hover .contact-icon {
+    color: #9a1e63;
 }
 
 .contact-icon {
@@ -1768,6 +1824,31 @@ h1 {
 }
 
 @media (max-width: 580px) {
+    .section-heading {
+        align-items: flex-start;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .section-heading > * {
+        min-width: 0;
+    }
+
+    .section-note {
+        max-width: 100%;
+        margin: 0;
+    }
+
+    .hero-copy,
+    .hero-art {
+        min-width: 0;
+    }
+
+    .orlando-face-viewport {
+        min-width: 0;
+        min-height: 0;
+    }
+
     .brand-text small {
         display: none;
     }
@@ -2183,7 +2264,7 @@ h1 {
     box-shadow: var(--shadow-sm);
     font-weight: 800;
     font-size: 0.76rem;
-    color: #000000;
+    color: var(--ink);
     transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
     cursor: default;
     user-select: none;
@@ -2200,10 +2281,12 @@ h1 {
     flex-shrink: 0;
 }
 
-.tech-chip.chip-yellow { background: var(--card-yellow); }
-.tech-chip.chip-aqua { background: var(--card-aqua); }
+.tech-chip.chip-yellow { background: var(--card-yellow); color: #000000; }
+.tech-chip.chip-aqua { background: var(--card-aqua); color: #000000; }
 .tech-chip.chip-dark { background: #1e293b; color: #ffffff; }
 .tech-chip.chip-dark svg { fill: #ffffff; }
+.tech-chip.chip-dark,
+.service-chip.chip-dark { border-color: #64748b; }
 
 /* Service Stack Icons & Showcase Card (Card 03) */
 .service-stack-visual {
@@ -2527,12 +2610,12 @@ h1 {
 
 /* High-Contrast Neo-Brutalist Dark Mode Overrides */
 [data-theme="dark"] .neo-card:not(.neo-card-yellow):not(.neo-card-aqua) {
-    outline: 1.5px solid rgba(255, 255, 255, 0.08);
+    outline: 1.5px solid rgba(255, 255, 255, 0.24);
 }
 
 [data-theme="dark"] .site-header {
     background: rgba(22, 30, 46, 0.55);
-    outline: 1.5px solid rgba(255, 255, 255, 0.08);
+    outline: 1.5px solid rgba(255, 255, 255, 0.24);
 }
 
 [data-theme="dark"] .site-header-wrapper.is-top .site-header {
@@ -2542,7 +2625,7 @@ h1 {
 [data-theme="dark"] .dropdown-menu {
     background: #161e2e;
     color: #f8fafc;
-    outline: 1.5px solid rgba(255, 255, 255, 0.1);
+    outline: 1.5px solid rgba(255, 255, 255, 0.24);
 }
 
 [data-theme="dark"] .dropdown-menu a {
@@ -2616,7 +2699,7 @@ h1 {
     color: #f8fafc;
 }
 
-[data-theme="dark"] .placeholder-visual {
+[data-theme="dark"] .placeholder-visual:not(.service-stack-visual) {
     background: #161e2e;
 }
 
@@ -2638,11 +2721,53 @@ h1 {
 [data-theme="dark"] .button-white {
     background-color: #1e293b;
     color: #f8fafc;
+    border-color: #64748b;
 }
 
 [data-theme="dark"] .button-white:hover {
     background-color: #334155;
     color: #ffffff;
+    border-color: #94a3b8;
+}
+
+[data-theme="dark"] .social-pill:not(:hover),
+[data-theme="dark"] .theme-toggle-btn,
+[data-theme="dark"] .contact-btn-card:not(:hover),
+[data-theme="dark"] .fact-box,
+[data-theme="dark"] .skill-tag,
+[data-theme="dark"] .project-arrow,
+[data-theme="dark"] .back-to-top,
+[data-theme="dark"] .contact-icon,
+[data-theme="dark"] .repo-type-tag,
+[data-theme="dark"] .lightbox-counter,
+[data-theme="dark"] .timeline-card:not(.neo-card-yellow):not(.neo-card-aqua) .timeline-tech-tags span {
+    border-color: #64748b;
+}
+
+[data-theme="dark"] .hero-flutter {
+    color: #42a5f5;
+}
+
+[data-theme="dark"] .hero-django {
+    color: #86efac;
+}
+
+[data-theme="dark"] .repo-stars {
+    color: #f59e0b;
+}
+
+[data-theme="dark"] .visual-tag {
+    background: #1e293b;
+    border-color: #64748b;
+}
+
+[data-theme="dark"] .service-badge {
+    background: var(--card-yellow);
+    color: #000000;
+}
+
+[data-theme="dark"] .tech-chip:not(.chip-yellow):not(.chip-aqua) {
+    border-color: #64748b;
 }
 
 /* Ensure bright yellow & aqua cards always maintain crisp dark text */
@@ -2776,6 +2901,11 @@ h1 {
     font-weight: 700;
     font-size: 0.85rem;
     color: var(--muted);
+}
+
+.neo-card-yellow .timeline-role,
+.neo-card-aqua .timeline-role {
+    color: #1e293b;
 }
 
 .timeline-card h3 {
@@ -2985,7 +3115,7 @@ h1 {
 .repo-stars {
     font-size: 0.8rem;
     font-weight: 800;
-    color: #f59e0b;
+    color: #9a5b00;
 }
 
 .repo-name {
@@ -3193,6 +3323,12 @@ h1 {
     transform-style: preserve-3d;
     filter: drop-shadow(0 18px 36px rgba(0, 0, 0, 0.20));
     transition: filter 0.25s ease;
+}
+
+@media (max-width: 580px) {
+    .orlando-face-viewport {
+        min-height: 0;
+    }
 }
 
 .orlando-face-viewport:hover {
