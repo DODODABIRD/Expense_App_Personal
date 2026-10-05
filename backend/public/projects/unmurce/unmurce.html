@@ -16,13 +16,13 @@
     <meta property="og:description"
         content="Explore Unmurce: private personal finance with automated receipt scanning, multi-model AI routing, and Neo-Brutalist interface.">
     <meta property="og:site_name" content="Orlando Diamond Prasetyo">
-    <meta property="og:image" content="https://dododabird.us/asset/unmurce-dashboard-preview.jpg">
+    <meta property="og:image" content="https://dododabird.us/asset/unmurce/app_screens/unmurce-dashboard-preview.jpg">
     <meta property="og:image:alt" content="Unmurce App Dashboard Preview">
     <meta name="twitter:card" content="summary_large_image">
     <meta name="twitter:title" content="Unmurce Expense Tracker | Product Showcase">
     <meta name="twitter:description"
         content="Explore Unmurce: private personal finance with automated receipt scanning, multi-model AI routing, and Neo-Brutalist interface.">
-    <meta name="twitter:image" content="https://dododabird.us/asset/unmurce-dashboard-preview.jpg">
+    <meta name="twitter:image" content="https://dododabird.us/asset/unmurce/app_screens/unmurce-dashboard-preview.jpg">
     <link rel="icon" type="image/png" href="/asset/orlando-brand-logo.png">
     <title>Unmurce Expense Tracker | Product Showcase & Architecture</title>
 
@@ -696,6 +696,75 @@
             transform: translateY(0);
         }
 
+        /* Subscreen switcher for multi-screenshot slides */
+        .slide-mockup-wrapper {
+            flex-direction: column !important;
+            gap: 12px;
+        }
+
+        .mockup-subscreen-pills {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: var(--card-white, #ffffff);
+            border: var(--border, 2px solid #000);
+            border-radius: 999px;
+            padding: 3px 5px;
+            box-shadow: 2px 2px 0px rgba(0, 0, 0, 0.9);
+            max-width: 100%;
+            overflow-x: auto;
+        }
+
+        .subscreen-pill {
+            background: transparent;
+            border: none;
+            border-radius: 999px;
+            padding: 4px 10px;
+            font-size: 0.72rem;
+            font-weight: 700;
+            font-family: inherit;
+            color: var(--text-muted, #555555);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+        }
+
+        .subscreen-pill:hover {
+            color: var(--text, #000000);
+            background: rgba(0, 0, 0, 0.06);
+        }
+
+        .subscreen-pill.active {
+            background: var(--yellow, #FFE500);
+            color: #000000;
+            box-shadow: 1px 1px 0px rgba(0, 0, 0, 0.8);
+        }
+
+        [data-theme="dark"] .mockup-subscreen-pills {
+            background: #1e1e1e;
+            border-color: #ffffff;
+            box-shadow: 2px 2px 0px rgba(255, 255, 255, 0.8);
+        }
+
+        [data-theme="dark"] .subscreen-pill {
+            color: #aaaaaa;
+        }
+
+        [data-theme="dark"] .subscreen-pill:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        [data-theme="dark"] .subscreen-pill.active {
+            background: var(--yellow, #FFE500);
+            color: #000000;
+            box-shadow: 1px 1px 0px #000000;
+        }
+
+        .phone-mockup-screen img {
+            transition: opacity 0.15s ease;
+        }
+
         /* Interactive FAQ Accordion */
         .faq-accordion-group {
             display: flex;
@@ -869,6 +938,35 @@
         }
         [data-theme="dark"] .faq-item {
             background: #161e2e;
+        }
+
+        /* Telemetry card padding */
+        .telemetry-card {
+            padding: 28px 32px;
+        }
+
+        /* Responsive Mobile Viewport Adjustments */
+        @media (max-width: 768px) {
+            #overview {
+                scroll-margin-top: 76px;
+            }
+            .telemetry-card {
+                padding: 18px 14px;
+            }
+            #trigger-scan-btn {
+                width: 100%;
+                margin-left: 0 !important;
+            }
+            .tax-engine-widget {
+                padding: 20px 16px;
+                gap: 20px;
+            }
+            .arch-bento-grid {
+                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            }
+            .cli-terminal-card {
+                padding: 18px 14px;
+            }
         }
     </style>
 
@@ -1105,7 +1203,7 @@
                             <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
                             <span class="frame-title">Unmurce - Dashboard</span>
                         </div>
-                        <img class="app-screen-img" src="/asset/unmurce-dashboard-preview.jpg" alt="Unmurce Expense Dashboard Screenshot">
+                        <img class="app-screen-img" src="/asset/unmurce/app_screens/unmurce-dashboard-preview.jpg" alt="Unmurce Expense Dashboard Screenshot">
                     </div>
 
                     <!-- Overlay Screenshot (Add Expense Screen) -->
@@ -1113,7 +1211,7 @@
                         <div class="frame-bar">
                             <span class="frame-title">Add Expense</span>
                         </div>
-                        <img class="app-screen-img" src="/asset/unmurce-add-expense-preview.jpg" alt="Unmurce Add Expense Screen Screenshot">
+                        <img class="app-screen-img" src="/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg" alt="Unmurce Add Expense Screen Screenshot">
                     </div>
                 </div>
             </div>
@@ -1121,7 +1219,7 @@
 
         <!-- Live Model Routing Status Band -->
         <section class="page-section">
-            <div class="neo-card intro-card" style="padding: 28px 32px;">
+            <div class="neo-card intro-card telemetry-card">
                 <div class="model-config">
                     <div class="model-config-heading">
                         <span>LIVE MULTI-MODEL OCR TELEMETRY</span>
@@ -1435,10 +1533,11 @@
             <!-- Quick Jump Category Tabs -->
             <div class="gallery-jump-tabs">
                 <button class="gallery-tab-pill active" data-slide="0">01 Dashboard</button>
-                <button class="gallery-tab-pill" data-slide="1">02 Add Expense</button>
-                <button class="gallery-tab-pill" data-slide="2">03 App Settings</button>
-                <button class="gallery-tab-pill" data-slide="3">04 Receipt OCR</button>
-                <button class="gallery-tab-pill" data-slide="4">05 Cloud Security</button>
+                <button class="gallery-tab-pill" data-slide="1">02 Add & Edit (2)</button>
+                <button class="gallery-tab-pill" data-slide="2">03 Analytics (3)</button>
+                <button class="gallery-tab-pill" data-slide="3">04 Receipt OCR (3)</button>
+                <button class="gallery-tab-pill" data-slide="4">05 Settings</button>
+                <button class="gallery-tab-pill" data-slide="5">06 Cloud Security</button>
             </div>
 
             <div class="carousel-container neo-card">
@@ -1450,7 +1549,7 @@
                                 <div class="phone-mockup-frame" data-lightbox-index="0" title="Click to zoom in">
                                     <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
                                     <div class="phone-mockup-screen">
-                                        <img src="/asset/unmurce-dashboard-preview.jpg" alt="Unmurce Expense Dashboard Screenshot">
+                                        <img src="/asset/unmurce/app_screens/unmurce-dashboard-preview.jpg" alt="Unmurce Expense Dashboard Screenshot">
                                     </div>
                                     <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
                                 </div>
@@ -1458,7 +1557,7 @@
                             <div class="slide-details">
                                 <span class="slide-badge">SCREEN 01</span>
                                 <h3>Expense Dashboard View</h3>
-                                <p>Lists transactions in sunny yellow Neo-Brutalist cards with cumulative balance calculations, category badges, and quick filters.</p>
+                                <p>Lists transactions in sunny yellow Neo-Brutalist cards with cumulative balance calculations, category badges, and quick sorting filters.</p>
                                 <div class="slide-tags">
                                     <span>Neo-Brutalist UI</span>
                                     <span>Realtime Sync</span>
@@ -1468,43 +1567,106 @@
                             </div>
                         </div>
 
-                        <!-- Slide 2: Add Expense Form -->
+                        <!-- Slide 2: Add & Edit Expense Forms (2 Screens) -->
                         <div class="carousel-slide">
                             <div class="slide-mockup-wrapper">
                                 <div class="phone-mockup-frame" data-lightbox-index="1" title="Click to zoom in">
                                     <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
                                     <div class="phone-mockup-screen">
-                                        <img src="/asset/unmurce-add-expense-preview.jpg" alt="Unmurce Add Expense Form Screenshot">
+                                        <img src="/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg" alt="Unmurce Add & Edit Expense Screenshot">
                                     </div>
                                     <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
                                 </div>
+                                <div class="mockup-subscreen-pills" role="tablist" aria-label="Add or Edit Screen Views">
+                                    <button type="button" class="subscreen-pill active" data-src="/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg" data-lightbox="1" aria-selected="true">Add Form</button>
+                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-edit-expense-preview.jpg" data-lightbox="2" aria-selected="false">Edit Screen</button>
+                                </div>
                             </div>
                             <div class="slide-details">
-                                <span class="slide-badge">SCREEN 02</span>
-                                <h3>Add Expense Screen</h3>
-                                <p>Quick transaction entry with title, amount in IDR, category selector, transaction type (Expected/Unexpected), and date picker.</p>
+                                <span class="slide-badge">WORKFLOW 02</span>
+                                <h3>Add & Edit Expense Workflows</h3>
+                                <p>Fast transaction entry with one-tap incremental chips (+10k, +50k), category selector, transaction classification (Expected/Unexpected), and date picker.</p>
                                 <div class="slide-tags">
                                     <span>Fast Entry</span>
-                                    <span>Category Selector</span>
+                                    <span>Quick Increments</span>
                                     <span>Date Picker</span>
+                                    <span>Modify & Delete</span>
                                 </div>
                                 <a class="button button-yellow slide-cta" href="/expenses">Try Add Expense ↗</a>
                             </div>
                         </div>
 
-                        <!-- Slide 3: Settings Screen -->
+                        <!-- Slide 3: In-Depth Analytics & Breakdowns (3 Screens) -->
                         <div class="carousel-slide">
                             <div class="slide-mockup-wrapper">
-                                <div class="phone-mockup-frame" data-lightbox-index="2" title="Click to zoom in">
+                                <div class="phone-mockup-frame" data-lightbox-index="3" title="Click to zoom in">
                                     <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
                                     <div class="phone-mockup-screen">
-                                        <img src="/asset/unmurce-settings-preview.jpg" alt="Unmurce Settings Screen Screenshot">
+                                        <img src="/asset/unmurce/app_screens/unmurce-details-preview-1.jpg" alt="Unmurce Analytics Screenshot">
+                                    </div>
+                                    <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
+                                </div>
+                                <div class="mockup-subscreen-pills" role="tablist" aria-label="Analytics Screen Views">
+                                    <button type="button" class="subscreen-pill active" data-src="/asset/unmurce/app_screens/unmurce-details-preview-1.jpg" data-lightbox="3" aria-selected="true">1. 7-Day Trend</button>
+                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-details-preview-2.jpg" data-lightbox="4" aria-selected="false">2. Category Ratio</button>
+                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-details-preview-3.jpg" data-lightbox="5" aria-selected="false">3. Outlier Detector</button>
+                                </div>
+                            </div>
+                            <div class="slide-details">
+                                <span class="slide-badge">FEATURE 03</span>
+                                <h3>Expense Analytics & Intelligence</h3>
+                                <p>Comprehensive spending breakdown featuring 7-day review bar charts, category ratios, planned vs unexpected budget health indicators, and automatic outlier anomaly detection.</p>
+                                <div class="slide-tags">
+                                    <span>7-Day Trend</span>
+                                    <span>Health Ratios</span>
+                                    <span>Outlier AI</span>
+                                </div>
+                                <a class="button button-aqua slide-cta" href="/expenses">View Live Analytics ↗</a>
+                            </div>
+                        </div>
+
+                        <!-- Slide 4: Smart Receipt OCR (3 Screens) -->
+                        <div class="carousel-slide">
+                            <div class="slide-mockup-wrapper">
+                                <div class="phone-mockup-frame" data-lightbox-index="7" title="Click to zoom in">
+                                    <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                    <div class="phone-mockup-screen">
+                                        <img src="/asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg" alt="Unmurce Receipt Scan Screenshot">
+                                    </div>
+                                    <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
+                                </div>
+                                <div class="mockup-subscreen-pills" role="tablist" aria-label="Receipt OCR Screen Views">
+                                    <button type="button" class="subscreen-pill active" data-src="/asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg" data-lightbox="7" aria-selected="true">1. Camera Scan</button>
+                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-receipt-ocr-preview.jpg" data-lightbox="8" aria-selected="false">2. Multi-Item Review</button>
+                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-recipt-ocr-preview.jpg" data-lightbox="6" aria-selected="false">3. Upload Prompt</button>
+                                </div>
+                            </div>
+                            <div class="slide-details">
+                                <span class="slide-badge">FEATURE 04</span>
+                                <h3>Automated Receipt Parsing Pipeline</h3>
+                                <p>Snap or upload receipt photos to extract line items, prices, and taxes using Gemini 3.6 Flash and Azure AI. Interactive item selection with quantity controls and zero-loss tax distribution.</p>
+                                <div class="slide-tags">
+                                    <span>Gemini 3.6 Flash</span>
+                                    <span>Camera Scanner</span>
+                                    <span>Auto Tax Split</span>
+                                </div>
+                                <a class="button button-aqua slide-cta" href="/projects/docs">Read OCR Tech Docs ↗</a>
+                            </div>
+                        </div>
+
+                        <!-- Slide 5: Settings Screen -->
+                        <div class="carousel-slide">
+                            <div class="slide-mockup-wrapper">
+                                <div class="phone-mockup-frame" data-lightbox-index="9" title="Click to zoom in">
+                                    <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
+                                    <div class="phone-mockup-screen">
+                                        <img src="/asset/unmurce/app_screens/unmurce-settings-preview.jpg" alt="Unmurce Settings Screen Screenshot">
                                     </div>
                                     <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
                                 </div>
                             </div>
                             <div class="slide-details">
-                                <span class="slide-badge">SCREEN 03</span>
+                                <span class="slide-badge">SCREEN 05</span>
                                 <h3>App Settings & Profile View</h3>
                                 <p>Configure personal account details, Firebase security tokens, display preferences, and instant data reset actions.</p>
                                 <div class="slide-tags">
@@ -1516,31 +1678,7 @@
                             </div>
                         </div>
 
-                        <!-- Slide 4: Receipt OCR -->
-                        <div class="carousel-slide">
-                            <div class="slide-mockup-wrapper">
-                                <div class="phone-mockup-frame" data-lightbox-index="3" title="Click to zoom in">
-                                    <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
-                                    <div class="phone-mockup-screen">
-                                        <img src="/asset/unmurce-receipt-ocr-preview.jpg" alt="Unmurce Receipt Scan Screenshot">
-                                    </div>
-                                    <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
-                                </div>
-                            </div>
-                            <div class="slide-details">
-                                <span class="slide-badge">FEATURE 04</span>
-                                <h3>Automated Receipt Parsing</h3>
-                                <p>Snap a photo of any receipt to automatically extract line items, prices, and tax distribution using Gemini 3.6 Flash and Azure Document Intelligence.</p>
-                                <div class="slide-tags">
-                                    <span>Gemini 3.6 Flash</span>
-                                    <span>Azure AI</span>
-                                    <span>Auto Tax Split</span>
-                                </div>
-                                <a class="button button-aqua slide-cta" href="/projects/docs">Read OCR Tech Docs ↗</a>
-                            </div>
-                        </div>
-
-                        <!-- Slide 5: Firebase Auth & MongoDB Security -->
+                        <!-- Slide 6: Firebase Auth & MongoDB Security -->
                         <div class="carousel-slide">
                             <div class="slide-mockup-wrapper">
                                 <div class="feature-graphic-box graphic-aqua">
@@ -1550,7 +1688,7 @@
                                 </div>
                             </div>
                             <div class="slide-details">
-                                <span class="slide-badge">ARCHITECTURE 05</span>
+                                <span class="slide-badge">ARCHITECTURE 06</span>
                                 <h3>Private Data Isolation</h3>
                                 <p>Every transaction query is authenticated via Firebase Bearer ID Tokens and enforced against MongoDB Atlas collection schemas.</p>
                                 <div class="slide-tags">
@@ -1571,6 +1709,7 @@
                 <span class="dot" data-index="2"></span>
                 <span class="dot" data-index="3"></span>
                 <span class="dot" data-index="4"></span>
+                <span class="dot" data-index="5"></span>
             </div>
         </section>
 
@@ -1809,7 +1948,7 @@
             </div>
             <div class="ui-lightbox-footer">
                 <button id="lightbox-prev-btn" class="lightbox-btn lightbox-btn-prev" type="button">← Prev</button>
-                <span id="lightbox-counter" class="lightbox-counter">1 / 4</span>
+                <span id="lightbox-counter" class="lightbox-counter">1 / 10</span>
                 <button id="lightbox-next-btn" class="lightbox-btn lightbox-btn-next" type="button">Next →</button>
             </div>
         </div>
@@ -1863,10 +2002,16 @@
             const lightboxBackdrop = document.querySelector('.ui-lightbox-backdrop');
 
             const uiScenes = [
-                { title: 'Dashboard View', src: '/asset/unmurce-dashboard-preview.jpg' },
-                { title: 'Add Expense Screen', src: '/asset/unmurce-add-expense-preview.jpg' },
-                { title: 'App Settings & Profile', src: '/asset/unmurce-settings-preview.jpg' },
-                { title: 'Receipt OCR Parser', src: '/asset/unmurce-receipt-ocr-preview.jpg' }
+                { title: 'Dashboard View & Balances', src: '/asset/unmurce/app_screens/unmurce-dashboard-preview.jpg' },
+                { title: 'Add Expense Form', src: '/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg' },
+                { title: 'Edit Expense & Amount Adjuster', src: '/asset/unmurce/app_screens/unmurce-edit-expense-preview.jpg' },
+                { title: 'Expense Analytics: 7-Day Trend Chart', src: '/asset/unmurce/app_screens/unmurce-details-preview-1.jpg' },
+                { title: 'Expense Analytics: Category Distribution & Ratio', src: '/asset/unmurce/app_screens/unmurce-details-preview-2.jpg' },
+                { title: 'Expense Analytics: Outlier & Anomaly Detection', src: '/asset/unmurce/app_screens/unmurce-details-preview-3.jpg' },
+                { title: 'Receipt OCR: Capture / Upload Prompt', src: '/asset/unmurce/app_screens/unmurce-recipt-ocr-preview.jpg' },
+                { title: 'Receipt OCR: Camera Scan & Detected Items', src: '/asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg' },
+                { title: 'Receipt OCR: Item Review & Batch Save', src: '/asset/unmurce/app_screens/unmurce-receipt-ocr-preview.jpg' },
+                { title: 'App Settings & Profile Security', src: '/asset/unmurce/app_screens/unmurce-settings-preview.jpg' }
             ];
 
             let activeSceneIndex = 0;
@@ -1902,6 +2047,37 @@
                     e.preventDefault();
                     const idx = parseInt(el.getAttribute('data-lightbox-index'), 10);
                     if (!isNaN(idx)) openLightbox(idx);
+                });
+            });
+
+            // Subscreen pill switcher for mockups with multiple screenshots
+            document.querySelectorAll('.subscreen-pill').forEach((pill) => {
+                pill.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const wrapper = pill.closest('.slide-mockup-wrapper');
+                    if (!wrapper) return;
+                    wrapper.querySelectorAll('.subscreen-pill').forEach(p => {
+                        p.classList.remove('active');
+                        p.setAttribute('aria-selected', 'false');
+                    });
+                    pill.classList.add('active');
+                    pill.setAttribute('aria-selected', 'true');
+
+                    const targetSrc = pill.getAttribute('data-src');
+                    const targetIdx = pill.getAttribute('data-lightbox');
+                    const img = wrapper.querySelector('.phone-mockup-screen img');
+                    const frame = wrapper.querySelector('.phone-mockup-frame');
+                    if (img && targetSrc) {
+                        img.style.opacity = '0.3';
+                        setTimeout(() => {
+                            img.src = targetSrc;
+                            img.style.opacity = '1';
+                        }, 100);
+                    }
+                    if (frame && targetIdx !== null) {
+                        frame.setAttribute('data-lightbox-index', targetIdx);
+                    }
                 });
             });
 

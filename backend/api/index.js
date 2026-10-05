@@ -1,6 +1,7 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const dns = require("node:dns");
 const mongoose = require("mongoose");
 const admin = require("firebase-admin");
 const cors = require("cors");
@@ -10,26 +11,78 @@ const {
   refreshNotificationContext,
 } = require("./notification_context");
 
+// Attempt to load local environment variables if available
+try {
+  const dotenv = require("dotenv");
+  dotenv.config({ path: path.join(__dirname, "../.env.local") });
+  dotenv.config();
+} catch (e) {}
+
+// Configure reliable DNS servers to avoid querySrv ECONNREFUSED on local ISPs
+try {
+  dns.setServers(["1.1.1.1", "8.8.8.8"]);
+} catch (e) {}
+
 const app = express();
 // Base64 receipt images can exceed Express defaults; allow larger JSON payloads.
 app.use(express.json({ limit: "8mb" }));
 app.use(express.urlencoded({ extended: true, limit: "8mb" }));
 app.use(cors());
 
-if (!admin.apps.length) {
-  if (!process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT_JSON is missing");
-  }
+// Serve static frontend assets locally and match vercel.json routes
+const publicDir = path.join(__dirname, "../public");
+app.use(express.static(publicDir));
+app.get("/expenses", (req, res) => {
+  res.sendFile(path.join(publicDir, "projects/unmurce/app.html"));
+});
+app.get("/projects/unmurce", (req, res) => {
+  res.sendFile(path.join(publicDir, "projects/unmurce/unmurce.html"));
+});
+app.get("/projects/docs", (req, res) => {
+  res.sendFile(path.join(publicDir, "projects/unmurce/docs.html"));
+});
 
-  admin.initializeApp({
-    credential: admin.credential.cert(
-      JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_JSON)
-    ),
-  });
+function parseFirebaseServiceAccount(raw) {
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw);
+  } catch (err) {
+    try {
+      const fixed = raw.replace(/"private_key":\s*"([^"]*)"/s, (match, keyContent) => {
+        return '"private_key": "' + keyContent.replace(/\r/g, '').replace(/\n/g, '\\n') + '"';
+      });
+      return JSON.parse(fixed);
+    } catch (err2) {
+      const sanitized = raw.replace(/[\u0000-\u001F]+/g, (match) => {
+        return match === '\n' ? '\\n' : match === '\r' ? '' : ' ';
+      });
+      return JSON.parse(sanitized);
+    }
+  }
+}
+
+if (!admin.apps.length) {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    try {
+      const serviceAccount = parseFirebaseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      if (serviceAccount) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+      }
+    } catch (err) {
+      console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:", err.message);
+    }
+  } else {
+    console.warn("Notice: FIREBASE_SERVICE_ACCOUNT_JSON is not configured in local environment.");
+  }
 }
 
 async function requireAuth(req, res, next) {
   try {
+    if (!admin.apps.length) {
+      return res.status(503).json({ error: "Firebase Admin is not configured on this server" });
+    }
     const header = req.headers.authorization || "";
     if (!header.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Authentication required" });
@@ -51,6 +104,10 @@ async function connectDB() {
   if (!process.env.MONGODB_URI) {
     throw new Error("MONGODB_URI is missing");
   }
+
+  try {
+    dns.setServers(["1.1.1.1", "8.8.8.8"]);
+  } catch (e) {}
 
   await mongoose.connect(process.env.MONGODB_URI);
   isConnected = true;
@@ -1227,6 +1284,7 @@ app.post("/api/users", requireAuth, async (req, res) => {
         setDefaultsOnInsert: true,
       }
     );
+    broadcastLiveChange(req.user.uid, { type: "expense_created", item: user });
     res.status(200).json(user);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -1238,9 +1296,13 @@ app.post("/api/users", requireAuth, async (req, res) => {
  * GET /api/users
  */
 app.get("/api/users", requireAuth, async (req, res) => {
-  await connectDB();
-  const users = await User.find({ ownerId: req.user.uid });
-  res.json(users);
+  try {
+    await connectDB();
+    const users = await User.find({ ownerId: req.user.uid });
+    res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /**
@@ -1248,10 +1310,14 @@ app.get("/api/users", requireAuth, async (req, res) => {
  * GET /api/users/:id
  */
 app.get("/api/users/:id", requireAuth, async (req, res) => {
-  await connectDB();
-  const user = await User.findOne({ _id: req.params.id, ownerId: req.user.uid });
-  if (!user) return res.status(404).json({ message: "Not found" });
-  res.json(user);
+  try {
+    await connectDB();
+    const user = await User.findOne({ _id: req.params.id, ownerId: req.user.uid });
+    if (!user) return res.status(404).json({ message: "Not found" });
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /**
@@ -1274,6 +1340,7 @@ app.put("/api/users/:id", requireAuth, async (req, res) => {
       { new: true, runValidators: true }
     );
     if (!user) return res.status(404).json({ message: "Not found" });
+    broadcastLiveChange(req.user.uid, { type: "expense_updated", item: user });
     res.json(user);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -1285,9 +1352,14 @@ app.put("/api/users/:id", requireAuth, async (req, res) => {
  * DELETE /api/users/:id
  */
 app.delete("/api/users/:id", requireAuth, async (req, res) => {
-  await connectDB();
-  await User.findOneAndDelete({ _id: req.params.id, ownerId: req.user.uid });
-  res.json({ message: "Deleted" });
+  try {
+    await connectDB();
+    await User.findOneAndDelete({ _id: req.params.id, ownerId: req.user.uid });
+    broadcastLiveChange(req.user.uid, { type: "expense_deleted", id: req.params.id });
+    res.json({ message: "Deleted" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 /**
@@ -1299,6 +1371,7 @@ app.post("/api/users/delete-all", requireAuth, async (req, res) => {
   try {
     await connectDB();
     const result = await User.deleteMany({ ownerId: req.user.uid });
+    broadcastLiveChange(req.user.uid, { type: "bulk_deleted", deletedCount: result.deletedCount });
     res.status(200).json({ message: "Deleted", deletedCount: result.deletedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1328,5 +1401,177 @@ app.get("/api/users/local/:localId", requireAuth, async (req, res) => {
   }
 });
 
+// Realtime Client Tracking for Live Updates (WebSocket & SSE fallback)
+const wsClientsByOwner = new Map();
+const sseClientsByOwner = new Map();
+
+function broadcastLiveChange(ownerId, data) {
+  if (!ownerId) return;
+  const payloadStr = JSON.stringify(data);
+
+  // Broadcast to WebSocket clients
+  const wsSet = wsClientsByOwner.get(ownerId);
+  if (wsSet) {
+    for (const ws of wsSet) {
+      if (ws.readyState === 1 /* OPEN */) {
+        try { ws.send(payloadStr); } catch (e) {}
+      }
+    }
+  }
+
+  // Broadcast to SSE clients
+  const sseSet = sseClientsByOwner.get(ownerId);
+  if (sseSet) {
+    const sseMsg = `data: ${payloadStr}\n\n`;
+    for (const clientRes of sseSet) {
+      try { clientRes.write(sseMsg); } catch (e) {}
+    }
+  }
+}
+
+/**
+ * SSE Endpoint for Live Updates Fallback
+ * GET /api/events
+ */
+app.get("/api/events", async (req, res) => {
+  let token = "";
+  const authHeader = req.headers.authorization || "";
+  if (authHeader.startsWith("Bearer ")) {
+    token = authHeader.substring(7);
+  } else if (req.query.token) {
+    token = String(req.query.token);
+  }
+
+  if (!token) {
+    return res.status(401).json({ error: "Authentication required" });
+  }
+
+  let user;
+  try {
+    user = await admin.auth().verifyIdToken(token);
+  } catch (err) {
+    return res.status(401).json({ error: "Invalid token" });
+  }
+
+  const ownerId = user.uid;
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no"
+  });
+
+  res.write(`data: ${JSON.stringify({ type: "connected", transport: "sse", ownerId })}\n\n`);
+
+  if (!sseClientsByOwner.has(ownerId)) {
+    sseClientsByOwner.set(ownerId, new Set());
+  }
+  sseClientsByOwner.get(ownerId).add(res);
+
+  const keepAlive = setInterval(() => {
+    try {
+      res.write(": ping\n\n");
+    } catch (e) {}
+  }, 20000);
+
+  req.on("close", () => {
+    clearInterval(keepAlive);
+    const set = sseClientsByOwner.get(ownerId);
+    if (set) {
+      set.delete(res);
+      if (set.size === 0) sseClientsByOwner.delete(ownerId);
+    }
+  });
+});
+
+let WebSocketPkg;
+try {
+  WebSocketPkg = require("ws");
+} catch (e) {
+  WebSocketPkg = null;
+}
+
+function createServerWithWs(expressApp) {
+  const http = require("http");
+  const server = http.createServer(expressApp);
+
+  if (WebSocketPkg) {
+    const wss = new WebSocketPkg.Server({ noServer: true });
+
+    server.on("upgrade", async (request, socket, head) => {
+      try {
+        const urlObj = new URL(request.url, `http://${request.headers.host || "localhost"}`);
+        if (urlObj.pathname === "/ws" || urlObj.pathname === "/api/ws") {
+          const token = urlObj.searchParams.get("token");
+          let ownerId = null;
+          if (token) {
+            try {
+              const decoded = await admin.auth().verifyIdToken(token);
+              ownerId = decoded.uid;
+            } catch (e) {}
+          }
+          wss.handleUpgrade(request, socket, head, (ws) => {
+            ws.ownerId = ownerId;
+            wss.emit("connection", ws, request);
+          });
+        } else {
+          socket.destroy();
+        }
+      } catch (err) {
+        socket.destroy();
+      }
+    });
+
+    wss.on("connection", (ws) => {
+      if (ws.ownerId) {
+        if (!wsClientsByOwner.has(ws.ownerId)) {
+          wsClientsByOwner.set(ws.ownerId, new Set());
+        }
+        wsClientsByOwner.get(ws.ownerId).add(ws);
+        ws.send(JSON.stringify({ type: "connected", transport: "websocket", ownerId: ws.ownerId }));
+      }
+
+      ws.on("message", async (msg) => {
+        try {
+          const data = JSON.parse(msg.toString());
+          if (data.type === "auth" && data.token) {
+            const decoded = await admin.auth().verifyIdToken(data.token);
+            if (ws.ownerId && wsClientsByOwner.has(ws.ownerId)) {
+              wsClientsByOwner.get(ws.ownerId).delete(ws);
+            }
+            ws.ownerId = decoded.uid;
+            if (!wsClientsByOwner.has(ws.ownerId)) {
+              wsClientsByOwner.set(ws.ownerId, new Set());
+            }
+            wsClientsByOwner.get(ws.ownerId).add(ws);
+            ws.send(JSON.stringify({ type: "authenticated", transport: "websocket", ownerId: ws.ownerId }));
+          } else if (data.type === "ping") {
+            ws.send(JSON.stringify({ type: "pong" }));
+          }
+        } catch (e) {}
+      });
+
+      ws.on("close", () => {
+        if (ws.ownerId && wsClientsByOwner.has(ws.ownerId)) {
+          wsClientsByOwner.get(ws.ownerId).delete(ws);
+          if (wsClientsByOwner.get(ws.ownerId).size === 0) {
+            wsClientsByOwner.delete(ws.ownerId);
+          }
+        }
+      });
+    });
+  }
+
+  return server;
+}
+
+if (require.main === module) {
+  const PORT = process.env.PORT || 3000;
+  const server = createServerWithWs(app);
+  server.listen(PORT, () => {
+    console.log(`Unmurce backend & live WebSocket server listening on port ${PORT}`);
+  });
+}
 
 module.exports = app;

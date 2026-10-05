@@ -567,36 +567,36 @@
                             </div>
                         </div>
                         <div class="visual-screenshots-combo">
-                            <div class="app-frame combo-frame-main neo-card">
+                            <div class="app-frame combo-frame-main neo-card" data-lightbox-index="0" title="Inspect Dashboard">
                                 <div class="frame-bar">
                                     <span class="frame-title">Dashboard</span>
                                 </div>
-                                <img class="app-screen-img" src="asset/unmurce-dashboard-preview.jpg"
+                                <img class="app-screen-img" src="asset/unmurce/app_screens/unmurce-dashboard-preview.jpg"
                                     alt="Unmurce Main Screenshot">
                             </div>
-                            <div class="app-frame combo-frame-sub neo-card">
+                            <div class="app-frame combo-frame-sub neo-card" data-lightbox-index="1" title="Inspect Add Expense">
                                 <div class="frame-bar">
                                     <span class="frame-title">Add Expense</span>
                                 </div>
-                                <img class="app-screen-img" src="asset/unmurce-add-expense-preview.jpg"
+                                <img class="app-screen-img" src="asset/unmurce/app_screens/unmurce-add-expense-preview.jpg"
                                     alt="Unmurce Add Expense Screenshot">
                             </div>
-                            <div class="app-frame combo-frame-third neo-card">
+                            <div class="app-frame combo-frame-third neo-card" data-lightbox-index="7" title="Inspect Receipt OCR">
                                 <div class="frame-bar">
                                     <span class="frame-title">Receipt OCR</span>
                                 </div>
-                                <img class="app-screen-img" src="asset/unmurce-receipt-ocr-preview.jpg"
+                                <img class="app-screen-img" src="asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg"
                                     alt="Unmurce Receipt Scan Screenshot">
                             </div>
-                            <div class="app-frame combo-frame-fourth neo-card">
+                            <div class="app-frame combo-frame-fourth neo-card" data-lightbox-index="3" title="Inspect Analytics">
                                 <div class="frame-bar">
-                                    <span class="frame-title">Settings</span>
+                                    <span class="frame-title">Analytics</span>
                                 </div>
-                                <img class="app-screen-img" src="asset/unmurce-settings-preview.jpg"
-                                    alt="Unmurce Settings Screenshot">
+                                <img class="app-screen-img" src="asset/unmurce/app_screens/unmurce-details-preview-1.jpg"
+                                    alt="Unmurce Analytics Screenshot">
                             </div>
                         </div>
-                        <span class="visual-caption">UNMURCE / EXPENSE TRACKER</span>
+                        <span class="visual-caption">UNMURCE / EXPENSE TRACKER • 10 SCREENSHOTS (TAP TO INSPECT)</span>
                     </div>
                     <div class="project-info">
                         <div>
@@ -1124,7 +1124,7 @@
             </div>
             <div class="ui-lightbox-footer">
                 <button id="lightbox-prev-btn" class="lightbox-btn lightbox-btn-prev" type="button">← Prev</button>
-                <span id="lightbox-counter" class="lightbox-counter">1 / 4</span>
+                <span id="lightbox-counter" class="lightbox-counter">1 / 10</span>
                 <button id="lightbox-next-btn" class="lightbox-btn lightbox-btn-next" type="button">Next →</button>
             </div>
         </div>
@@ -1171,10 +1171,16 @@
             const lightboxBackdrop = document.querySelector('.ui-lightbox-backdrop');
 
             const uiScenes = [
-                { title: 'Dashboard View', src: 'asset/unmurce-dashboard-preview.jpg' },
-                { title: 'Add Expense Screen', src: 'asset/unmurce-add-expense-preview.jpg' },
-                { title: 'Receipt OCR Parser', src: 'asset/unmurce-receipt-ocr-preview.jpg' },
-                { title: 'App Settings & Profile', src: 'asset/unmurce-settings-preview.jpg' }
+                { title: 'Dashboard View & Balances', src: 'asset/unmurce/app_screens/unmurce-dashboard-preview.jpg' },
+                { title: 'Add Expense Screen', src: 'asset/unmurce/app_screens/unmurce-add-expense-preview.jpg' },
+                { title: 'Edit Expense & Amount Adjuster', src: 'asset/unmurce/app_screens/unmurce-edit-expense-preview.jpg' },
+                { title: 'Expense Analytics: 7-Day Trend Chart', src: 'asset/unmurce/app_screens/unmurce-details-preview-1.jpg' },
+                { title: 'Expense Analytics: Category & Plan Ratio', src: 'asset/unmurce/app_screens/unmurce-details-preview-2.jpg' },
+                { title: 'Expense Analytics: Outlier & Anomaly Detection', src: 'asset/unmurce/app_screens/unmurce-details-preview-3.jpg' },
+                { title: 'Receipt OCR: Capture / Upload Prompt', src: 'asset/unmurce/app_screens/unmurce-recipt-ocr-preview.jpg' },
+                { title: 'Receipt OCR: Camera Scan & Detected Items', src: 'asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg' },
+                { title: 'Receipt OCR: Multi-Item Review & Save', src: 'asset/unmurce/app_screens/unmurce-receipt-ocr-preview.jpg' },
+                { title: 'App Settings & Profile Security', src: 'asset/unmurce/app_screens/unmurce-settings-preview.jpg' }
             ];
 
             let activeSceneIndex = 0;
@@ -1204,13 +1210,14 @@
                 document.body.style.overflow = '';
             }
 
-            // Attach click listeners to all 4 combo scene frames in Card 01
+            // Attach click listeners to all combo scene frames in Card 01
             const comboFrames = document.querySelectorAll('.visual-screenshots-combo .app-frame');
             comboFrames.forEach((frame, idx) => {
                 frame.addEventListener('click', (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    openLightbox(idx);
+                    const targetIdx = parseInt(frame.getAttribute('data-lightbox-index'), 10);
+                    openLightbox(isNaN(targetIdx) ? idx : targetIdx);
                 });
             });
 
@@ -1313,10 +1320,16 @@
             const imageAssets = [
                 'asset/orlando-brand-logo.png',
                 'asset/orlando-profile-photo.jpg',
-                'asset/unmurce-dashboard-preview.jpg',
-                'asset/unmurce-add-expense-preview.jpg',
-                'asset/unmurce-receipt-ocr-preview.jpg',
-                'asset/unmurce-settings-preview.jpg',
+                'asset/unmurce/app_screens/unmurce-dashboard-preview.jpg',
+                'asset/unmurce/app_screens/unmurce-add-expense-preview.jpg',
+                'asset/unmurce/app_screens/unmurce-edit-expense-preview.jpg',
+                'asset/unmurce/app_screens/unmurce-details-preview-1.jpg',
+                'asset/unmurce/app_screens/unmurce-details-preview-2.jpg',
+                'asset/unmurce/app_screens/unmurce-details-preview-3.jpg',
+                'asset/unmurce/app_screens/unmurce-recipt-ocr-preview.jpg',
+                'asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg',
+                'asset/unmurce/app_screens/unmurce-receipt-ocr-preview.jpg',
+                'asset/unmurce/app_screens/unmurce-settings-preview.jpg',
                 'asset/unmurce/unmurce-app-icon.png',
                 'asset/github-mark.png',
                 'asset/whatsapp.svg',

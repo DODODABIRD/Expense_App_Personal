@@ -2,10 +2,10 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="color-scheme" content="only light">
     <meta name="theme-color" content="#f3f5f8">
-    <title>Unmurce | Personal Expense Dashboard</title>
+    <title>Unmurce | Personal Expense App</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@600;700;800&display=swap" rel="stylesheet">
@@ -19,155 +19,480 @@
     <!-- Auth Screen Panel -->
     <section id="auth-panel" class="auth-panel">
         <div class="auth-copy">
-            <div class="neo-badge-tag">UNMURCE / EXPENSE APP</div>
+            <div class="pill-badge" style="background: var(--card-yellow); margin-bottom: 8px;">UNMURCE / EXPENSE APP</div>
             <h1>Keep every expense in clear view.</h1>
-            <p>Sign in to access your private, Neo-Brutalist personal finance tracker.</p>
+            <p>Private personal finance tracker with automated receipt AI, Neo-Brutalist design, and live sync.</p>
         </div>
         <form id="auth-form" class="auth-form neo-card">
             <div class="auth-heading">
                 <span id="auth-kicker">WELCOME BACK</span>
                 <h2 id="auth-title">Sign in</h2>
             </div>
-            <div class="input-group">
-                <label for="auth-email">Email Address</label>
-                <input id="auth-email" type="email" placeholder="you@domain.com" autocomplete="email" required>
+            <div class="form-field-group">
+                <label class="field-label" for="auth-email">Email Address</label>
+                <div class="neo-input-box">
+                    <input id="auth-email" type="email" placeholder="you@domain.com" autocomplete="email" required>
+                </div>
             </div>
-            <div class="input-group">
-                <label for="auth-password">Password</label>
-                <input id="auth-password" type="password" placeholder="••••••••" autocomplete="current-password" minlength="6" required>
+            <div class="form-field-group">
+                <label class="field-label" for="auth-password">Password</label>
+                <div class="neo-input-box">
+                    <input id="auth-password" type="password" placeholder="••••••••" autocomplete="current-password" minlength="6" required>
+                </div>
             </div>
             <p id="auth-error" class="auth-error" role="alert"></p>
-            <button id="auth-submit" class="btn-neo btn-aqua" type="submit">Sign in</button>
+            <button id="auth-submit" class="btn-neo btn-aqua" type="submit" style="width: 100%; padding: 14px;">Sign in</button>
             <button id="auth-toggle" class="auth-toggle" type="button">Create an account</button>
+            <div style="display: flex; align-items: center; gap: 8px; margin: 12px 0 10px 0;">
+                <div style="flex: 1; height: 2px; background: #000;"></div>
+                <span style="font-size: 0.72rem; font-weight: 800; letter-spacing: 0.5px; color: var(--muted);">OR INSTANT PREVIEW</span>
+                <div style="flex: 1; height: 2px; background: #000;"></div>
+            </div>
+            <button id="auth-guest-btn" class="btn-neo btn-yellow" type="button" style="width: 100%; padding: 12px; font-size: 0.95rem;">
+                ⚡ Try Demo / Guest Mode
+            </button>
         </form>
     </section>
 
-    <!-- Main Dashboard Screen -->
-    <div class="dashboard" hidden>
-        <!-- Top App Navigation & Header -->
-        <header class="app-header">
-            <div class="header-left">
-                <div class="title-badge neo-card">Expenses</div>
-                <p id="signed-in-user" class="signed-in-user"></p>
-            </div>
+    <!-- App Viewport Container (Hidden until Auth) -->
+    <div id="app-viewport" class="app-viewport" hidden>
 
-            <div class="header-right">
-                <div class="dropdown-filter-btn btn-neo btn-aqua">
-                    Newest <span aria-hidden="true">▾</span>
+        <!-- VIEW 1: DASHBOARD -->
+        <main id="view-dashboard" class="app-view">
+            <!-- Header matching screenshot Expenses with receipt button & sort -->
+            <header class="dashboard-header">
+                <div class="header-brand">
+                    <h1 class="brand-title">
+                        Expenses
+                        <button id="header-scan-ocr-btn" class="header-icon-btn" type="button" title="Scan Purchase Receipt" aria-label="Scan Receipt">🧾</button>
+                    </h1>
                 </div>
-                <button id="download-btn" class="btn-neo btn-white" type="button" title="Download PDF Report">
-                    PDF ↗
-                </button>
-                <button id="sign-out-btn" class="btn-neo btn-yellow" type="button">
-                    Sign out
-                </button>
-            </div>
-        </header>
-
-        <!-- Balance Stat Banner -->
-        <div class="stat-banner neo-card neo-card-yellow">
-            <div class="stat-info">
-                <span class="stat-label">TOTAL MONTHLY BALANCE</span>
-                <span id="total-amount" class="stat-value">Rp0</span>
-            </div>
-            <button id="open-add-btn" class="btn-neo btn-aqua add-action-btn" type="button">
-                + Add Expense
-            </button>
-        </div>
-
-        <!-- Main Expense List Container -->
-        <main class="main-content">
-            <div class="list-section">
-                <div class="list-section-header">
-                    <h2>Transactions</h2>
-                    <button id="refresh-btn" class="btn-neo btn-white btn-sm" type="button">↻ Refresh</button>
+                <div class="header-actions">
+                    <div id="live-indicator-pill" class="live-pill" title="Realtime Sync Status">
+                        <span id="live-indicator-dot" class="live-dot"></span>
+                        <span id="live-indicator-text">Live</span>
+                    </div>
+                    <select id="sort-select" class="sort-select-pill" aria-label="Sort Transactions">
+                        <option value="newest">Newest ▾</option>
+                        <option value="oldest">Oldest ▾</option>
+                        <option value="highest">Highest ▾</option>
+                        <option value="lowest">Lowest ▾</option>
+                    </select>
                 </div>
-                
-                <!-- Neo Brutalist Expense Cards Grid -->
-                <div class="expense-cards-list" id="mobile-cards"></div>
+            </header>
 
-                <!-- Table View for Desktop Backup -->
-                <div class="table-responsive" style="display: none;">
-                    <table id="expense-table">
-                        <thead>
-                            <tr>
-                                <th>Date</th>
-                                <th>Name</th>
-                                <th>Category</th>
-                                <th>Type</th>
-                                <th>Amount</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="expense-list"></tbody>
-                    </table>
+            <!-- Cyan Balance Card matching screenshot -->
+            <section class="balance-card">
+                <div class="balance-card-header">
+                    <span class="pill-badge">🗂 TOTAL PENGELUARAN</span>
+                    <button id="open-analytics-btn" class="details-btn" type="button">Details →</button>
                 </div>
+                <div class="balance-amount-row">
+                    <span id="dashboard-total-amount" class="balance-val">Rp0</span>
+                    <span class="currency-tag">IDR</span>
+                </div>
+                <div class="balance-meta-row">
+                    <span id="stat-tx-count" class="pill-badge">📑 0 Transaksi</span>
+                    <span id="stat-cat-count" class="pill-badge">🗃 0 Kategori</span>
+                </div>
+            </section>
+
+            <!-- Transactions List -->
+            <section class="transaction-list-container" id="transaction-list" aria-label="Recent Transactions">
+                <!-- Dynamically rendered yellow Neo-Brutalist cards -->
+            </section>
+
+            <!-- Empty State Fallback -->
+            <div id="empty-tx-state" class="empty-tx-card" style="display: none;">
+                <div class="empty-tx-icon">💸</div>
+                <h3 class="empty-tx-title">No transactions yet</h3>
+                <p class="empty-tx-sub">Tap the yellow plus button below or snap a receipt to log your first expense.</p>
+                <button id="empty-add-btn" class="btn-neo btn-yellow" type="button" style="margin-top: 6px;">+ Add Expense</button>
             </div>
         </main>
+
+        <!-- VIEW 2: ADD / EDIT EXPENSE FORM -->
+        <section id="view-expense-form" class="app-view" hidden>
+            <div class="view-top-bar">
+                <div class="view-title-group">
+                    <button class="back-btn back-to-dashboard-btn" type="button" aria-label="Back to Dashboard">←</button>
+                    <h2 id="form-title" class="view-heading-title">Add Expense</h2>
+                </div>
+                <button id="form-delete-btn" class="btn-circle btn-danger" type="button" title="Delete Transaction" style="display: none;">
+                    🗑
+                </button>
+            </div>
+
+            <form id="expense-form" class="form-card-container">
+                <input type="hidden" id="edit-expense-id">
+                <input type="hidden" id="edit-expense-localId">
+
+                <!-- AMOUNT CARD with Quick Chips -->
+                <div class="amount-input-card">
+                    <div class="amount-card-header">
+                        <span class="amount-label-group">AMOUNT</span>
+                        <button id="clear-amount-btn" class="clear-amount-btn" type="button">✕ Clear</button>
+                    </div>
+                    <div class="amount-big-row">
+                        <div class="rp-symbol-badge">Rp</div>
+                        <input id="amount-input" class="amount-input-control" type="text" inputmode="numeric" placeholder="0" required>
+                    </div>
+                    <div class="increment-chips-row">
+                        <button type="button" class="chip-btn" data-add="10000">+10k</button>
+                        <button type="button" class="chip-btn" data-add="50000">+50k</button>
+                        <button type="button" class="chip-btn" data-add="100000">+100k</button>
+                        <button type="button" class="chip-btn chip-btn-red" data-add="-10000">-10k</button>
+                        <button type="button" class="chip-btn chip-btn-red" data-add="-50000">-50k</button>
+                    </div>
+                </div>
+
+                <!-- Expense Name -->
+                <div class="form-field-group">
+                    <label class="field-label" for="expense-name-input">Expense Name</label>
+                    <div class="neo-input-box">
+                        <span style="font-size: 1.2rem;">🛍</span>
+                        <input id="expense-name-input" type="text" placeholder="e.g. kebab mustofa, iced latte" required>
+                    </div>
+                </div>
+
+                <!-- Category Selector -->
+                <div class="form-field-group">
+                    <label class="field-label">Category</label>
+                    <div class="category-pill-grid" id="category-selector">
+                        <button type="button" class="cat-pill-btn active" data-category="makanan">🍔 Makanan</button>
+                        <button type="button" class="cat-pill-btn" data-category="transportasi">🚗 Transportasi</button>
+                        <button type="button" class="cat-pill-btn" data-category="elektronik">💻 Elektronik</button>
+                        <button type="button" class="cat-pill-btn" data-category="baju">👕 Baju</button>
+                        <button type="button" class="cat-pill-btn" data-category="kesehatan">🏥 Kesehatan</button>
+                        <button type="button" class="cat-pill-btn" data-category="hiburan">🎬 Hiburan</button>
+                        <button type="button" class="cat-pill-btn" data-category="others">💡 Others</button>
+                    </div>
+                </div>
+
+                <!-- Expense Type -->
+                <div class="form-field-group">
+                    <label class="field-label">Expense Type</label>
+                    <div class="type-selector-grid" id="type-selector">
+                        <button type="button" class="type-pill-btn active" data-type="Expected">
+                            <span style="font-size: 1.2rem;">✓</span>
+                            <span>Expected</span>
+                        </button>
+                        <button type="button" class="type-pill-btn" data-type="Unexpected">
+                            <span style="font-size: 1.2rem;">⚡</span>
+                            <span>Unexpected</span>
+                        </button>
+                        <button type="button" class="type-pill-btn" data-type="Others">
+                            <span style="font-size: 1.2rem;">★</span>
+                            <span>Others</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Date Picker Card -->
+                <div class="form-field-group">
+                    <label class="field-label">Date</label>
+                    <div class="date-selector-card">
+                        <div class="date-row">
+                            <span id="date-display-label" class="date-display-label">📅 Today</span>
+                            <button id="open-native-datepicker-btn" class="pick-date-btn" type="button">Pick</button>
+                            <input type="date" id="native-date-input" style="display: none;">
+                        </div>
+                        <div class="quick-date-row">
+                            <button type="button" class="quick-date-btn active" id="quick-date-today">Today</button>
+                            <button type="button" class="quick-date-btn" id="quick-date-yesterday">Yesterday</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Submit CTA Button -->
+                <button id="form-submit-btn" class="btn-neo btn-teal" type="submit" style="width: 100%; padding: 16px; font-size: 1.05rem; margin-top: 10px;">
+                    Save Transaction
+                </button>
+            </form>
+        </section>
+
+        <!-- VIEW 3: EXPENSE ANALYTICS (Screenshots 1, 2, 3) -->
+        <section id="view-analytics" class="app-view" hidden>
+            <div class="view-top-bar">
+                <div class="view-title-group">
+                    <button class="back-btn back-to-dashboard-btn" type="button" aria-label="Back to Dashboard">←</button>
+                    <h2 class="view-heading-title">Expense Analytics</h2>
+                </div>
+            </div>
+
+            <div class="analytics-section">
+                <!-- Cyan Summary Card -->
+                <div class="summary-cyan-card">
+                    <div class="balance-card-header">
+                        <span class="pill-badge">📈 TOTAL FINANCIAL SUMMARY</span>
+                        <span class="currency-tag">IDR</span>
+                    </div>
+                    <span id="analytics-total-amount" class="balance-val">Rp0</span>
+                    <div class="balance-meta-row">
+                        <span id="analytics-tx-count" class="pill-badge">📑 0 Transaksi</span>
+                        <span id="analytics-cat-count" class="pill-badge">🗃 0 Kategori</span>
+                    </div>
+                </div>
+
+                <!-- 7-Day Trend Chart Card -->
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <span class="chart-card-title">📅 Review 7 Hari Terakhir</span>
+                        <span id="analytics-7d-badge" class="pill-badge" style="background: var(--card-aqua);">Total 7H: Rp0</span>
+                    </div>
+                    <div class="chart-bars-track" id="analytics-7d-bars">
+                        <!-- Rendered 7 daily pillars -->
+                    </div>
+                    <div id="analytics-peak-banner" class="insight-banner-box">
+                        <span>🔥 Puncak pengeluaran 7 hari ini: <strong>Rp0</strong></span>
+                    </div>
+                </div>
+
+                <!-- Category Breakdown Card -->
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <span class="chart-card-title">🛍 Distribusi per Kategori</span>
+                    </div>
+                    <div class="category-progress-track" id="analytics-cat-progress">
+                        <!-- Colored category percentage segments -->
+                    </div>
+                    <div class="cat-breakdown-list" id="analytics-cat-list">
+                        <!-- Ranked category item rows -->
+                    </div>
+                </div>
+
+                <!-- Expense Type Ratio Card -->
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <span class="chart-card-title">⏱ Tipe Pengeluaran</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; text-align: center;">
+                        <div class="rate-chip">
+                            <span class="rate-code" style="color: #ca8a04;">Terencana</span>
+                            <strong id="ratio-expected-pct" style="font-size: 1.15rem;">0%</strong>
+                            <span id="ratio-expected-rp" style="font-size: 0.72rem; color: var(--muted);">Rp0</span>
+                        </div>
+                        <div class="rate-chip">
+                            <span class="rate-code" style="color: #e11d48;">Tak Terduga</span>
+                            <strong id="ratio-unexpected-pct" style="font-size: 1.15rem;">0%</strong>
+                            <span id="ratio-unexpected-rp" style="font-size: 0.72rem; color: var(--muted);">Rp0</span>
+                        </div>
+                        <div class="rate-chip">
+                            <span class="rate-code" style="color: #2563eb;">Lainnya</span>
+                            <strong id="ratio-others-pct" style="font-size: 1.15rem;">0%</strong>
+                            <span id="ratio-others-rp" style="font-size: 0.72rem; color: var(--muted);">Rp0</span>
+                        </div>
+                    </div>
+                    <div id="analytics-ratio-health" class="ratio-health-box">
+                        <span>✓ Rasio terencana sehat! Pengeluaran tak terduga terkendali di bawah 35%.</span>
+                    </div>
+                </div>
+
+                <!-- Outlier Detector Card -->
+                <div class="chart-card outlier-detector-box">
+                    <div class="chart-card-header">
+                        <span class="chart-card-title">⚠️ Detektor Outlier</span>
+                        <span id="analytics-outlier-count-pill" class="pill-badge" style="background: var(--card-yellow);">0 Anomali</span>
+                    </div>
+                    <p style="font-size: 0.85rem; color: var(--muted); font-weight: 600;">
+                        Pengeluaran yang nominalnya jauh lebih tinggi dari transaksi rata-rata:
+                    </p>
+                    <div id="analytics-outlier-result" class="ratio-health-box">
+                        <span>✓ Tidak ada outlier terdeteksi! Semua pengeluaran berada dalam rentang wajar.</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- VIEW 4: SMART RECEIPT OCR SCANNER -->
+        <section id="view-receipt-ocr" class="app-view" hidden>
+            <div class="view-top-bar">
+                <div class="view-title-group">
+                    <button class="back-btn back-to-dashboard-btn" type="button" aria-label="Back to Dashboard">←</button>
+                    <h2 class="view-heading-title">Scan Receipt</h2>
+                </div>
+            </div>
+
+            <!-- Upload / Prompt Box (Initial state) -->
+            <div id="ocr-upload-prompt-card" class="ocr-capture-card">
+                <div class="ocr-prompt-icon">🧾</div>
+                <h3 class="ocr-prompt-text">Snap or upload your receipt photo</h3>
+                <div class="ocr-buttons-row">
+                    <button id="ocr-trigger-camera-btn" class="ocr-action-btn btn-aqua" type="button">
+                        📷 Camera
+                    </button>
+                    <button id="ocr-trigger-gallery-btn" class="ocr-action-btn btn-yellow" type="button">
+                        🖼 Gallery
+                    </button>
+                </div>
+                <!-- Hidden native inputs -->
+                <input type="file" id="ocr-camera-input" accept="image/*" capture="environment" style="display: none;">
+                <input type="file" id="ocr-gallery-input" accept="image/*" style="display: none;">
+            </div>
+
+            <!-- Receipt Photo Preview (When image loaded) -->
+            <div id="ocr-preview-card" class="receipt-preview-wrapper" style="display: none;">
+                <img id="ocr-preview-img" class="receipt-preview-img" src="" alt="Captured receipt preview">
+                <button id="ocr-zoom-btn" class="receipt-zoom-tap-badge" type="button">🔍 Tap untuk Preview 🔍</button>
+                <button id="ocr-remove-img-btn" class="receipt-remove-btn" type="button" title="Remove Photo">✕</button>
+            </div>
+
+            <!-- AI Progress Status -->
+            <div id="ocr-progress-banner" class="pill-badge" style="width: 100%; justify-content: center; display: none; background: var(--card-yellow); padding: 12px;">
+                <span id="ocr-progress-text">Processing receipt with AI...</span>
+            </div>
+
+            <!-- Detected Items Section -->
+            <div id="ocr-items-container" class="detected-items-section" style="display: none;">
+                <div class="date-selector-card" style="padding: 10px 14px;">
+                    <div class="date-row">
+                        <span id="ocr-receipt-date-label" class="date-display-label" style="font-size: 0.85rem;">📅 RECEIPT DATE: Today</span>
+                        <button id="ocr-change-date-btn" class="pick-date-btn" type="button">Change</button>
+                        <input type="date" id="ocr-native-date" style="display: none;">
+                    </div>
+                </div>
+
+                <div class="detected-items-header">
+                    <h3 id="ocr-items-count-heading" style="font-size: 1.15rem; font-weight: 800;">Detected Items (0)</h3>
+                    <div style="display: flex; gap: 8px;">
+                        <button id="ocr-select-all-btn" class="btn-neo btn-white btn-sm" type="button">Select All</button>
+                        <button id="ocr-deselect-all-btn" class="btn-neo btn-white btn-sm" type="button">Deselect All</button>
+                    </div>
+                </div>
+
+                <div id="ocr-items-list" style="display: flex; flex-direction: column; gap: 12px;">
+                    <!-- Rendered detected receipt items -->
+                </div>
+
+                <button id="ocr-add-manual-item-btn" class="btn-neo btn-white" type="button" style="width: 100%; padding: 12px; margin-top: 6px;">
+                    + Add Item Manually
+                </button>
+            </div>
+
+            <!-- Sticky Save Bar -->
+            <div id="ocr-sticky-bar" class="ocr-sticky-footer" style="display: none;">
+                <div class="ocr-total-info">
+                    <span class="ocr-total-label">TOTAL SELECTED</span>
+                    <strong id="ocr-selected-total-val" class="ocr-total-val">Rp0</strong>
+                </div>
+                <button id="ocr-save-selected-btn" class="btn-neo btn-teal" type="button" style="padding: 12px 22px;">
+                    ✓ SAVE (0)
+                </button>
+            </div>
+        </section>
+
+        <!-- VIEW 5: SETTINGS & PROFILE (Screenshot unmurce-settings-preview) -->
+        <section id="view-settings" class="app-view" hidden>
+            <div class="view-top-bar">
+                <div class="view-title-group">
+                    <button class="back-btn back-to-dashboard-btn" type="button" aria-label="Back to Dashboard">←</button>
+                    <h2 class="view-heading-title">Settings & Profile</h2>
+                </div>
+            </div>
+
+            <div class="settings-card-group">
+                <!-- User Profile Card -->
+                <div class="profile-summary-box">
+                    <div class="profile-avatar-circle">👤</div>
+                    <div class="profile-user-details">
+                        <h3 id="settings-user-email" class="profile-email-text">user@unmurce.app</h3>
+                        <p class="profile-role-sub">Authenticated via Firebase</p>
+                    </div>
+                    <button id="settings-sign-out-btn" class="btn-neo btn-yellow btn-sm" type="button">
+                        Sign Out
+                    </button>
+                </div>
+
+                <!-- Currency Exchange Rates -->
+                <div class="settings-action-card">
+                    <span class="settings-card-label">LIVE EXCHANGE RATES (BASE: IDR)</span>
+                    <div class="currency-rates-row">
+                        <div class="rate-chip">
+                            <span class="rate-code">🇺🇸 USD</span>
+                            <strong id="rate-usd" class="rate-price">Loading...</strong>
+                        </div>
+                        <div class="rate-chip">
+                            <span class="rate-code">🇪🇺 EUR</span>
+                            <strong id="rate-eur" class="rate-price">Loading...</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Export & Backup -->
+                <div class="settings-action-card">
+                    <span class="settings-card-label">DATA MANAGEMENT & BACKUP</span>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <button id="settings-export-pdf-btn" class="btn-neo btn-aqua" type="button" style="width: 100%; padding: 12px;">
+                            📄 Download PDF Report
+                        </button>
+                        <button id="settings-export-json-btn" class="btn-neo btn-white" type="button" style="width: 100%; padding: 12px;">
+                            💾 Export JSON Backup
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Danger Zone -->
+                <div class="settings-action-card" style="border-color: var(--danger);">
+                    <span class="settings-card-label" style="color: var(--danger);">DANGER ZONE</span>
+                    <p style="font-size: 0.85rem; color: var(--muted); font-weight: 600;">
+                        Delete all expenses from your cloud account. This action is permanent.
+                    </p>
+                    <button id="settings-delete-all-btn" class="btn-neo btn-danger" type="button" style="width: 100%; padding: 12px;">
+                        ⚠️ Reset All Data
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Floating Capsule Bottom Navigation Bar (Matches screenshot!) -->
+        <nav id="bottom-nav" class="bottom-nav-capsule" aria-label="Bottom Navigation">
+            <button id="nav-home-btn" class="nav-tab-btn active" type="button">
+                <span>🏠</span>
+                <span>Home</span>
+            </button>
+            <button id="nav-add-btn" class="nav-plus-circle" type="button" aria-label="Add Expense" title="Add Expense">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
+            </button>
+            <button id="nav-settings-btn" class="nav-settings-btn" type="button" aria-label="Settings" title="Settings">
+                ⚙
+            </button>
+        </nav>
     </div>
 
-    <!-- Floating Capsule Bottom Navigation Bar (Matches screenshot!) -->
-    <nav class="bottom-nav-bar" id="bottom-nav">
-        <button class="nav-action-icon" id="nav-refresh-btn" title="Refresh Transactions" type="button">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-        </button>
-        
-        <button class="nav-action-plus" id="nav-add-btn" title="Add New Expense" type="button">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-        </button>
-
-        <button class="nav-home-circle" id="nav-home-btn" title="Home Dashboard" type="button">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-        </button>
-    </nav>
-
-    <!-- Add Expense Modal Dialog -->
-    <div class="modal-overlay" id="add-modal-overlay" hidden>
-        <div class="modal-card neo-card">
+    <!-- Full Image Zoom Lightbox for Scanned Receipt -->
+    <div id="receipt-zoom-modal" class="modal-overlay" hidden>
+        <div class="modal-card" style="max-width: 600px; padding: 14px;">
             <div class="modal-header">
-                <h3>Add Expense</h3>
-                <button class="close-modal-btn" id="close-modal-btn" type="button">✕</button>
+                <h4 class="modal-title">Receipt Photo Preview</h4>
+                <button id="close-receipt-zoom-btn" class="close-modal-btn" type="button">✕</button>
             </div>
-            <form id="expense-form" class="modal-form">
-                <div class="input-group">
-                    <label for="name">Expense Name</label>
-                    <input id="name" type="text" placeholder="e.g. Nasi Uduk, Kopi, Bensin" required>
-                </div>
-                <div class="input-group">
-                    <label for="amount">Amount (Rp)</label>
-                    <input id="amount" type="number" placeholder="17000" min="0" required>
-                </div>
-                <div class="input-row">
-                    <div class="input-group">
-                        <label for="category">Category</label>
-                        <select id="category" class="neo-select">
-                            <option value="makanan">Food & Drinks 🍔</option>
-                            <option value="transportasi">Transport 🚗</option>
-                            <option value="elektronik">Electronics 💻</option>
-                            <option value="baju">Apparel 👕</option>
-                            <option value="kesehatan">Health 🏥</option>
-                            <option value="hiburan">Entertainment 🎬</option>
-                            <option value="general">General 💡</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label for="type">Transaction Type</label>
-                        <select id="type" class="neo-select">
-                            <option value="Expense">Expense (-)</option>
-                            <option value="Income">Income (+)</option>
-                        </select>
-                    </div>
-                </div>
-                <div class="input-group">
-                    <label for="date">Date</label>
-                    <input id="date" type="date">
-                </div>
-                <div class="modal-actions">
-                    <button class="btn-neo btn-aqua" type="submit">Save Transaction</button>
-                    <button class="btn-neo btn-white" id="cancel-modal-btn" type="button">Cancel</button>
-                </div>
-            </form>
+            <div style="width: 100%; max-height: 75vh; overflow: auto; text-align: center;">
+                <img id="modal-receipt-img" src="" alt="Full receipt preview" style="max-width: 100%; border-radius: var(--radius-md); border: 2px solid #000;">
+            </div>
         </div>
+    </div>
+
+    <!-- Confirmation Modal Dialog -->
+    <div id="confirm-modal" class="modal-overlay" hidden>
+        <div class="modal-card">
+            <div class="modal-header">
+                <h4 id="confirm-modal-title" class="modal-title">Confirm Action</h4>
+                <button id="close-confirm-modal-btn" class="close-modal-btn" type="button">✕</button>
+            </div>
+            <p id="confirm-modal-message" style="font-size: 0.95rem; font-weight: 600; color: var(--muted);"></p>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button id="confirm-modal-ok-btn" class="btn-neo btn-danger" type="button" style="flex: 1;">Proceed</button>
+                <button id="confirm-modal-cancel-btn" class="btn-neo btn-white" type="button" style="flex: 1;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toast-banner" class="toast-banner" role="status" aria-live="polite">
+        Transaction saved!
     </div>
 
     <script src="/script.js"></script>
