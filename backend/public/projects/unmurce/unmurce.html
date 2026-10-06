@@ -95,9 +95,17 @@
             background: var(--card-yellow);
         }
 
-        .metric-card:nth-child(2) .metric-icon-box { background: var(--card-aqua); }
-        .metric-card:nth-child(3) .metric-icon-box { background: #ff9ee2; }
-        .metric-card:nth-child(4) .metric-icon-box { background: #b4f762; }
+        .metric-card:nth-child(2) .metric-icon-box {
+            background: var(--card-aqua);
+        }
+
+        .metric-card:nth-child(3) .metric-icon-box {
+            background: #ff9ee2;
+        }
+
+        .metric-card:nth-child(4) .metric-icon-box {
+            background: #b4f762;
+        }
 
         .metric-content strong {
             display: block;
@@ -203,8 +211,13 @@
         }
 
         @keyframes laserScanAnim {
-            0% { top: 4%; }
-            100% { top: 96%; }
+            0% {
+                top: 4%;
+            }
+
+            100% {
+                top: 96%;
+            }
         }
 
         .receipt-header-stub {
@@ -868,6 +881,15 @@
             font-size: 0.88rem;
             gap: 12px;
             margin-bottom: 10px;
+            min-width: 0;
+        }
+
+        .cli-code-row code {
+            min-width: 0;
+            overflow-x: auto;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            scrollbar-width: thin;
         }
 
         .cli-copy-btn {
@@ -916,26 +938,33 @@
         [data-theme="dark"] .metric-card {
             background: #161e2e;
         }
+
         [data-theme="dark"] .preset-btn {
             background: #161e2e;
             color: #f8fafc;
         }
+
         [data-theme="dark"] .extracted-stage {
             background: #161e2e;
         }
+
         [data-theme="dark"] .parsed-item-card {
             background: #1f293d;
         }
+
         [data-theme="dark"] .arch-card {
             background: #161e2e;
         }
+
         [data-theme="dark"] .tax-engine-widget {
             background: #161e2e;
         }
+
         [data-theme="dark"] .gallery-tab-pill {
             background: #161e2e;
             color: #f8fafc;
         }
+
         [data-theme="dark"] .faq-item {
             background: #161e2e;
         }
@@ -947,31 +976,331 @@
 
         /* Responsive Mobile Viewport Adjustments */
         @media (max-width: 768px) {
+
+            html,
+            body {
+                overflow-x: hidden;
+                max-width: 100vw;
+            }
+
             #overview {
                 scroll-margin-top: 76px;
             }
+
+            /* Section Spacing */
+            .page-section {
+                padding-top: 36px !important;
+            }
+
+            /* Hero CTAs: Standardized touch buttons for mobile viewport */
+            .hero-actions {
+                flex-direction: row;
+                flex-wrap: wrap;
+                width: 100%;
+                gap: 8px;
+            }
+
+            .hero-actions .button {
+                flex: 1 1 calc(50% - 8px);
+                min-width: 140px;
+                text-align: center;
+                justify-content: center;
+                padding: 9px 14px;
+                font-size: 0.84rem;
+            }
+
+            /* Hero Metrics Strip: 2x2 clean KPI grid */
+            .hero-metric-strip {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+                margin-top: 22px;
+            }
+
+            .metric-card {
+                padding: 12px 14px;
+                gap: 10px;
+            }
+
+            .metric-icon-box {
+                width: 38px;
+                height: 38px;
+                font-size: 1.15rem;
+                border-radius: 10px;
+            }
+
+            .metric-content strong {
+                font-size: 0.96rem;
+            }
+
+            .metric-content small {
+                font-size: 0.7rem;
+            }
+
+            /* Telemetry & Model Grid */
             .telemetry-card {
                 padding: 18px 14px;
             }
+
+            .model-config-grid-3 {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+
+            .model-config-heading {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+
+            /* Simulator Presets & Header */
+            .simulator-presets {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                gap: 8px;
+                margin-bottom: 14px;
+                padding-bottom: 4px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+
+            .simulator-presets::-webkit-scrollbar {
+                display: none;
+            }
+
+            .preset-btn {
+                flex-shrink: 0;
+                padding: 7px 14px;
+                font-size: 0.78rem;
+                white-space: nowrap;
+            }
+
             #trigger-scan-btn {
                 width: 100%;
                 margin-left: 0 !important;
+                margin-top: 8px;
             }
+
+            .receipt-paper-wrap {
+                padding: 18px 14px 22px;
+            }
+
+            .extracted-stage {
+                padding: 18px 14px;
+            }
+
+            .stage-header {
+                gap: 10px;
+            }
+
+            .view-toggle-group {
+                width: 100%;
+                display: flex;
+            }
+
+            .view-toggle-btn {
+                flex: 1;
+                text-align: center;
+                padding: 6px 10px;
+            }
+
+            .tax-split-banner {
+                padding: 10px 12px;
+                font-size: 0.78rem;
+            }
+
+            .parsed-item-card {
+                padding: 12px 14px;
+                gap: 10px;
+            }
+
+            .item-main-details strong {
+                font-size: 0.9rem;
+            }
+
+            .item-final-price .price-val {
+                font-size: 0.98rem;
+            }
+
+            /* System Architecture Bento */
+            .arch-bento-grid {
+                grid-template-columns: 1fr;
+                gap: 14px;
+            }
+
+            .arch-card {
+                padding: 18px 16px;
+            }
+
+            /* UI Gallery Carousel Overflow Prevention & Tab Scroll */
+            .carousel-section,
+            .carousel-container,
+            .carousel-track-wrapper {
+                overflow: hidden;
+                max-width: 100%;
+            }
+
+            .carousel-container {
+                padding: 20px 14px;
+            }
+
+            .gallery-jump-tabs {
+                display: flex;
+                flex-wrap: nowrap;
+                overflow-x: auto;
+                justify-content: flex-start;
+                padding: 4px 2px 12px;
+                gap: 8px;
+                -webkit-overflow-scrolling: touch;
+                scrollbar-width: none;
+            }
+
+            .gallery-jump-tabs::-webkit-scrollbar {
+                display: none;
+            }
+
+            .gallery-tab-pill {
+                flex-shrink: 0;
+                padding: 6px 14px;
+                font-size: 0.76rem;
+                white-space: nowrap;
+            }
+
+            .carousel-slide .slide-details {
+                text-align: center;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .carousel-slide .slide-tags {
+                justify-content: center;
+            }
+
+            .carousel-slide .slide-cta {
+                width: 100%;
+            }
+
+            /* Tax Engine Widget */
             .tax-engine-widget {
-                padding: 20px 16px;
+                padding: 18px 14px;
                 gap: 20px;
             }
-            .arch-bento-grid {
-                grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-            }
-            .cli-terminal-card {
+
+            .calc-results-card {
                 padding: 18px 14px;
+                gap: 12px;
+            }
+
+            .calc-results-row {
+                font-size: 0.88rem;
+            }
+
+            .calc-results-row:last-child {
+                font-size: 1.1rem;
+            }
+
+            /* FAQ Accordion */
+            .faq-trigger {
+                padding: 14px 16px;
+                font-size: 0.95rem;
+                gap: 10px;
+            }
+
+            .faq-content {
+                padding: 0 16px 14px 16px;
+                font-size: 0.88rem;
+            }
+
+            /* CLI Card: Zero Overflow & Touch Copy */
+            .cli-terminal-card {
+                padding: 16px 14px;
+                max-width: 100%;
+                overflow: hidden;
+            }
+
+            .cli-code-row {
+                display: flex;
+                flex-wrap: wrap;
+                align-items: center;
+                justify-content: space-between;
+                gap: 8px;
+                padding: 10px 12px;
+            }
+
+            .cli-code-row code {
+                flex: 1 1 200px;
+                min-width: 0;
+                font-size: 0.76rem;
+                word-break: break-all;
+                overflow-wrap: anywhere;
+                padding-bottom: 2px;
+            }
+
+            .cli-copy-btn {
+                flex-shrink: 0;
+                align-self: center;
+                padding: 6px 12px;
+                font-size: 0.74rem;
+            }
+
+            /* Download & Contact Section */
+            .contact-card {
+                padding: 24px 16px;
+            }
+
+            /* Mobile Drawer Scroll & Compact Fit */
+            .mobile-drawer-content {
+                max-height: calc(100dvh - 24px);
+                padding: 16px 14px 24px;
+                gap: 12px;
+            }
+
+            .mobile-drawer-nav {
+                gap: 7px;
+            }
+
+            .mobile-drawer-link {
+                padding: 9px 12px;
+                font-size: 0.86rem;
+                gap: 10px;
+            }
+
+            .mobile-drawer-link span {
+                font-size: 0.72rem;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .hero-metric-strip {
+                grid-template-columns: 1fr;
+            }
+
+            .parsed-item-card {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+
+            .item-final-price {
+                text-align: left;
+                width: 100%;
+                display: flex;
+                justify-content: space-between;
+                align-items: baseline;
+                border-top: 1px dashed rgba(0, 0, 0, 0.15);
+                padding-top: 6px;
+                margin-top: 4px;
+            }
+
+            [data-theme="dark"] .item-final-price {
+                border-top-color: rgba(255, 255, 255, 0.15);
             }
         }
     </style>
 
     <script>
-        (function() {
+        (function () {
             try {
                 const savedTheme = localStorage.getItem('theme');
                 const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -980,7 +1309,7 @@
                 } else {
                     document.documentElement.setAttribute('data-theme', 'light');
                 }
-            } catch (e) {}
+            } catch (e) { }
         })();
     </script>
     <script src="/model-status.js" defer></script>
@@ -1033,7 +1362,8 @@
                 <a href="/projects/docs">Documentation</a>
             </nav>
             <div class="header-actions-group">
-                <button class="theme-toggle-btn" id="theme-toggle-btn" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
+                <button class="theme-toggle-btn" id="theme-toggle-btn" type="button"
+                    aria-label="Toggle dark/light theme" title="Toggle theme">
                     <span class="theme-icon-moon">🌙</span>
                     <span class="theme-icon-sun">☀️</span>
                 </button>
@@ -1060,7 +1390,8 @@
                     </div>
                 </div>
                 <div class="drawer-header-actions">
-                    <button class="theme-toggle-btn" id="drawer-theme-toggle-btn" type="button" aria-label="Toggle dark/light theme" title="Toggle theme">
+                    <button class="theme-toggle-btn" id="drawer-theme-toggle-btn" type="button"
+                        aria-label="Toggle dark/light theme" title="Toggle theme">
                         <span class="theme-icon-moon">🌙</span>
                         <span class="theme-icon-sun">☀️</span>
                     </button>
@@ -1107,7 +1438,8 @@
 
             <div class="mobile-drawer-footer">
                 <a class="button button-aqua drawer-cta" href="/expenses">Open Unmurce Web App ↗</a>
-                <a class="button button-yellow drawer-cta" href="/asset/appdownload/app-arm64-v8a-release.apk" download="Unmurce-Android.apk">
+                <a class="button button-yellow drawer-cta" href="/asset/appdownload/app-arm64-v8a-release.apk"
+                    download="Unmurce-Android.apk">
                     Download APK (Android) ↓
                 </a>
             </div>
@@ -1122,16 +1454,20 @@
                     <img class="profile-face-img" src="/asset/unmurce/unmurce-app-icon.png" alt="Unmurce App Logo">
                     <div class="profile-badge-text">
                         <strong>Unmurce Expense Tracker</strong>
-                        <span class="status-indicator"><i class="status-dot"></i> Production Ready v2.4</span>
+                        <span class="status-indicator"><i class="status-dot"></i> Version BETA 1.5.6</span>
                     </div>
                 </div>
 
                 <h1>Private finances, clear insights, bold design.</h1>
-                <p class="hero-lede"><strong>Unmurce</strong> is a high-speed personal finance ecosystem built for ultimate speed, privacy, and tangible control. Equipped with automated multi-model receipt OCR (Groq Vision & Gemini 3.6 Flash), strict Firebase data isolation, and a high-contrast Neo-Brutalist interface.</p>
+                <p class="hero-lede"><strong>Unmurce</strong> is a high-speed personal finance ecosystem built for
+                    ultimate speed, privacy, and tangible control. Equipped with automated multi-model receipt OCR (Groq
+                    Vision & Gemini 3.6 Flash), strict Firebase data isolation, and a high-contrast Neo-Brutalist
+                    interface.</p>
 
                 <div class="hero-actions">
                     <a class="button button-aqua" href="/expenses">Launch Web App <span aria-hidden="true">↗</span></a>
-                    <a class="button button-yellow" href="/asset/appdownload/app-arm64-v8a-release.apk" download="Unmurce-Android.apk">
+                    <a class="button button-yellow" href="/asset/appdownload/app-arm64-v8a-release.apk"
+                        download="Unmurce-Android.apk">
                         Download APK (Android) <span aria-hidden="true">↓</span>
                     </a>
                     <a class="button button-white" href="/projects/docs">Technical Docs ↗</a>
@@ -1151,7 +1487,8 @@
                     <span class="social-pill" style="cursor: default;">
                         <span class="lang-color kotlin" style="margin-right: 4px;"></span> Firebase Auth
                     </span>
-                    <a class="social-pill btn-github" href="https://github.com/DODODABIRD/Expense_App_Personal" target="_blank" rel="noreferrer" title="GitHub Repository">
+                    <a class="social-pill btn-github" href="https://github.com/DODODABIRD/Expense_App_Personal"
+                        target="_blank" rel="noreferrer" title="GitHub Repository">
                         <span class="social-pill-icon">
                             <img src="/asset/github-mark.png" alt="">
                         </span>
@@ -1194,24 +1531,29 @@
 
             <!-- Hero Art: Real App Preview Screenshots -->
             <div class="hero-art" aria-label="Unmurce app preview screenshots">
-                <div class="stamp-tag neo-card">UNMURCE<br><span>PROD</span></div>
+                <!-- <div class="stamp-tag neo-card">UNMURCE<br><span>PROD</span></div> -->
 
                 <div class="app-screenshots-wrapper">
                     <!-- Main Screenshot -->
-                    <div class="app-frame main-frame neo-card" data-lightbox-index="0" title="Click to inspect Dashboard">
+                    <div class="app-frame main-frame neo-card" data-lightbox-index="0"
+                        title="Click to inspect Dashboard">
                         <div class="frame-bar">
-                            <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
+                            <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span
+                                class="dot-btn green"></span>
                             <span class="frame-title">Unmurce - Dashboard</span>
                         </div>
-                        <img class="app-screen-img" src="/asset/unmurce/app_screens/unmurce-dashboard-preview.jpg" alt="Unmurce Expense Dashboard Screenshot">
+                        <img class="app-screen-img" src="/asset/unmurce/app_screens/unmurce-dashboard-preview.jpg"
+                            alt="Unmurce Expense Dashboard Screenshot">
                     </div>
 
                     <!-- Overlay Screenshot (Add Expense Screen) -->
-                    <div class="app-frame secondary-frame neo-card" data-lightbox-index="1" title="Click to inspect Add Expense Form">
+                    <div class="app-frame secondary-frame neo-card" data-lightbox-index="1"
+                        title="Click to inspect Add Expense Form">
                         <div class="frame-bar">
                             <span class="frame-title">Add Expense</span>
                         </div>
-                        <img class="app-screen-img" src="/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg" alt="Unmurce Add Expense Screen Screenshot">
+                        <img class="app-screen-img" src="/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg"
+                            alt="Unmurce Add Expense Screen Screenshot">
                     </div>
                 </div>
             </div>
@@ -1223,7 +1565,8 @@
                 <div class="model-config">
                     <div class="model-config-heading">
                         <span>LIVE MULTI-MODEL OCR TELEMETRY</span>
-                        <span data-runtime-status class="status-indicator"><i class="status-dot"></i> ACTIVE RUNTIME CONFIG</span>
+                        <span data-runtime-status class="status-indicator"><i class="status-dot"></i> ACTIVE RUNTIME
+                            CONFIG</span>
                     </div>
                     <div class="model-config-grid-3">
                         <div class="fact-box model-fact model-fact-aqua">
@@ -1253,7 +1596,8 @@
                     <p class="section-index">01 / ARCHITECTURE & CORE CAPABILITIES</p>
                     <h2>Engineered for Privacy & Instant Action</h2>
                 </div>
-                <p class="section-note">No third-party trackers, no invasive analytics. Just clean personal financial management.</p>
+                <p class="section-note">No third-party trackers, no invasive analytics. Just clean personal financial
+                    management.</p>
             </div>
 
             <div class="project-grid">
@@ -1261,7 +1605,9 @@
                     <div class="project-info" style="flex-direction: column; align-items: flex-start;">
                         <span class="timeline-tag">AI INFERENCE</span>
                         <h3 style="margin-top: 8px;">Multi-Model Receipt OCR</h3>
-                        <p>Take a photo of any printed purchase receipt. The serverless backend leverages Azure Document Intelligence and Gemini 3.6 Flash / Groq LLMs to extract itemized lists, normalize IDR amounts, and split tax & service charges proportionally across items.</p>
+                        <p>Take a photo of any printed purchase receipt. The serverless backend leverages Azure Document
+                            Intelligence and Gemini 3.6 Flash / Groq LLMs to extract itemized lists, normalize IDR
+                            amounts, and split tax & service charges proportionally across items.</p>
                         <div class="timeline-tech-tags" style="margin-top: 14px;">
                             <span>Gemini 3.6 Flash</span>
                             <span>Groq Vision</span>
@@ -1275,7 +1621,9 @@
                     <div class="project-info" style="flex-direction: column; align-items: flex-start;">
                         <span class="timeline-tag">SECURITY & AUTH</span>
                         <h3 style="margin-top: 8px;">Per-User Data Isolation</h3>
-                        <p>All database queries and sync operations are strictly authenticated with Firebase Bearer ID Tokens. MongoDB Atlas collections enforce per-user indexing (`ownerId`) to guarantee that financial data remains strictly private and sandboxed.</p>
+                        <p>All database queries and sync operations are strictly authenticated with Firebase Bearer ID
+                            Tokens. MongoDB Atlas collections enforce per-user indexing (`ownerId`) to guarantee that
+                            financial data remains strictly private and sandboxed.</p>
                         <div class="timeline-tech-tags" style="margin-top: 14px;">
                             <span>Firebase Token Auth</span>
                             <span>MongoDB Atlas</span>
@@ -1289,7 +1637,9 @@
                     <div class="project-info" style="flex-direction: column; align-items: flex-start;">
                         <span class="timeline-tag">MOBILE & ENGINE</span>
                         <h3 style="margin-top: 8px;">Native Android & Notification Hooks</h3>
-                        <p>Shipped as an optimized Flutter release APK with native Kotlin bridges. Supports bank SMS and local transaction notification parsing to automatically log expenses without manual keyboard entry.</p>
+                        <p>Shipped as an optimized Flutter release APK with native Kotlin bridges. Supports bank SMS and
+                            local transaction notification parsing to automatically log expenses without manual keyboard
+                            entry.</p>
                         <div class="timeline-tech-tags" style="margin-top: 14px;">
                             <span>Flutter</span>
                             <span>Kotlin</span>
@@ -1303,7 +1653,9 @@
                     <div class="project-info" style="flex-direction: column; align-items: flex-start;">
                         <span class="timeline-tag">REPORTING & EXPORT</span>
                         <h3 style="margin-top: 8px;">Audit & PDF Report Generation</h3>
-                        <p>Filter expenses by date range, category, or transaction type (Expected vs. Unexpected). Generate downloadable client-side PDF statements instantly via jsPDF without sending data to external render engines.</p>
+                        <p>Filter expenses by date range, category, or transaction type (Expected vs. Unexpected).
+                            Generate downloadable client-side PDF statements instantly via jsPDF without sending data to
+                            external render engines.</p>
                         <div class="timeline-tech-tags" style="margin-top: 14px;">
                             <span>Client-Side PDF</span>
                             <span>Category Breakdown</span>
@@ -1322,7 +1674,9 @@
                     <p class="section-index">02 / LIVE SIMULATOR & INTERACTION</p>
                     <h2>Multi-Model Receipt OCR Playground</h2>
                 </div>
-                <p class="section-note">Experience the automated receipt parser right in your browser. Choose a preset or trigger a simulated scan to watch line items, taxes, and service fees get allocated instantly.</p>
+                <p class="section-note">Experience the automated receipt parser right in your browser. Choose a preset
+                    or trigger a simulated scan to watch line items, taxes, and service fees get allocated instantly.
+                </p>
             </div>
 
             <!-- Preset Buttons -->
@@ -1330,7 +1684,8 @@
                 <button class="preset-btn active" data-preset="cafe">☕ Cafe / Kopi Kenangan</button>
                 <button class="preset-btn" data-preset="supermarket">🛒 Supermarket / Indomaret</button>
                 <button class="preset-btn" data-preset="tech">⚡ Tech / Gadget Invoice</button>
-                <button id="trigger-scan-btn" class="preset-btn" style="background: var(--card-aqua); color: #000; margin-left: auto;">
+                <button id="trigger-scan-btn" class="preset-btn"
+                    style="background: var(--card-aqua); color: #000; margin-left: auto;">
                     ▶ Re-Scan OCR Simulation
                 </button>
             </div>
@@ -1396,7 +1751,8 @@
                     <div class="tax-split-banner">
                         <span>💡</span>
                         <div id="tax-banner-text">
-                            <strong>Zero-Loss Tax Allocation:</strong> Overhead (Rp 5.200) was split proportionally between items based on base price weights.
+                            <strong>Zero-Loss Tax Allocation:</strong> Overhead (Rp 5.200) was split proportionally
+                            between items based on base price weights.
                         </div>
                     </div>
 
@@ -1409,10 +1765,14 @@
                     <pre class="raw-json-box" id="raw-json-display"></pre>
 
                     <!-- Summary Action Footer -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-top: var(--border-thin); padding-top: 16px; flex-wrap: wrap; gap: 12px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; border-top: var(--border-thin); padding-top: 16px; flex-wrap: wrap; gap: 12px;">
                         <div>
-                            <span style="font-size: 0.8rem; color: var(--muted); font-weight: 700; text-transform: uppercase;">Total Extracted Items</span>
-                            <strong style="display: block; font-size: 1.25rem;" id="total-parsed-amount">Rp 57.200</strong>
+                            <span
+                                style="font-size: 0.8rem; color: var(--muted); font-weight: 700; text-transform: uppercase;">Total
+                                Extracted Items</span>
+                            <strong style="display: block; font-size: 1.25rem;" id="total-parsed-amount">Rp
+                                57.200</strong>
                         </div>
                         <a class="button button-yellow" href="/expenses" style="padding: 8px 18px; font-size: 0.88rem;">
                             Test In Live Web App ↗
@@ -1429,7 +1789,8 @@
                     <p class="section-index">03 / TECHNICAL SPECIFICATIONS</p>
                     <h2>Full-Stack Resilience & Zero-Leak Security</h2>
                 </div>
-                <p class="section-note">How data travels from local camera shutters to authenticated encrypted persistent storage.</p>
+                <p class="section-note">How data travels from local camera shutters to authenticated encrypted
+                    persistent storage.</p>
             </div>
 
             <div class="arch-bento-grid">
@@ -1442,7 +1803,9 @@
                         </div>
                         <h3>Flutter 3.x & Kotlin Bridges</h3>
                         <p style="color: var(--muted); font-size: 0.92rem; margin-top: 6px;">
-                            Built with Dart and Material 3 customized with Neo-Brutalist design tokens. Offline transactions are written directly to SQLite and synced when a data connection is established.
+                            Built with Dart and Material 3 customized with Neo-Brutalist design tokens. Offline
+                            transactions are written directly to SQLite and synced when a data connection is
+                            established.
                         </p>
                     </div>
                     <div class="arch-card-pills">
@@ -1462,7 +1825,8 @@
                         </div>
                         <h3>Serverless & Firebase Token Auth</h3>
                         <p style="color: var(--muted); font-size: 0.92rem; margin-top: 6px;">
-                            ExpressJS routing hosted on Vercel Serverless. Every transaction mutate endpoint is guarded by Firebase Admin Bearer ID verification. Zero unauthenticated endpoints.
+                            ExpressJS routing hosted on Vercel Serverless. Every transaction mutate endpoint is guarded
+                            by Firebase Admin Bearer ID verification. Zero unauthenticated endpoints.
                         </p>
                     </div>
                     <div class="arch-card-pills">
@@ -1482,7 +1846,8 @@
                         </div>
                         <h3>Dual-Model Vision OCR</h3>
                         <p style="color: var(--muted); font-size: 0.92rem; margin-top: 6px;">
-                            Primary high-speed parsing through Groq Vision (Llama 3.2 Vision 11B) with automatic failover to Google Gemini 3.6 Flash and Azure Document Intelligence.
+                            Primary high-speed parsing through Groq Vision (Llama 3.2 Vision 11B) with automatic
+                            failover to Google Gemini 3.6 Flash and Azure Document Intelligence.
                         </p>
                     </div>
                     <div class="arch-card-pills">
@@ -1502,7 +1867,8 @@
                         </div>
                         <h3>MongoDB Atlas Isolation</h3>
                         <p style="color: var(--muted); font-size: 0.92rem; margin-top: 6px;">
-                            Collections enforce strict compound indexing on <code>ownerId</code> and <code>transactionDate</code>. Cross-account data leaks are architecturally impossible.
+                            Collections enforce strict compound indexing on <code>ownerId</code> and
+                            <code>transactionDate</code>. Cross-account data leaks are architecturally impossible.
                         </p>
                     </div>
                     <div class="arch-card-pills">
@@ -1549,7 +1915,8 @@
                                 <div class="phone-mockup-frame" data-lightbox-index="0" title="Click to zoom in">
                                     <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
                                     <div class="phone-mockup-screen">
-                                        <img src="/asset/unmurce/app_screens/unmurce-dashboard-preview.jpg" alt="Unmurce Expense Dashboard Screenshot">
+                                        <img src="/asset/unmurce/app_screens/unmurce-dashboard-preview.jpg"
+                                            alt="Unmurce Expense Dashboard Screenshot">
                                     </div>
                                     <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
                                 </div>
@@ -1557,7 +1924,8 @@
                             <div class="slide-details">
                                 <span class="slide-badge">SCREEN 01</span>
                                 <h3>Expense Dashboard View</h3>
-                                <p>Lists transactions in sunny yellow Neo-Brutalist cards with cumulative balance calculations, category badges, and quick sorting filters.</p>
+                                <p>Lists transactions in sunny yellow Neo-Brutalist cards with cumulative balance
+                                    calculations, category badges, and quick sorting filters.</p>
                                 <div class="slide-tags">
                                     <span>Neo-Brutalist UI</span>
                                     <span>Realtime Sync</span>
@@ -1573,19 +1941,26 @@
                                 <div class="phone-mockup-frame" data-lightbox-index="1" title="Click to zoom in">
                                     <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
                                     <div class="phone-mockup-screen">
-                                        <img src="/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg" alt="Unmurce Add & Edit Expense Screenshot">
+                                        <img src="/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg"
+                                            alt="Unmurce Add & Edit Expense Screenshot">
                                     </div>
                                     <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
                                 </div>
-                                <div class="mockup-subscreen-pills" role="tablist" aria-label="Add or Edit Screen Views">
-                                    <button type="button" class="subscreen-pill active" data-src="/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg" data-lightbox="1" aria-selected="true">Add Form</button>
-                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-edit-expense-preview.jpg" data-lightbox="2" aria-selected="false">Edit Screen</button>
+                                <div class="mockup-subscreen-pills" role="tablist"
+                                    aria-label="Add or Edit Screen Views">
+                                    <button type="button" class="subscreen-pill active"
+                                        data-src="/asset/unmurce/app_screens/unmurce-add-expense-preview.jpg"
+                                        data-lightbox="1" aria-selected="true">Add Form</button>
+                                    <button type="button" class="subscreen-pill"
+                                        data-src="/asset/unmurce/app_screens/unmurce-edit-expense-preview.jpg"
+                                        data-lightbox="2" aria-selected="false">Edit Screen</button>
                                 </div>
                             </div>
                             <div class="slide-details">
                                 <span class="slide-badge">WORKFLOW 02</span>
                                 <h3>Add & Edit Expense Workflows</h3>
-                                <p>Fast transaction entry with one-tap incremental chips (+10k, +50k), category selector, transaction classification (Expected/Unexpected), and date picker.</p>
+                                <p>Fast transaction entry with one-tap incremental chips (+10k, +50k), category
+                                    selector, transaction classification (Expected/Unexpected), and date picker.</p>
                                 <div class="slide-tags">
                                     <span>Fast Entry</span>
                                     <span>Quick Increments</span>
@@ -1602,20 +1977,29 @@
                                 <div class="phone-mockup-frame" data-lightbox-index="3" title="Click to zoom in">
                                     <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
                                     <div class="phone-mockup-screen">
-                                        <img src="/asset/unmurce/app_screens/unmurce-details-preview-1.jpg" alt="Unmurce Analytics Screenshot">
+                                        <img src="/asset/unmurce/app_screens/unmurce-details-preview-1.jpg"
+                                            alt="Unmurce Analytics Screenshot">
                                     </div>
                                     <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
                                 </div>
                                 <div class="mockup-subscreen-pills" role="tablist" aria-label="Analytics Screen Views">
-                                    <button type="button" class="subscreen-pill active" data-src="/asset/unmurce/app_screens/unmurce-details-preview-1.jpg" data-lightbox="3" aria-selected="true">1. 7-Day Trend</button>
-                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-details-preview-2.jpg" data-lightbox="4" aria-selected="false">2. Category Ratio</button>
-                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-details-preview-3.jpg" data-lightbox="5" aria-selected="false">3. Outlier Detector</button>
+                                    <button type="button" class="subscreen-pill active"
+                                        data-src="/asset/unmurce/app_screens/unmurce-details-preview-1.jpg"
+                                        data-lightbox="3" aria-selected="true">1. 7-Day Trend</button>
+                                    <button type="button" class="subscreen-pill"
+                                        data-src="/asset/unmurce/app_screens/unmurce-details-preview-2.jpg"
+                                        data-lightbox="4" aria-selected="false">2. Category Ratio</button>
+                                    <button type="button" class="subscreen-pill"
+                                        data-src="/asset/unmurce/app_screens/unmurce-details-preview-3.jpg"
+                                        data-lightbox="5" aria-selected="false">3. Outlier Detector</button>
                                 </div>
                             </div>
                             <div class="slide-details">
                                 <span class="slide-badge">FEATURE 03</span>
                                 <h3>Expense Analytics & Intelligence</h3>
-                                <p>Comprehensive spending breakdown featuring 7-day review bar charts, category ratios, planned vs unexpected budget health indicators, and automatic outlier anomaly detection.</p>
+                                <p>Comprehensive spending breakdown featuring 7-day review bar charts, category ratios,
+                                    planned vs unexpected budget health indicators, and automatic outlier anomaly
+                                    detection.</p>
                                 <div class="slide-tags">
                                     <span>7-Day Trend</span>
                                     <span>Health Ratios</span>
@@ -1631,20 +2015,30 @@
                                 <div class="phone-mockup-frame" data-lightbox-index="7" title="Click to zoom in">
                                     <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
                                     <div class="phone-mockup-screen">
-                                        <img src="/asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg" alt="Unmurce Receipt Scan Screenshot">
+                                        <img src="/asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg"
+                                            alt="Unmurce Receipt Scan Screenshot">
                                     </div>
                                     <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
                                 </div>
-                                <div class="mockup-subscreen-pills" role="tablist" aria-label="Receipt OCR Screen Views">
-                                    <button type="button" class="subscreen-pill active" data-src="/asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg" data-lightbox="7" aria-selected="true">1. Camera Scan</button>
-                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-receipt-ocr-preview.jpg" data-lightbox="8" aria-selected="false">2. Multi-Item Review</button>
-                                    <button type="button" class="subscreen-pill" data-src="/asset/unmurce/app_screens/unmurce-recipt-ocr-preview.jpg" data-lightbox="6" aria-selected="false">3. Upload Prompt</button>
+                                <div class="mockup-subscreen-pills" role="tablist"
+                                    aria-label="Receipt OCR Screen Views">
+                                    <button type="button" class="subscreen-pill active"
+                                        data-src="/asset/unmurce/app_screens/unmurce-recipt-ocr-preview-1.jpg"
+                                        data-lightbox="7" aria-selected="true">1. Camera Scan</button>
+                                    <button type="button" class="subscreen-pill"
+                                        data-src="/asset/unmurce/app_screens/unmurce-receipt-ocr-preview.jpg"
+                                        data-lightbox="8" aria-selected="false">2. Multi-Item Review</button>
+                                    <button type="button" class="subscreen-pill"
+                                        data-src="/asset/unmurce/app_screens/unmurce-recipt-ocr-preview.jpg"
+                                        data-lightbox="6" aria-selected="false">3. Upload Prompt</button>
                                 </div>
                             </div>
                             <div class="slide-details">
                                 <span class="slide-badge">FEATURE 04</span>
                                 <h3>Automated Receipt Parsing Pipeline</h3>
-                                <p>Snap or upload receipt photos to extract line items, prices, and taxes using Gemini 3.6 Flash and Azure AI. Interactive item selection with quantity controls and zero-loss tax distribution.</p>
+                                <p>Snap or upload receipt photos to extract line items, prices, and taxes using Gemini
+                                    3.6 Flash and Azure AI. Interactive item selection with quantity controls and
+                                    zero-loss tax distribution.</p>
                                 <div class="slide-tags">
                                     <span>Gemini 3.6 Flash</span>
                                     <span>Camera Scanner</span>
@@ -1660,7 +2054,8 @@
                                 <div class="phone-mockup-frame" data-lightbox-index="9" title="Click to zoom in">
                                     <div class="phone-mockup-top"><span class="mockup-camera"></span></div>
                                     <div class="phone-mockup-screen">
-                                        <img src="/asset/unmurce/app_screens/unmurce-settings-preview.jpg" alt="Unmurce Settings Screen Screenshot">
+                                        <img src="/asset/unmurce/app_screens/unmurce-settings-preview.jpg"
+                                            alt="Unmurce Settings Screen Screenshot">
                                     </div>
                                     <div class="phone-mockup-bottom"><span class="home-indicator"></span></div>
                                 </div>
@@ -1668,7 +2063,8 @@
                             <div class="slide-details">
                                 <span class="slide-badge">SCREEN 05</span>
                                 <h3>App Settings & Profile View</h3>
-                                <p>Configure personal account details, Firebase security tokens, display preferences, and instant data reset actions.</p>
+                                <p>Configure personal account details, Firebase security tokens, display preferences,
+                                    and instant data reset actions.</p>
                                 <div class="slide-tags">
                                     <span>Account Preferences</span>
                                     <span>Firebase Security</span>
@@ -1690,7 +2086,8 @@
                             <div class="slide-details">
                                 <span class="slide-badge">ARCHITECTURE 06</span>
                                 <h3>Private Data Isolation</h3>
-                                <p>Every transaction query is authenticated via Firebase Bearer ID Tokens and enforced against MongoDB Atlas collection schemas.</p>
+                                <p>Every transaction query is authenticated via Firebase Bearer ID Tokens and enforced
+                                    against MongoDB Atlas collection schemas.</p>
                                 <div class="slide-tags">
                                     <span>Firebase Auth</span>
                                     <span>MongoDB Atlas</span>
@@ -1720,7 +2117,8 @@
                     <p class="section-index">05 / MATHEMATICAL PRECISION</p>
                     <h2>Zero-Loss Proportional Tax & Service Engine</h2>
                 </div>
-                <p class="section-note">Test how Unmurce distributes taxes (e.g. 11% PPN) and service charges across itemized entries without leaving orphan fractional cents.</p>
+                <p class="section-note">Test how Unmurce distributes taxes (e.g. 11% PPN) and service charges across
+                    itemized entries without leaving orphan fractional cents.</p>
             </div>
 
             <div class="tax-engine-widget">
@@ -1738,21 +2136,25 @@
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
                         <div class="calc-input-group">
                             <label for="calc-tax-pct">Tax Rate (%)</label>
-                            <input type="number" id="calc-tax-pct" class="calc-input-control" value="11" min="0" max="100">
+                            <input type="number" id="calc-tax-pct" class="calc-input-control" value="11" min="0"
+                                max="100">
                         </div>
                         <div class="calc-input-group">
                             <label for="calc-service-pct">Service Fee (%)</label>
-                            <input type="number" id="calc-service-pct" class="calc-input-control" value="5" min="0" max="100">
+                            <input type="number" id="calc-service-pct" class="calc-input-control" value="5" min="0"
+                                max="100">
                         </div>
                     </div>
                     <small style="color: var(--muted); font-size: 0.78rem;">
-                        Formula: <code>AllocatedOverhead = ItemBase + Round(TotalOverhead * (ItemBase / Subtotal))</code>
+                        Formula:
+                        <code>AllocatedOverhead = ItemBase + Round(TotalOverhead * (ItemBase / Subtotal))</code>
                     </small>
                 </div>
 
                 <!-- Results Column -->
                 <div class="calc-results-card">
-                    <span class="slide-badge" style="background: #000; color: #fff; align-self: flex-start;">LIVE BREAKDOWN</span>
+                    <span class="slide-badge" style="background: #000; color: #fff; align-self: flex-start;">LIVE
+                        BREAKDOWN</span>
                     <div class="calc-results-row">
                         <span>Items Subtotal:</span>
                         <span id="res-subtotal">Rp 130.000</span>
@@ -1794,7 +2196,10 @@
                         <span class="faq-icon-indicator">+</span>
                     </button>
                     <div class="faq-content">
-                        Uploaded receipt images are processed entirely in memory via secure serverless functions. Images are converted into temporary memory buffers, passed to the vision inference API through encrypted TLS channels, and never stored on public buckets or sold to third-party data aggregators.
+                        Uploaded receipt images are processed entirely in memory via secure serverless functions. Images
+                        are converted into temporary memory buffers, passed to the vision inference API through
+                        encrypted TLS channels, and never stored on public buckets or sold to third-party data
+                        aggregators.
                     </div>
                 </div>
 
@@ -1804,7 +2209,9 @@
                         <span class="faq-icon-indicator">+</span>
                     </button>
                     <div class="faq-content">
-                        Yes! The Flutter client features a local SQLite persistent store. You can record transactions, categorize expenses, and review monthly totals without any network connection. As soon as you re-connect, changes sync seamlessly to MongoDB Atlas.
+                        Yes! The Flutter client features a local SQLite persistent store. You can record transactions,
+                        categorize expenses, and review monthly totals without any network connection. As soon as you
+                        re-connect, changes sync seamlessly to MongoDB Atlas.
                     </div>
                 </div>
 
@@ -1814,7 +2221,9 @@
                         <span class="faq-icon-indicator">+</span>
                     </button>
                     <div class="faq-content">
-                        By default, receipts are routed to Groq's high-speed Vision model for sub-second inference. If the upstream provider experiences rate-limiting or latency spikes exceeding 3000ms, the system automatically redirects the payload to Google Gemini 3.6 Flash without interrupting the user.
+                        By default, receipts are routed to Groq's high-speed Vision model for sub-second inference. If
+                        the upstream provider experiences rate-limiting or latency spikes exceeding 3000ms, the system
+                        automatically redirects the payload to Google Gemini 3.6 Flash without interrupting the user.
                     </div>
                 </div>
 
@@ -1824,7 +2233,9 @@
                         <span class="faq-icon-indicator">+</span>
                     </button>
                     <div class="faq-content">
-                        Simply tap the "Download APK (Android)" button below. Once downloaded on your Android device (arm64-v8a architecture), allow installation from browser sources in your system settings and open the package to start using Unmurce immediately.
+                        Simply tap the "Download APK (Android)" button below. Once downloaded on your Android device
+                        (arm64-v8a architecture), allow installation from browser sources in your system settings and
+                        open the package to start using Unmurce immediately.
                     </div>
                 </div>
             </div>
@@ -1835,20 +2246,24 @@
             <div class="cli-terminal-card">
                 <div class="cli-terminal-bar">
                     <div style="display: flex; align-items: center; gap: 8px;">
-                        <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
-                        <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; font-weight: 700; margin-left: 6px;">UNMURCE_DEVELOPER_CONSOLE.sh</span>
+                        <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span
+                            class="dot-btn green"></span>
+                        <span
+                            style="font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; font-weight: 700; margin-left: 6px;">UNMURCE_DEVELOPER_CONSOLE.sh</span>
                     </div>
                     <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 700;">BASH</span>
                 </div>
 
                 <div class="cli-code-row">
                     <code>git clone https://github.com/DODODABIRD/Expense_App_Personal.git</code>
-                    <button class="cli-copy-btn" data-copy="git clone https://github.com/DODODABIRD/Expense_App_Personal.git">Copy</button>
+                    <button class="cli-copy-btn"
+                        data-copy="git clone https://github.com/DODODABIRD/Expense_App_Personal.git">Copy</button>
                 </div>
 
                 <div class="cli-code-row">
                     <code>curl -s https://dododabird.us/api/public-config | jq</code>
-                    <button class="cli-copy-btn" data-copy="curl -s https://dododabird.us/api/public-config | jq">Copy</button>
+                    <button class="cli-copy-btn"
+                        data-copy="curl -s https://dododabird.us/api/public-config | jq">Copy</button>
                 </div>
 
                 <div class="cli-code-row">
@@ -1865,7 +2280,8 @@
                 <div class="contact-layout">
                     <div>
                         <h2>Ready to track your expenses with clarity?</h2>
-                        <p class="contact-copy">Choose how you want to experience Unmurce — open the web application directly in your browser or install the native Android APK.</p>
+                        <p class="contact-copy">Choose how you want to experience Unmurce — open the web application
+                            directly in your browser or install the native Android APK.</p>
                     </div>
                 </div>
 
@@ -1881,7 +2297,8 @@
                         <span class="btn-arrow">↗</span>
                     </a>
 
-                    <a class="contact-btn-card btn-email" href="/asset/appdownload/app-arm64-v8a-release.apk" download="Unmurce-Android.apk">
+                    <a class="contact-btn-card btn-email" href="/asset/appdownload/app-arm64-v8a-release.apk"
+                        download="Unmurce-Android.apk">
                         <div class="contact-icon" style="background: var(--card-yellow); color: #000;">
                             📱
                         </div>
@@ -1903,7 +2320,8 @@
                         <span class="btn-arrow">↗</span>
                     </a>
 
-                    <a class="contact-btn-card btn-github" href="https://github.com/DODODABIRD/Expense_App_Personal" target="_blank" rel="noreferrer">
+                    <a class="contact-btn-card btn-github" href="https://github.com/DODODABIRD/Expense_App_Personal"
+                        target="_blank" rel="noreferrer">
                         <div class="contact-icon">
                             <img src="/asset/github-mark.png" alt="" width="26" height="26">
                         </div>
@@ -1938,10 +2356,12 @@
         <div class="ui-lightbox-container neo-card">
             <div class="ui-lightbox-header">
                 <div class="ui-lightbox-badge">
-                    <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span class="dot-btn green"></span>
+                    <span class="dot-btn red"></span><span class="dot-btn yellow"></span><span
+                        class="dot-btn green"></span>
                     <strong id="lightbox-title">UI Preview</strong>
                 </div>
-                <button id="close-lightbox-btn" class="lightbox-close-btn" type="button" aria-label="Close Preview">✕</button>
+                <button id="close-lightbox-btn" class="lightbox-close-btn" type="button"
+                    aria-label="Close Preview">✕</button>
             </div>
             <div class="ui-lightbox-body">
                 <img id="lightbox-img" src="" alt="UI Screen Preview">
@@ -1968,7 +2388,7 @@
                 document.documentElement.setAttribute('data-theme', theme);
                 try {
                     localStorage.setItem('theme', theme);
-                } catch (e) {}
+                } catch (e) { }
 
                 const isDark = theme === 'dark';
                 const label = isDark ? 'Switch to light mode' : 'Switch to dark mode';
@@ -2206,13 +2626,7 @@
                     headerWrapper.classList.remove('is-top');
                 }
 
-                if (currentScrollY <= 80) {
-                    headerWrapper.classList.remove('nav-hidden');
-                } else if (currentScrollY > lastScrollY && currentScrollY > 120) {
-                    headerWrapper.classList.add('nav-hidden');
-                } else if (currentScrollY < lastScrollY) {
-                    headerWrapper.classList.remove('nav-hidden');
-                }
+                headerWrapper.classList.remove('nav-hidden');
                 lastScrollY = currentScrollY;
             }
 

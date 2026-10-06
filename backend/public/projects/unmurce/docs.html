@@ -1131,7 +1131,7 @@
     <!-- Header Navigation -->
     <header class="docs-header">
         <a class="docs-brand" href="/">
-            <img src="/asset/myface.jpg" alt="Orlando Diamond Prasetyo">
+            <img src="/asset/unmurce/unmurce-app-icon.png" alt="Orlando Diamond Prasetyo">
             <span>UNMURCE // TECHNICAL SPECS</span>
         </a>
         <div class="docs-nav-btns">
@@ -1178,7 +1178,8 @@
                 <span class="tag-badge">SYSTEM OVERVIEW // SPECIFICATION</span>
                 <h1>Unmurce Technical Documentation</h1>
                 <p><strong>Unmurce</strong> is an offline-first personal finance app. It stores transactions locally,
-                    syncs them with a cloud API, and includes Android notification parsing, AI-assisted receipt scanning,
+                    syncs them with a cloud API, and includes Android notification parsing, AI-assisted receipt
+                    scanning,
                     IDR/USD/EUR display, and a Neo-Brutalist interface.</p>
 
                 <div class="docs-callout callout-info">
@@ -1197,7 +1198,8 @@
                             <div class="docs-callout-title">Live Groq routing</div>
                             <span class="runtime-config-status" data-runtime-status>CONNECTING</span>
                         </div>
-                        <p class="runtime-config-note">Current model IDs from this Vercel deployment. Values refresh when this page loads.</p>
+                        <p class="runtime-config-note">Current model IDs from this Vercel deployment. Values refresh
+                            when this page loads.</p>
                         <div class="runtime-model-grid">
                             <div class="runtime-model-item">
                                 <span>GROQ_MODEL</span>
@@ -1232,37 +1234,46 @@
                             <tr>
                                 <td><strong>Native Kotlin</strong></td>
                                 <td>Android Platform Bridge</td>
-                                <td><code>NotificationListenerService</code>, background event queuing, and method/event channels.</td>
+                                <td><code>NotificationListenerService</code>, background event queuing, and method/event
+                                    channels.</td>
                             </tr>
                             <tr>
                                 <td><strong>SQLite (sqflite)</strong></td>
                                 <td>Embedded Database</td>
-                                <td>Primary offline transactional ledger, setting cache, and pending sync FIFO queue.</td>
+                                <td>Primary offline transactional ledger, setting cache, and pending sync FIFO queue.
+                                </td>
                             </tr>
                             <tr>
                                 <td><strong>Node.js / Express 5</strong></td>
                                 <td>Cloud Backend</td>
-                                <td>Stateless RESTful synchronization engine, currency gateway, and AI vision proxy.</td>
+                                <td>Stateless RESTful synchronization engine, currency gateway, and AI vision proxy.
+                                </td>
                             </tr>
                             <tr>
                                 <td><strong>MongoDB Atlas</strong></td>
                                 <td>Cloud Database</td>
-                                <td>Mongoose schema-validated multi-tenant cloud storage with compound unique indices.</td>
+                                <td>Mongoose schema-validated multi-tenant cloud storage with compound unique indices.
+                                </td>
                             </tr>
                             <tr>
                                 <td><strong>Firebase Authentication</strong></td>
                                 <td>Identity & Auth</td>
-                                <td>JWT Bearer token verification middleware and multi-tenant user boundary enforcement.</td>
+                                <td>JWT Bearer token verification middleware and multi-tenant user boundary enforcement.
+                                </td>
                             </tr>
                             <tr>
                                 <td><strong>Groq API</strong></td>
                                 <td>AI Parsing</td>
-                                <td>Uses <code>GROQ_MODEL</code> for receipt parsing and <code>GROQ_NOTIFICATION_MODEL</code> for notifications; the latter defaults to <code>GROQ_MODEL</code>.</td>
+                                <td>Uses <code>GROQ_MODEL</code> for receipt parsing and
+                                    <code>GROQ_NOTIFICATION_MODEL</code> for notifications; the latter defaults to
+                                    <code>GROQ_MODEL</code>.
+                                </td>
                             </tr>
                             <tr>
                                 <td><strong>Azure Document Intelligence</strong></td>
                                 <td>Receipt Parsing Fallback</td>
-                                <td>Uses the Prebuilt Receipt analyzer when a Groq failure is eligible for fallback.</td>
+                                <td>Uses the Prebuilt Receipt analyzer when a Groq failure is eligible for fallback.
+                                </td>
                             </tr>
                             <tr>
                                 <td><strong>Cloudflare Edge</strong></td>
@@ -1289,8 +1300,10 @@
             <section id="design-system" class="docs-card">
                 <span class="tag-badge tag-badge-pink">DESIGN TOKENS // UI/UX SPEC</span>
                 <h2>02. Neo-Brutalism Visual Design System</h2>
-                <p>The visual identity of Unmurce is anchored in modern <strong>Neo-Brutalism</strong>: unapologetic high-contrast
-                    black outlines, hard directional shadows with zero blur, deliberate asymmetry, and a signature pastel color palette.</p>
+                <p>The visual identity of Unmurce is anchored in modern <strong>Neo-Brutalism</strong>: unapologetic
+                    high-contrast
+                    black outlines, hard directional shadows with zero blur, deliberate asymmetry, and a signature
+                    pastel color palette.</p>
 
                 <h3>Color Token Palette (Click any card to copy HEX)</h3>
                 <div class="palette-grid">
@@ -1350,16 +1363,21 @@
                 </div>
 
                 <h3>Micro-Animations: The NeoBouncy Spring Controller</h3>
-                <p>Every clickable element is wrapped with the custom Flutter widget <code>NeoBouncy</code>. When pressed,
-                    an <code>AnimationController</code> with <code>Curves.easeInOutCubic</code> scales the widget down to
-                    <code>0.94</code> while shifting the shadow offset, providing tactile spring-loaded feedback.</p>
+                <p>Every clickable element is wrapped with the custom Flutter widget <code>NeoBouncy</code>. When
+                    pressed,
+                    an <code>AnimationController</code> with <code>Curves.easeInOutCubic</code> scales the widget down
+                    to
+                    <code>0.94</code> while shifting the shadow offset, providing tactile spring-loaded feedback.
+                </p>
 
                 <div class="neobouncy-demo-box">
                     <button class="demo-bouncy-btn" id="bouncy-demo">Tap for NeoBouncy Feel! 💥</button>
                     <div>
                         <strong>Interactive Spring Demo:</strong>
-                        <p style="margin: 0; font-size: 0.88rem; color: #475569;">Simulates Flutter <code>NeoBouncy</code>
-                            physics with scale compression and hard drop shadow offset absorption.</p>
+                        <p style="margin: 0; font-size: 0.88rem; color: #475569;">Simulates Flutter
+                            <code>NeoBouncy</code>
+                            physics with scale compression and hard drop shadow offset absorption.
+                        </p>
                     </div>
                 </div>
 
@@ -1386,7 +1404,8 @@
                             </tr>
                             <tr>
                                 <td><strong>Hard Shadow</strong></td>
-                                <td><code>BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0)</code></td>
+                                <td><code>BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0)</code>
+                                </td>
                                 <td>Signature 0-blur directional shadow that elevates neo-brutalist cards.</td>
                             </tr>
                             <tr>
@@ -1433,7 +1452,8 @@
                             <span class="arch-node-badge" style="background: var(--card-aqua);">CLIENT TIER</span>
                         </div>
                         <div class="arch-node-title">Flutter Mobile Client</div>
-                        <p class="arch-node-desc">Handles user interactions, stores transactions in SQLite, and manages local state.</p>
+                        <p class="arch-node-desc">Handles user interactions, stores transactions in SQLite, and manages
+                            local state.</p>
                     </div>
 
                     <div class="arch-node" style="border-top: 8px solid var(--card-yellow);">
@@ -1441,7 +1461,8 @@
                             <span class="arch-node-badge" style="background: var(--card-yellow);">NATIVE BRIDGE</span>
                         </div>
                         <div class="arch-node-title">Kotlin Android Service</div>
-                        <p class="arch-node-desc">Background <code>NotificationListenerService</code> hooked into Android
+                        <p class="arch-node-desc">Background <code>NotificationListenerService</code> hooked into
+                            Android
                             OS to intercept incoming transaction alerts.</p>
                     </div>
 
@@ -1459,7 +1480,8 @@
                             <span class="arch-node-badge" style="background: var(--card-mint);">CLOUD CORE</span>
                         </div>
                         <div class="arch-node-title">Express 5 & MongoDB</div>
-                        <p class="arch-node-desc">Serverless Node.js backend on Vercel handling multi-tenant transactional
+                        <p class="arch-node-desc">Serverless Node.js backend on Vercel handling multi-tenant
+                            transactional
                             persistence in MongoDB Atlas.</p>
                     </div>
                 </div>
@@ -1521,11 +1543,15 @@
                         <div class="stage-number">1</div>
                         <div class="stage-info">
                             <div class="stage-title">Native Android Gate & Deduplication (Kotlin)
-                                <span class="tag-badge tag-badge-aqua" style="margin:0; font-size: 0.65rem;">STAGE 1</span>
+                                <span class="tag-badge tag-badge-aqua" style="margin:0; font-size: 0.65rem;">STAGE
+                                    1</span>
                             </div>
-                            <p class="stage-desc"><code>NotificationListener.kt</code> filters out ongoing foreground services
-                                (for example, music players and downloaders via <code>sbn.isOngoing</code>). It suppresses
-                                repeated notifications for 60 seconds using a content-based signature made from the app package,
+                            <p class="stage-desc"><code>NotificationListener.kt</code> filters out ongoing foreground
+                                services
+                                (for example, music players and downloaders via <code>sbn.isOngoing</code>). It
+                                suppresses
+                                repeated notifications for 60 seconds using a content-based signature made from the app
+                                package,
                                 title, and notification text.</p>
                         </div>
                     </div>
@@ -1534,11 +1560,15 @@
                         <div class="stage-number">2</div>
                         <div class="stage-info">
                             <div class="stage-title">Noise & Security Filter (Local Dart)
-                                <span class="tag-badge tag-badge-yellow" style="margin:0; font-size: 0.65rem;">STAGE 2</span>
+                                <span class="tag-badge tag-badge-yellow" style="margin:0; font-size: 0.65rem;">STAGE
+                                    2</span>
                             </div>
-                            <p class="stage-desc">Rejects sensitive authentication notifications (OTP codes, verification keys,
-                                password changes, login alerts). Employs <em>Smart Context Filtering</em> so promotional notifications
-                                containing purchase confirmations (e.g. <em>"QRIS Rp 35.000 sukses, dapat diskon 10%"</em>) are accurately retained.</p>
+                            <p class="stage-desc">Rejects sensitive authentication notifications (OTP codes,
+                                verification keys,
+                                password changes, login alerts). Employs <em>Smart Context Filtering</em> so promotional
+                                notifications
+                                containing purchase confirmations (e.g. <em>"QRIS Rp 35.000 sukses, dapat diskon
+                                    10%"</em>) are accurately retained.</p>
                         </div>
                     </div>
 
@@ -1546,10 +1576,14 @@
                         <div class="stage-number">3</div>
                         <div class="stage-info">
                             <div class="stage-title">Directionality & Income Detection Filter
-                                <span class="tag-badge tag-badge-pink" style="margin:0; font-size: 0.65rem;">STAGE 3</span>
+                                <span class="tag-badge tag-badge-pink" style="margin:0; font-size: 0.65rem;">STAGE
+                                    3</span>
                             </div>
-                            <p class="stage-desc">Filters out incoming transfers and top-up confirmations (e.g., <em>"Transfer Masuk"</em>,
-                                <em>"Top Up Berhasil"</em>, <em>"Dana Diterima"</em>) to ensure incoming funds are not mistakenly recorded as expenditures.</p>
+                            <p class="stage-desc">Filters out incoming transfers and top-up confirmations (e.g.,
+                                <em>"Transfer Masuk"</em>,
+                                <em>"Top Up Berhasil"</em>, <em>"Dana Diterima"</em>) to ensure incoming funds are not
+                                mistakenly recorded as expenditures.
+                            </p>
                         </div>
                     </div>
 
@@ -1557,11 +1591,15 @@
                         <div class="stage-number">4</div>
                         <div class="stage-info">
                             <div class="stage-title">Cloud Parser (Groq)
-                                <span class="tag-badge tag-badge-mint" style="margin:0; font-size: 0.65rem;">STAGE 4</span>
+                                <span class="tag-badge tag-badge-mint" style="margin:0; font-size: 0.65rem;">STAGE
+                                    4</span>
                             </div>
-                            <p class="stage-desc">The app sends notification details to <code>POST /api/parse-notification</code>.
-                                The backend uses <code>GROQ_NOTIFICATION_MODEL</code>, falling back to <code>GROQ_MODEL</code>
-                                when no notification-specific model is configured.</p>
+                            <p class="stage-desc">The app sends notification details to
+                                <code>POST /api/parse-notification</code>.
+                                The backend uses <code>GROQ_NOTIFICATION_MODEL</code>, falling back to
+                                <code>GROQ_MODEL</code>
+                                when no notification-specific model is configured.
+                            </p>
                         </div>
                     </div>
 
@@ -1569,10 +1607,13 @@
                         <div class="stage-number">5</div>
                         <div class="stage-info">
                             <div class="stage-title">On-Device Parser Fallback
-                                <span class="tag-badge tag-badge-aqua" style="margin:0; font-size: 0.65rem;">STAGE 5</span>
+                                <span class="tag-badge tag-badge-aqua" style="margin:0; font-size: 0.65rem;">STAGE
+                                    5</span>
                             </div>
-                            <p class="stage-desc">If cloud parsing is unavailable or returns no usable result, the local Dart parser
-                                tries app-specific rules, then general financial heuristics to extract an amount and merchant.</p>
+                            <p class="stage-desc">If cloud parsing is unavailable or returns no usable result, the local
+                                Dart parser
+                                tries app-specific rules, then general financial heuristics to extract an amount and
+                                merchant.</p>
                         </div>
                     </div>
 
@@ -1580,11 +1621,15 @@
                         <div class="stage-number">6</div>
                         <div class="stage-info">
                             <div class="stage-title">Retry Queue for Unresolved Notifications
-                                <span class="tag-badge tag-badge-yellow" style="margin:0; font-size: 0.65rem;">STAGE 6</span>
+                                <span class="tag-badge tag-badge-yellow" style="margin:0; font-size: 0.65rem;">STAGE
+                                    6</span>
                             </div>
-                            <p class="stage-desc">When cloud parsing fails or an ambiguous local result requires AI, the original
+                            <p class="stage-desc">When cloud parsing fails or an ambiguous local result requires AI, the
+                                original
                                 notification is stored as JSON in SQLite <code>app_settings</code> under the
-                                <code>pending_cloud_notifications</code> key. The service retries queued items at startup and on its retry timer.</p>
+                                <code>pending_cloud_notifications</code> key. The service retries queued items at
+                                startup and on its retry timer.
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -1607,14 +1652,16 @@
                     <span class="bank-badge"><span class="bank-dot"></span> GrabPay</span>
                     <span class="bank-badge"><span class="bank-dot"></span> Tokopedia</span>
                 </div>
-                <p>Other notification formats may be handled by the general parser when their transaction details are recognizable.</p>
+                <p>Other notification formats may be handled by the general parser when their transaction details are
+                    recognizable.</p>
             </section>
 
             <!-- 05. Smart Receipt OCR -->
             <section id="receipt-ocr" class="docs-card">
                 <span class="tag-badge tag-badge-pink">AI VISION // RECEIPT PARSING</span>
                 <h2>05. Smart Receipt Scanner & Proportional Tax Allocation</h2>
-                <p>When users upload or photograph a paper receipt (Indomaret, Alfamart, Starbucks, restaurants, groceries),
+                <p>When users upload or photograph a paper receipt (Indomaret, Alfamart, Starbucks, restaurants,
+                    groceries),
                     the backend processes the image through an automated AI vision extraction pipeline.</p>
 
                 <h3>Receipt Parser: Groq with Azure Fallback</h3>
@@ -1622,14 +1669,18 @@
                     <span class="docs-callout-icon">🤖</span>
                     <div class="docs-callout-content">
                         <div class="docs-callout-title">Automatic Failover Mechanism</div>
-                        <p class="docs-callout-desc">When a Groq API key and model are configured, receipts are sent to Groq first.
-                            Eligible retryable failures fall back to the <strong>Azure Document Intelligence Prebuilt Receipt</strong> analyzer.</p>
+                        <p class="docs-callout-desc">When a Groq API key and model are configured, receipts are sent to
+                            Groq first.
+                            Eligible retryable failures fall back to the <strong>Azure Document Intelligence Prebuilt
+                                Receipt</strong> analyzer.</p>
                     </div>
                 </div>
 
                 <h3>Proportional Tax (PPN) & Service Charge Algorithm</h3>
-                <p>Receipts typically list items without tax, appending PPN (11%) and Service Charges (5-10%) at the bottom.
-                    Unmurce applies proportional allocation across all line items so every recorded item includes its exact share of tax:</p>
+                <p>Receipts typically list items without tax, appending PPN (11%) and Service Charges (5-10%) at the
+                    bottom.
+                    Unmurce applies proportional allocation across all line items so every recorded item includes its
+                    exact share of tax:</p>
 
                 <div class="code-container">
                     <div class="code-header">
@@ -1649,9 +1700,12 @@ For the final Item_N:
                 </div>
 
                 <h3>Cancellable Operation & Dynamic Quantity Multiplier</h3>
-                <p>On the Flutter client, requests are managed via <code>ReceiptScanOperation</code> wrapping <code>http.Client</code>.
-                    If the user taps <em>Cancel</em> during upload, the connection is instantly aborted (<code>client.close()</code>),
-                    freeing memory. Each item in the draft list maintains an interactive quantity multiplier:</p>
+                <p>On the Flutter client, requests are managed via <code>ReceiptScanOperation</code> wrapping
+                    <code>http.Client</code>.
+                    If the user taps <em>Cancel</em> during upload, the connection is instantly aborted
+                    (<code>client.close()</code>),
+                    freeing memory. Each item in the draft list maintains an interactive quantity multiplier:
+                </p>
                 <div class="code-container">
                     <div class="code-header">
                         <span class="code-title">Client-Side Price Calculation</span>
@@ -1664,15 +1718,18 @@ For the final Item_N:
             <section id="multi-currency" class="docs-card">
                 <span class="tag-badge tag-badge-yellow">EXCHANGE RATES // BASE IDR</span>
                 <h2>06. Multi-Currency System & Real-Time Rates</h2>
-                <p>Unmurce supports displaying amounts in three currencies: IDR, USD, and EUR. To prevent cumulative rounding
+                <p>Unmurce supports displaying amounts in three currencies: IDR, USD, and EUR. To prevent cumulative
+                    rounding
                     errors, the system implements a strict <strong>Single Base Currency Model</strong>:</p>
 
                 <div class="docs-callout callout-success">
                     <span class="docs-callout-icon">💰</span>
                     <div class="docs-callout-content">
                         <div class="docs-callout-title">Single Base Currency Rule (IDR)</div>
-                        <p class="docs-callout-desc">Every expense is permanently stored in the database as an integer of <strong>IDR (Indonesian Rupiah)</strong>.
-                            Conversions to foreign currencies are calculated dynamically on the presentation layer using reactive <code>ValueNotifier</code> listeners.</p>
+                        <p class="docs-callout-desc">Every expense is permanently stored in the database as an integer
+                            of <strong>IDR (Indonesian Rupiah)</strong>.
+                            Conversions to foreign currencies are calculated dynamically on the presentation layer using
+                            reactive <code>ValueNotifier</code> listeners.</p>
                     </div>
                 </div>
 
@@ -1711,16 +1768,20 @@ For the final Item_N:
                 </div>
 
                 <h3>Offline Rate Caching in SQLite</h3>
-                <p>Exchange rates fetched from <code>GET /api/exchange-rates</code> are immediately persisted to the SQLite
-                    <code>app_settings</code> table under the key <code>rate_&lt;CURRENCY&gt;</code>. If internet connectivity is
-                    unavailable in subsequent sessions, the app seamlessly reads from this local cache.</p>
+                <p>Exchange rates fetched from <code>GET /api/exchange-rates</code> are immediately persisted to the
+                    SQLite
+                    <code>app_settings</code> table under the key <code>rate_&lt;CURRENCY&gt;</code>. If internet
+                    connectivity is
+                    unavailable in subsequent sessions, the app seamlessly reads from this local cache.
+                </p>
             </section>
 
             <!-- 07. Financial Analytics -->
             <section id="financial-analytics" class="docs-card">
                 <span class="tag-badge tag-badge-aqua">STATISTICS // ANALYTICS ENGINE</span>
                 <h2>07. Financial Analytics & Dashboard Computations</h2>
-                <p>The analytics screen (<code>ExpenseSumarry.dart</code>) processes transactional history into structured
+                <p>The analytics screen (<code>ExpenseSumarry.dart</code>) processes transactional history into
+                    structured
                     financial metrics with zero external analytics SDK overhead:</p>
 
                 <h3>1. Category Spending Breakdown</h3>
@@ -1738,10 +1799,13 @@ double percentage = (categoryTotal / totalAllExpenses) * 100.0;</code></pre>
 
                 <h3>2. Expected vs Unexpected Expense Ratio</h3>
                 <p>Categorizes spending into <code>expected</code> (planned essentials: meals, rent, fuel) vs
-                    <code>unexpected</code> (impulse purchases, emergency healthcare, spontaneous dining) to calculate financial discipline index.</p>
+                    <code>unexpected</code> (impulse purchases, emergency healthcare, spontaneous dining) to calculate
+                    financial discipline index.
+                </p>
 
                 <h3>3. 7-Day Spending Histogram Normalization</h3>
-                <p>Groups expenses by day over the past 7 days and normalizes bar heights based on peak daily spending:</p>
+                <p>Groups expenses by day over the past 7 days and normalizes bar heights based on peak daily spending:
+                </p>
                 <div class="code-container">
                     <div class="code-header">
                         <span class="code-title">Bar Height Normalization (Dart)</span>
@@ -1759,16 +1823,24 @@ double computeBarHeight(double dayTotal, double maxContainerHeight) {
             <section id="pdf-engine" class="docs-card">
                 <span class="tag-badge tag-badge-mint">REPORTING // VECTOR PDF</span>
                 <h2>08. PDF Report Engine & Android Scoped Storage Compliance</h2>
-                <p>Users can export their complete transactional ledger into formatted, formal PDF reports. The generator
-                    is built entirely with Flutter vector drawing libraries (<code>pdf</code> and <code>printing</code>).</p>
+                <p>Users can export their complete transactional ledger into formatted, formal PDF reports. The
+                    generator
+                    is built entirely with Flutter vector drawing libraries (<code>pdf</code> and
+                    <code>printing</code>).
+                </p>
 
                 <h3>Scoped Storage Compliance (Android 10 to 14+)</h3>
-                <p>Traditional Android apps trigger dangerous storage permission prompts (<code>WRITE_EXTERNAL_STORAGE</code>)
+                <p>Traditional Android apps trigger dangerous storage permission prompts
+                    (<code>WRITE_EXTERNAL_STORAGE</code>)
                     which are rejected on modern Android versions. Unmurce implements a modern storage pipeline:</p>
                 <ul style="margin-left: 24px; font-weight: 600; color: #334155; margin-bottom: 16px;">
-                    <li><strong>MediaStore API Integration:</strong> Utilizes <code>media_store_plus</code> to save generated PDFs directly into the public <code>Download/ExpenseApp</code> directory without requiring runtime storage permissions.</li>
-                    <li><strong>FileSaver Fallback:</strong> Automatically invokes <code>file_saver</code> on devices where MediaStore direct access is restricted.</li>
-                    <li><strong>Instant Document Launch:</strong> Invokes <code>open_filex</code> to trigger the user's native PDF reader immediately upon file save.</li>
+                    <li><strong>MediaStore API Integration:</strong> Utilizes <code>media_store_plus</code> to save
+                        generated PDFs directly into the public <code>Download/ExpenseApp</code> directory without
+                        requiring runtime storage permissions.</li>
+                    <li><strong>FileSaver Fallback:</strong> Automatically invokes <code>file_saver</code> on devices
+                        where MediaStore direct access is restricted.</li>
+                    <li><strong>Instant Document Launch:</strong> Invokes <code>open_filex</code> to trigger the user's
+                        native PDF reader immediately upon file save.</li>
                 </ul>
             </section>
 
@@ -1776,7 +1848,8 @@ double computeBarHeight(double dayTotal, double maxContainerHeight) {
             <section id="auth-security" class="docs-card">
                 <span class="tag-badge tag-badge-pink">SECURITY // MULTI-TENANCY</span>
                 <h2>09. Authentication & Multi-Tenant Data Isolation</h2>
-                <p>User identification is secured end-to-end via <strong>Firebase Authentication</strong> and enforced through
+                <p>User identification is secured end-to-end via <strong>Firebase Authentication</strong> and enforced
+                    through
                     stateless cryptographic JWT Bearer verification:</p>
 
                 <div class="code-container">
@@ -1800,12 +1873,16 @@ double computeBarHeight(double dayTotal, double maxContainerHeight) {
                 </div>
 
                 <h3>Local SQLite Data Isolation (Multi-User Device Support)</h3>
-                <p>If multiple users share the same Android device, records remain isolated. Every row in <code>my_table</code>
-                    stores an <code>ownerId</code> column corresponding to <code>AuthService.currentUser?.uid</code>. All queries
-                    strictly include <code>WHERE ownerId = ?</code> to prevent data bleed.</p>
+                <p>If multiple users share the same Android device, records remain isolated. Every row in
+                    <code>my_table</code>
+                    stores an <code>ownerId</code> column corresponding to <code>AuthService.currentUser?.uid</code>.
+                    All queries
+                    strictly include <code>WHERE ownerId = ?</code> to prevent data bleed.
+                </p>
 
                 <h3>Single-Run Notification Onboarding Gate</h3>
-                <p>To prevent user fatigue while complying with Android notification listener requirements, the permission screen
+                <p>To prevent user fatigue while complying with Android notification listener requirements, the
+                    permission screen
                     is governed by a persistent SQLite flag:</p>
                 <div class="code-container">
                     <div class="code-header">
@@ -1823,7 +1900,8 @@ if (shown == null && !isPermissionGranted) {
             <section id="offline-sync" class="docs-card">
                 <span class="tag-badge tag-badge-yellow">OFFLINE-FIRST // RECONCILIATION</span>
                 <h2>10. Offline-First Synchronization & Cloud Reconciliation</h2>
-                <p>Unmurce adheres strictly to the <strong>Offline-First Paradigm</strong>. The mobile app never awaits network
+                <p>Unmurce adheres strictly to the <strong>Offline-First Paradigm</strong>. The mobile app never awaits
+                    network
                     responses before confirming user actions.</p>
 
                 <h3>The Synced State Protocol</h3>
@@ -1840,12 +1918,16 @@ if (shown == null && !isPermissionGranted) {
                             <tr>
                                 <td><code>synced = 0</code></td>
                                 <td>Local Mutation Pending</td>
-                                <td>Record exists only on device. Picked up by background worker <code>syncPendingExpenses()</code> to push to MongoDB.</td>
+                                <td>Record exists only on device. Picked up by background worker
+                                    <code>syncPendingExpenses()</code> to push to MongoDB.
+                                </td>
                             </tr>
                             <tr>
                                 <td><code>synced = 1</code></td>
                                 <td>Reconciled & In-Sync</td>
-                                <td>Record has been accepted by MongoDB Atlas and holds a valid remote <code>mongoId</code>.</td>
+                                <td>Record has been accepted by MongoDB Atlas and holds a valid remote
+                                    <code>mongoId</code>.
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -2036,7 +2118,9 @@ for (final online in onlineExpenses) {
                                 <td><code>value</code></td>
                                 <td>TEXT</td>
                                 <td>NOT NULL</td>
-                                <td>Text or JSON-encoded setting value; the notification retry queue is stored under <code>pending_cloud_notifications</code>.</td>
+                                <td>Text or JSON-encoded setting value; the notification retry queue is stored under
+                                    <code>pending_cloud_notifications</code>.
+                                </td>
                             </tr>
                         </tbody>
                     </table>
@@ -2073,7 +2157,8 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
                 <p>This section covers ten core transaction, parsing, and exchange-rate endpoints. The Flutter client
                     defaults to <code>https://expense-app-personal.vercel.app/api</code>; override it with
                     <code>EXPENSE_API_BASE_URL</code> when needed. Private endpoints require a Firebase ID token in
-                    the <code>Authorization</code> header.</p>
+                    the <code>Authorization</code> header.
+                </p>
 
                 <!-- API 01: GET /api/users -->
                 <div class="api-card">
@@ -2306,7 +2391,8 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
                 <h2>13. Setup & Build Guide</h2>
 
                 <h3>1. Backend Setup (Vercel & Express)</h3>
-                <p>Use these names when configuring Vercel environment variables or the local environment used by Vercel CLI.
+                <p>Use these names when configuring Vercel environment variables or the local environment used by Vercel
+                    CLI.
                     Replace the placeholders and keep real credentials out of source control.</p>
                 <div class="code-container">
                     <div class="code-header">
