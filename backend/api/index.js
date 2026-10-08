@@ -1,10 +1,22 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
-const dns = require("node:dns");
-const mongoose = require("mongoose");
 const admin = require("firebase-admin");
 const cors = require("cors");
+const {
+  connectDB,
+  deleteAllExpenses,
+  deleteExpenseById,
+  getExpenseById,
+  getExpenseByLocalId,
+  isInvalidUuidError,
+  listExpenses,
+  listRecentExpensesForContext,
+  loadNotificationReferenceItems,
+  updateExpenseById,
+  upsertExpense,
+  upsertNotificationReference,
+} = require("./db");
 const {
   loadNotificationContext,
   MAX_NOTIFICATION_CONTEXT_ITEMS,
@@ -16,11 +28,6 @@ try {
   const dotenv = require("dotenv");
   dotenv.config({ path: path.join(__dirname, "../.env.local") });
   dotenv.config();
-} catch (e) {}
-
-// Configure reliable DNS servers to avoid querySrv ECONNREFUSED on local ISPs
-try {
-  dns.setServers(["1.1.1.1", "8.8.8.8"]);
 } catch (e) {}
 
 const app = express();
@@ -94,90 +101,6 @@ async function requireAuth(req, res, next) {
   }
 }
 
-// ✅ MongoDB connection (cached for Vercel)
-let isConnected = false;
-let indexesReady = false;
-
-async function connectDB() {
-  if (isConnected && indexesReady) return;
-
-  if (!process.env.MONGODB_URI) {
-    throw new Error("MONGODB_URI is missing");
-  }
-
-  try {
-    dns.setServers(["1.1.1.1", "8.8.8.8"]);
-  } catch (e) {}
-
-  await mongoose.connect(process.env.MONGODB_URI);
-  isConnected = true;
-
-  if (!indexesReady) {
-    const indexes = await User.collection.indexes();
-    for (const index of indexes) {
-      const keys = Object.keys(index.key || {});
-      if (index.unique && keys.length === 1 && keys[0] === "localId") {
-        await User.collection.dropIndex(index.name);
-      }
-    }
-    await User.syncIndexes();
-    await AiNotificationReference.syncIndexes();
-    indexesReady = true;
-  }
-}
-
-// TODO: 
-// Bikin collection nya punya user id 
-// Collection nya cuma satu aja supaya bisa di scaling
-
-
-// User ID String, unique, foreign key
-//
-// TODO: Make the schema fit the expense schema
-const ExpenseSchema = new mongoose.Schema(
-  {
-    ownerId: { type: String, required: true, index: true },
-    localId: { type: String, required: true },
-    name: { type: String, required: true },
-    amount: { type: Number, required: true },
-    category: { type: String, required: true },
-    type: { type: String, required: true },
-    date: { type: String, required: true },
-  },
-  {
-    timestamps: true,
-    collection: "niggas",
-  }
-);
-
-ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
-const User = mongoose.models.Expense || mongoose.model("Expense", ExpenseSchema);
-
-const AiNotificationReferenceSchema = new mongoose.Schema(
-  {
-    ownerId: { type: String, required: true, unique: true },
-    items: {
-      type: [
-        new mongoose.Schema(
-          {
-            expenseitem: { type: String, required: true },
-            expenseprice: { type: Number, required: true },
-            category: String,
-            type: String,
-            date: String,
-          },
-          { _id: false }
-        ),
-      ],
-      default: [],
-    },
-  },
-  { collection: "ai_rag_notification_data" }
-);
-const AiNotificationReference =
-  mongoose.models.AiNotificationReference ||
-  mongoose.model("AiNotificationReference", AiNotificationReferenceSchema);
-
 const groqApiKey = process.env.GROQ_API_KEY || "";
 const groqModel = process.env.GROQ_MODEL || "";
 const groqNotificationModel = process.env.GROQ_NOTIFICATION_MODEL || groqModel;
@@ -233,7 +156,7 @@ app.post("/api/rag-chat", async (req, res) => {
       const modelToUse = groqModel || "llama-3.3-70b-versatile";
       const systemPrompt = `You are Orlando Diamond Prasetyo, an enthusiastic, friendly, and skilled software engineer and product builder from Indonesia.
 You study Computer Science at Binus University (class of 2025-2029) and previously went to SMA Kolese Gonzaga.
-Your flagship product is the Unmurce Expense Tracker app (Flutter, Node.js/Express, MongoDB Atlas, Groq/Gemini/Azure OCR).
+Your flagship product is the Unmurce Expense Tracker app (Flutter, Node.js/Express, PostgreSQL, Groq/Gemini/Azure OCR).
 Speak in first person ("I", "my", "saya", "project saya").
 Match the language of the user: if they write in Indonesian, respond in natural, friendly Indonesian. If they write in English, respond in English.
 Keep your response concise (1-3 conversational sentences max) because this displays in an animated speech bubble on your portfolio website.
@@ -339,12 +262,8 @@ app.put("/api/ai-notification-reference", requireAuth, async (req, res) => {
 
   try {
     await connectDB();
-    const reference = await AiNotificationReference.findOneAndUpdate(
-      { ownerId: req.user.uid },
-      { $set: { ownerId: req.user.uid, items } },
-      { new: true, upsert: true, runValidators: true }
-    );
-    return res.json({ updated: true, itemCount: reference.items.length });
+    const savedItems = await upsertNotificationReference(req.user.uid, items);
+    return res.json({ updated: true, itemCount: savedItems.length });
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
@@ -354,8 +273,10 @@ app.post("/api/ai-notification-reference/refresh", requireAuth, async (req, res)
   try {
     await connectDB();
     const itemCount = await refreshNotificationContext({
-      Expense: User,
-      Reference: AiNotificationReference,
+      query: {
+        listRecentExpenses: listRecentExpensesForContext,
+        upsertReference: upsertNotificationReference,
+      },
       ownerId: req.user.uid,
     });
     return res.json({ updated: true, itemCount });
@@ -407,7 +328,9 @@ app.post("/api/parse-notification", requireAuth, async (req, res) => {
 
     await connectDB();
     const referenceItems = await loadNotificationContext({
-      Reference: AiNotificationReference,
+      query: {
+        loadReferenceItems: loadNotificationReferenceItems,
+      },
       ownerId: req.user.uid,
     });
 
@@ -1260,30 +1183,14 @@ app.post("/api/users", requireAuth, async (req, res) => {
     if (!req.body.localId) {
       return res.status(400).json({ error: "localId is required" });
     }
-    const localId = String(req.body.localId);
-    const user = await User.findOneAndUpdate(
-      {
-        ownerId: req.user.uid,
-        localId,
-      },
-      {
-        $set: {
-          ownerId: req.user.uid,
-          localId,
-          name: req.body.name,
-          amount: req.body.amount,
-          category: req.body.category,
-          type: req.body.type,
-          date: req.body.date,
-        },
-      },
-      {
-        new: true,
-        upsert: true,
-        runValidators: true,
-        setDefaultsOnInsert: true,
-      }
-    );
+    const user = await upsertExpense(req.user.uid, {
+      localId: req.body.localId,
+      name: req.body.name,
+      amount: req.body.amount,
+      category: req.body.category,
+      type: req.body.type,
+      date: req.body.date,
+    });
     broadcastLiveChange(req.user.uid, { type: "expense_created", item: user });
     res.status(200).json(user);
   } catch (err) {
@@ -1298,7 +1205,7 @@ app.post("/api/users", requireAuth, async (req, res) => {
 app.get("/api/users", requireAuth, async (req, res) => {
   try {
     await connectDB();
-    const users = await User.find({ ownerId: req.user.uid });
+    const users = await listExpenses(req.user.uid);
     res.json(users);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -1312,10 +1219,13 @@ app.get("/api/users", requireAuth, async (req, res) => {
 app.get("/api/users/:id", requireAuth, async (req, res) => {
   try {
     await connectDB();
-    const user = await User.findOne({ _id: req.params.id, ownerId: req.user.uid });
+    const user = await getExpenseById(req.user.uid, req.params.id);
     if (!user) return res.status(404).json({ message: "Not found" });
     res.json(user);
   } catch (err) {
+    if (isInvalidUuidError(err)) {
+      return res.status(404).json({ message: "Not found" });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -1334,15 +1244,14 @@ app.put("/api/users/:id", requireAuth, async (req, res) => {
       type: req.body.type,
       date: req.body.date,
     };
-    const user = await User.findOneAndUpdate(
-      { _id: req.params.id, ownerId: req.user.uid },
-      updates,
-      { new: true, runValidators: true }
-    );
+    const user = await updateExpenseById(req.user.uid, req.params.id, updates);
     if (!user) return res.status(404).json({ message: "Not found" });
     broadcastLiveChange(req.user.uid, { type: "expense_updated", item: user });
     res.json(user);
   } catch (err) {
+    if (isInvalidUuidError(err)) {
+      return res.status(404).json({ message: "Not found" });
+    }
     res.status(400).json({ error: err.message });
   }
 });
@@ -1354,10 +1263,13 @@ app.put("/api/users/:id", requireAuth, async (req, res) => {
 app.delete("/api/users/:id", requireAuth, async (req, res) => {
   try {
     await connectDB();
-    await User.findOneAndDelete({ _id: req.params.id, ownerId: req.user.uid });
+    await deleteExpenseById(req.user.uid, req.params.id);
     broadcastLiveChange(req.user.uid, { type: "expense_deleted", id: req.params.id });
     res.json({ message: "Deleted" });
   } catch (err) {
+    if (isInvalidUuidError(err)) {
+      return res.status(404).json({ message: "Not found" });
+    }
     res.status(500).json({ error: err.message });
   }
 });
@@ -1370,9 +1282,9 @@ app.delete("/api/users/:id", requireAuth, async (req, res) => {
 app.post("/api/users/delete-all", requireAuth, async (req, res) => {
   try {
     await connectDB();
-    const result = await User.deleteMany({ ownerId: req.user.uid });
-    broadcastLiveChange(req.user.uid, { type: "bulk_deleted", deletedCount: result.deletedCount });
-    res.status(200).json({ message: "Deleted", deletedCount: result.deletedCount });
+    const deletedCount = await deleteAllExpenses(req.user.uid);
+    broadcastLiveChange(req.user.uid, { type: "bulk_deleted", deletedCount });
+    res.status(200).json({ message: "Deleted", deletedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1386,10 +1298,7 @@ app.get("/api/users/local/:localId", requireAuth, async (req, res) => {
   try {
     await connectDB();
 
-    const user = await User.findOne({
-      localId: req.params.localId,
-      ownerId: req.user.uid,
-    });
+    const user = await getExpenseByLocalId(req.user.uid, req.params.localId);
 
     if (!user) {
       return res.status(404).json({ message: "Not found" });

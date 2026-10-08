@@ -1,5 +1,4 @@
 const MAX_NOTIFICATION_CONTEXT_ITEMS = 100;
-const EXPENSE_CONTEXT_PROJECTION = "name amount category type date createdAt";
 
 function toPromptItem(item) {
   const promptItem = {
@@ -14,12 +13,8 @@ function toPromptItem(item) {
   return promptItem;
 }
 
-async function refreshNotificationContext({ Expense, Reference, ownerId }) {
-  const expenses = await Expense.find({ ownerId })
-    .select(EXPENSE_CONTEXT_PROJECTION)
-    .sort({ date: -1, createdAt: -1 })
-    .limit(MAX_NOTIFICATION_CONTEXT_ITEMS)
-    .lean();
+async function refreshNotificationContext({ query, ownerId }) {
+  const expenses = await query.listRecentExpenses(ownerId, MAX_NOTIFICATION_CONTEXT_ITEMS);
 
   const items = (Array.isArray(expenses) ? expenses : [])
     .slice(0, MAX_NOTIFICATION_CONTEXT_ITEMS)
@@ -31,27 +26,18 @@ async function refreshNotificationContext({ Expense, Reference, ownerId }) {
       date: expense.date,
     }));
 
-  await Reference.findOneAndUpdate(
-    { ownerId },
-    { $set: { ownerId, items } },
-    { new: true, upsert: true, runValidators: true }
-  );
-
+  await query.upsertReference(ownerId, items);
   return items.length;
 }
 
-async function loadNotificationContext({ Reference, ownerId }) {
-  const reference = await Reference.findOne({ ownerId })
-    .select("items")
-    .lean();
-
-  return (Array.isArray(reference?.items) ? reference.items : [])
+async function loadNotificationContext({ query, ownerId }) {
+  const items = await query.loadReferenceItems(ownerId);
+  return (Array.isArray(items) ? items : [])
     .slice(0, MAX_NOTIFICATION_CONTEXT_ITEMS)
     .map(toPromptItem);
 }
 
 module.exports = {
-  EXPENSE_CONTEXT_PROJECTION,
   MAX_NOTIFICATION_CONTEXT_ITEMS,
   loadNotificationContext,
   refreshNotificationContext,
