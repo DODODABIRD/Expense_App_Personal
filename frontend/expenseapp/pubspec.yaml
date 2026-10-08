@@ -1,7 +1,7 @@
 name: expenseapp
 description: "This Aint A Virus Dawg"
 publish_to: 'none'
-version: 1.6.0
+version: 1.7.0
 
 environment:
   sdk: ^3.11.0
@@ -33,11 +33,11 @@ dependencies:
   firebase_auth: ^5.5.3
   android_intent_plus: ^6.1.0
   share_plus: ^13.3.0
+  flutter_native_splash: ^2.4.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_launcher_icons: ^0.14.4
-  flutter_native_splash: ^2.4.0
 
   flutter_lints: ^6.0.0
 

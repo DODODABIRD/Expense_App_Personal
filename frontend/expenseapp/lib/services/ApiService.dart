@@ -41,14 +41,6 @@ class Throw {
     };
   }
 
-  static Future<void> getUsers() async {
-    final url = Uri.parse('$baseUrl/users');
-
-    final response = await http.get(url, headers: await _headers());
-
-    print(response.statusCode);
-    print(response.body);
-  }
 
   static Future<List<Map<String, dynamic>>> getOnlineExpenses() async {
     final response = await http
@@ -246,64 +238,37 @@ class Throw {
     return body['itemCount'] is int ? body['itemCount'] as int : 0;
   }
 
-  Future<void> getUserById(String id) async {
-    final url = Uri.parse('$baseUrl/users/$id');
-
-    final response = await http.get(url, headers: await _headers());
-
-    print(response.statusCode);
-    print(response.body);
-  }
-
-  Future<void> updateUser(String id) async {
-    final url = Uri.parse('$baseUrl/users/$id');
-
-    final response = await http.put(
-      url,
-      headers: await _headers(),
-      body: jsonEncode({"name": "Updated Name"}),
-    );
-
-    print(response.statusCode);
-    print(response.body);
-  }
-
-  Future<void> deleteUser(String id) async {
-    final url = Uri.parse('$baseUrl/users/$id');
-
-    final response = await http.delete(url, headers: await _headers());
-
-    print(response.statusCode);
-    print(response.body);
-  }
-
-  static Future<String?> getMongoIdFromLocalId(int localId) async {
+  static Future<String?> getServerIdFromLocalId(int localId) async {
     final url = Uri.parse('$baseUrl/users/local/$localId');
 
     final response = await http.get(url, headers: await _headers());
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
-      return data['_id']; // ✅ Mongo ObjectId
+      return data['_id'] as String?;
     }
 
     print('User not found');
     return null;
   }
 
+  static Future<String?> getMongoIdFromLocalId(int localId) =>
+      getServerIdFromLocalId(localId);
+
   static Future<bool> updateUserByLocalId(
     int? localId,
     String name,
-    int amount, // ← Change from String to int
+    int amount,
     String category,
     String type,
     String date,
   ) async {
-    final mongoId = await getMongoIdFromLocalId(localId!);
+    if (localId == null) return false;
+    final serverId = await getServerIdFromLocalId(localId);
 
-    if (mongoId == null) return false;
+    if (serverId == null) return false;
 
-    final url = Uri.parse('$baseUrl/users/$mongoId');
+    final url = Uri.parse('$baseUrl/users/$serverId');
 
     final response = await http
         .put(
@@ -325,24 +290,18 @@ class Throw {
       );
     }
 
-    await DatabaseHelp.updateMongoId(localId, mongoId);
-
-    print(response.statusCode);
-    print(response.body);
+    await DatabaseHelp.updateMongoId(localId, serverId);
     return true;
   }
 
   static Future<void> deleteUserByLocalId(int localId) async {
-    final mongoId = await getMongoIdFromLocalId(localId);
+    final serverId = await getServerIdFromLocalId(localId);
 
-    if (mongoId == null) return;
+    if (serverId == null) return;
 
-    final url = Uri.parse('$baseUrl/users/$mongoId');
+    final url = Uri.parse('$baseUrl/users/$serverId');
 
-    final response = await http.delete(url, headers: await _headers());
-
-    print(response.statusCode);
-    print(response.body);
+    await http.delete(url, headers: await _headers());
   }
 
   /// Bulk-deletes every expense owned by the current user in one request.
@@ -398,15 +357,13 @@ class Throw {
         );
       }
 
-      final mongoResponse = jsonDecode(response.body) as Map<String, dynamic>;
-      final mongoId = mongoResponse['_id'] as String?;
-      if (mongoId != null) {
-        await DatabaseHelp.updateMongoId(localId, mongoId);
+      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
+      final serverId = responseData['_id'] as String?;
+      if (serverId != null) {
+        await DatabaseHelp.updateMongoId(localId, serverId);
       }
 
-      print(response.statusCode);
-      print(response.body);
-      return mongoId != null;
+      return serverId != null;
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Create expense sync');
       print('Sync failed: $error');
@@ -420,8 +377,8 @@ class Throw {
 
     for (final expense in pendingExpenses) {
       try {
-        final mongoId = expense['mongoId'] as String?;
-        if (mongoId == null || mongoId.isEmpty) {
+        final serverId = expense['mongoId'] as String?;
+        if (serverId == null || serverId.isEmpty) {
           await createExpense(
             expense['id'] as int,
             expense['name'] as String,
@@ -533,16 +490,3 @@ class Throw {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 }
-
-// void main() async {
-//   for (int index = 0; index <= 10; index++) {
-//     await Throw.createUser(index, 'Nigga $index', '4', 'nigga', 'nigga', 'nigga');
-//   }
-//   ;
-
-//   // for (int index = 0; index<=10; index++){
-//   //   deleteUserByLocalId(index);
-
-//   // }
-//   // await getUsers();
-// }

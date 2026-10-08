@@ -2292,7 +2292,7 @@ class _SettingsPageState extends State<SettingsPage> {
               style: GoogleFonts.itim(fontWeight: FontWeight.bold),
             ),
             subtitle: Text(
-              'Version 1.6.0',
+              'Version 1.7.0',
               style: GoogleFonts.itim(
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
@@ -2867,10 +2867,7 @@ class _ListWithCardsState extends State<ListWithCards>
             builder: (context, constraints) {
               final isCompact = constraints.maxWidth < 340;
               final currencyChip = Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF9EB5D),
                   borderRadius: BorderRadius.circular(8),
