@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
@@ -7,7 +8,12 @@ import 'error_log_service.dart';
 
 const String baseUrl = String.fromEnvironment(
   'EXPENSE_API_BASE_URL',
-  defaultValue: 'https://expense-app-personal.vercel.app/api',
+  defaultValue: 'https://vps.dododabird.us/api',
+);
+
+const String wsUrl = String.fromEnvironment(
+  'EXPENSE_WS_URL',
+  defaultValue: 'wss://vps.dododabird.us/ws',
 );
 
 typedef ReceiptScanProgress =
@@ -439,6 +445,92 @@ class Throw {
         print('Pending sync failed: $error');
       }
     }
+  }
+
+  static WebSocket? _liveWs;
+  static Timer? _pingTimer;
+  static final StreamController<Map<String, dynamic>> _liveEventsController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  /// Stream of real-time events broadcasted by the VPS server (create, update, delete).
+  static Stream<Map<String, dynamic>> get liveEvents =>
+      _liveEventsController.stream;
+
+  /// Returns true if the live WebSocket is currently connected.
+  static bool get isWebSocketConnected =>
+      _liveWs != null && _liveWs!.readyState == WebSocket.open;
+
+  /// Connects to the VPS backend WebSocket server defined in backend/server.js.
+  /// Sends auth token and streams live changes from backend/api/index.js.
+  static Future<void> connectLiveWebSocket() async {
+    if (isWebSocketConnected) return;
+
+    try {
+      final token = await AuthService.getIdToken();
+      final uri = Uri.parse(wsUrl).replace(
+        queryParameters: {'token': token},
+      );
+
+      final socket = await WebSocket.connect(uri.toString());
+      _liveWs = socket;
+
+      socket.add(jsonEncode({'type': 'auth', 'token': token}));
+
+      _pingTimer?.cancel();
+      _pingTimer = Timer.periodic(const Duration(seconds: 25), (timer) {
+        if (_liveWs != null && _liveWs!.readyState == WebSocket.open) {
+          _liveWs!.add(jsonEncode({'type': 'ping'}));
+        } else {
+          timer.cancel();
+        }
+      });
+
+      socket.listen(
+        (data) {
+          try {
+            final decoded = jsonDecode(data.toString());
+            if (decoded is Map<String, dynamic>) {
+              if (decoded['type'] == 'pong') return;
+              _liveEventsController.add(decoded);
+            }
+          } catch (e, stackTrace) {
+            captureAppError(e, stackTrace, 'WebSocket message decode');
+          }
+        },
+        onError: (error, stackTrace) {
+          captureAppError(error, stackTrace, 'WebSocket connection error');
+          disconnectLiveWebSocket();
+        },
+        onDone: () {
+          disconnectLiveWebSocket();
+        },
+        cancelOnError: true,
+      );
+    } catch (e, stackTrace) {
+      captureAppError(e, stackTrace, 'WebSocket connect failed');
+    }
+  }
+
+  /// Closes the live WebSocket connection and stops the heartbeat timer.
+  static Future<void> disconnectLiveWebSocket() async {
+    _pingTimer?.cancel();
+    _pingTimer = null;
+    final socket = _liveWs;
+    _liveWs = null;
+    if (socket != null && socket.readyState == WebSocket.open) {
+      await socket.close();
+    }
+  }
+
+  /// Fetches public configuration from VPS backend /api/public-config
+  static Future<Map<String, dynamic>> getPublicConfig() async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/public-config'))
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw Exception('Could not fetch public config (${response.statusCode})');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 }
 

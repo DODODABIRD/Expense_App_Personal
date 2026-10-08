@@ -211,6 +211,40 @@ function showConfirmDialog(title, message, onConfirm) {
     closeBtn.onclick = cleanup;
 }
 
+function deduplicateExpenses(expenses) {
+    if (!Array.isArray(expenses)) return [];
+    const seenIds = new Set();
+    const seenLocals = new Set();
+    return expenses.filter(item => {
+        if (!item) return false;
+        const id = item._id || item.id;
+        const localId = item.localId || item.local_id;
+        if (id && seenIds.has(String(id))) return false;
+        if (localId && seenLocals.has(String(localId))) return false;
+        if (id) seenIds.add(String(id));
+        if (localId) seenLocals.add(String(localId));
+        return true;
+    });
+}
+
+function upsertExpenseInList(expense) {
+    if (!expense) return;
+    const expId = expense._id || expense.id;
+    const expLocal = expense.localId || expense.local_id;
+    const idx = currentExpenses.findIndex(item => {
+        const itemId = item._id || item.id;
+        const itemLocal = item.localId || item.local_id;
+        return (expId && itemId && String(itemId) === String(expId)) ||
+               (expLocal && itemLocal && String(itemLocal) === String(expLocal));
+    });
+
+    if (idx !== -1) {
+        currentExpenses[idx] = { ...currentExpenses[idx], ...expense };
+    } else {
+        currentExpenses.unshift(expense);
+    }
+}
+
 async function authHeaders() {
     if (isGuestMode) {
         return { 'Content-Type': 'application/json' };
@@ -389,21 +423,25 @@ class LiveSyncManager {
         console.log('[LiveSync] Event received:', data.type);
 
         if (data.type === 'expense_created' && data.item) {
-            const exists = currentExpenses.some(e => e._id === data.item._id || (e.localId && e.localId === data.item.localId));
+            const expId = data.item._id || data.item.id;
+            const expLocal = data.item.localId || data.item.local_id;
+            const exists = currentExpenses.some(e => {
+                const itemId = e._id || e.id;
+                const itemLocal = e.localId || e.local_id;
+                return (expId && itemId && String(itemId) === String(expId)) ||
+                       (expLocal && itemLocal && String(itemLocal) === String(expLocal));
+            });
+            upsertExpenseInList(data.item);
+            this.refreshActiveView();
             if (!exists) {
-                currentExpenses.unshift(data.item);
-                this.refreshActiveView();
                 showToast(`+ Added ${data.item.name || 'Expense'}`);
             }
         } else if (data.type === 'expense_updated' && data.item) {
-            const idx = currentExpenses.findIndex(e => e._id === data.item._id);
-            if (idx !== -1) {
-                currentExpenses[idx] = data.item;
-                this.refreshActiveView();
-                showToast(`Updated ${data.item.name}`);
-            }
+            upsertExpenseInList(data.item);
+            this.refreshActiveView();
+            showToast(`Updated ${data.item.name || 'Expense'}`);
         } else if (data.type === 'expense_deleted' && data.id) {
-            currentExpenses = currentExpenses.filter(e => e._id !== data.id);
+            currentExpenses = currentExpenses.filter(e => String(e._id || e.id) !== String(data.id));
             this.refreshActiveView();
             showToast('Transaction deleted');
         } else if (data.type === 'bulk_deleted') {
@@ -454,7 +492,7 @@ let isFetching = false;
 async function fetchExpenses(showLoading = true) {
     if (isGuestMode) {
         const saved = localStorage.getItem('unmurce_demo_expenses');
-        currentExpenses = saved ? JSON.parse(saved) : [...DEMO_EXPENSES];
+        currentExpenses = deduplicateExpenses(saved ? JSON.parse(saved) : [...DEMO_EXPENSES]);
         renderDashboard();
         liveSync.updateStatus('live', 'Demo Mode');
         return;
@@ -467,7 +505,7 @@ async function fetchExpenses(showLoading = true) {
         const res = await fetch(`${API_BASE_URL}/users`, { headers: await authHeaders() });
         if (!res.ok) throw new Error('Fetch failed: ' + res.status);
         const data = await res.json();
-        currentExpenses = Array.isArray(data) ? data : [];
+        currentExpenses = deduplicateExpenses(Array.isArray(data) ? data : []);
         renderDashboard();
         liveSync.updateStatus('live', 'Live');
     } catch (err) {
@@ -489,6 +527,7 @@ function renderDashboard() {
     if (!listEl) return;
 
     // Filter & Sort
+    currentExpenses = deduplicateExpenses(currentExpenses);
     let sorted = [...currentExpenses];
     if (currentSort === 'newest') {
         sorted.sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0));
@@ -661,6 +700,7 @@ function renderAnalytics() {
     const catList = document.getElementById('analytics-cat-list');
 
     // Financial totals
+    currentExpenses = deduplicateExpenses(currentExpenses);
     let total = 0;
     const catTotals = {};
     const typeTotals = { expected: 0, unexpected: 0, others: 0 };
@@ -1548,16 +1588,17 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 if (isGuestMode) {
                     if (id) {
-                        const idx = currentExpenses.findIndex(item => item._id === id);
+                        const idx = currentExpenses.findIndex(item => (item._id || item.id) === id);
                         if (idx !== -1) {
                             currentExpenses[idx] = { ...currentExpenses[idx], name, amount, category, type, date };
                         }
                         showToast('Transaction updated!');
                     } else {
                         const created = { _id: 'demo_' + Date.now(), localId, name, amount, category, type, date };
-                        currentExpenses.unshift(created);
+                        upsertExpenseInList(created);
                         showToast('Transaction saved!');
                     }
+                    currentExpenses = deduplicateExpenses(currentExpenses);
                     localStorage.setItem('unmurce_demo_expenses', JSON.stringify(currentExpenses));
                     renderDashboard();
                     navigateToView('dashboard');
@@ -1574,8 +1615,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     if (!res.ok) throw new Error('Update failed');
                     const updated = await res.json();
-                    const idx = currentExpenses.findIndex(item => item._id === id);
-                    if (idx !== -1) currentExpenses[idx] = updated;
+                    upsertExpenseInList(updated);
                     showToast('Transaction updated!');
                 } else {
                     // Create
@@ -1586,7 +1626,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                     if (!res.ok) throw new Error('Create failed');
                     const created = await res.json();
-                    currentExpenses.unshift(created);
+                    upsertExpenseInList(created);
                     showToast('Transaction saved!');
                 }
 
