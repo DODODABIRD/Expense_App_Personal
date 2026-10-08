@@ -202,6 +202,17 @@
             border: 1px solid #000;
         }
 
+        .mobile-toc-toggle {
+            display: none;
+        }
+
+        .docs-sidebar-inner {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
         .sidebar-search-box {
             position: relative;
             margin-bottom: 12px;
@@ -249,8 +260,8 @@
             border-radius: 12px;
             font-weight: 700;
             font-size: 0.87rem;
-            border: 2px solid transparent;
-            transition: all 0.15s ease;
+            border: var(--border-thin) solid transparent;
+            transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.15s ease;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -267,7 +278,7 @@
         .sidebar-link:hover,
         .sidebar-link.active {
             background: var(--card-yellow);
-            border: var(--border-thin);
+            border-color: #000000;
             box-shadow: var(--shadow-sm);
             transform: translateX(4px);
             color: #000000;
@@ -1045,7 +1056,7 @@
 
         @media (max-width: 680px) {
             html {
-                scroll-padding-top: 104px;
+                scroll-padding-top: 80px;
             }
 
             .docs-header {
@@ -1059,7 +1070,117 @@
             }
 
             .docs-sidebar {
+                position: sticky;
                 top: 12px;
+                z-index: 950;
+                display: flex;
+                flex-direction: column;
+                overflow: visible;
+                white-space: normal;
+                padding: 0;
+                border-radius: var(--radius-md);
+                background: transparent;
+                box-shadow: none;
+                border: none;
+                max-height: none;
+                gap: 0;
+            }
+
+            .mobile-toc-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                padding: 12px 18px;
+                background: #ffffff;
+                border: var(--border-thin);
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow);
+                font-family: var(--font);
+                font-weight: 800;
+                font-size: 0.92rem;
+                cursor: pointer;
+                user-select: none;
+                transition: transform 0.12s ease, box-shadow 0.12s ease;
+                color: var(--ink);
+            }
+
+            .mobile-toc-toggle:active {
+                transform: translate(2px, 2px);
+                box-shadow: 1px 1px 0 #000;
+            }
+
+            .mobile-toc-label {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .mobile-toc-icon {
+                font-size: 1.15rem;
+                line-height: 1;
+            }
+
+            .mobile-toc-arrow {
+                font-size: 0.75rem;
+                transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            .docs-sidebar.is-open .mobile-toc-arrow {
+                transform: rotate(180deg);
+            }
+
+            .docs-sidebar.is-open .mobile-toc-toggle {
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+            }
+
+            .docs-sidebar-inner {
+                display: none;
+                flex-direction: column;
+                gap: 6px;
+                padding: 14px;
+                background: #ffffff;
+                border: var(--border-thin);
+                border-top: none;
+                border-radius: 0 0 var(--radius-md) var(--radius-md);
+                box-shadow: var(--shadow);
+                max-height: 60vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .docs-sidebar.is-open .docs-sidebar-inner {
+                display: flex;
+            }
+
+            .docs-sidebar.is-open .sidebar-title,
+            .docs-sidebar.is-open .sidebar-search-box {
+                display: block;
+            }
+
+            .sidebar-search-box {
+                margin-bottom: 8px;
+            }
+
+            .sidebar-title {
+                font-size: 0.72rem;
+                margin: 8px 0 4px 4px;
+            }
+
+            .sidebar-link {
+                padding: 8px 12px;
+                font-size: 0.84rem;
+                border-radius: 8px;
+                width: 100%;
+                flex-shrink: 0;
+            }
+
+            .sidebar-link:hover,
+            .sidebar-link.active {
+                background: var(--card-yellow);
+                border: var(--border-thin);
+                transform: translateX(4px);
             }
 
             .docs-brand {
@@ -1141,13 +1262,21 @@
     </header>
 
     <div class="docs-container">
-        <!-- Sticky Sidebar Navigation -->
-        <aside class="docs-sidebar">
-            <div class="sidebar-search-box">
-                <span class="sidebar-search-icon">🔍</span>
-                <input type="text" id="docs-search-input" class="sidebar-search-input"
-                    placeholder="Search docs & APIs...">
-            </div>
+        <!-- Sticky Sidebar Navigation / Mobile Dropdown -->
+        <aside class="docs-sidebar" id="docs-sidebar">
+            <button class="mobile-toc-toggle" id="mobile-toc-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar-nav" aria-label="Toggle Table of Contents">
+                <span class="mobile-toc-label">
+                    <span class="mobile-toc-icon">☰</span>
+                    <span>Table of Contents</span>
+                </span>
+                <span class="mobile-toc-arrow">▼</span>
+            </button>
+            <div class="docs-sidebar-inner" id="docs-sidebar-nav">
+                <div class="sidebar-search-box">
+                    <span class="sidebar-search-icon">🔍</span>
+                    <input type="text" id="docs-search-input" class="sidebar-search-input"
+                        placeholder="Search docs & APIs...">
+                </div>
 
             <span class="sidebar-title">Architecture & UI</span>
             <a class="sidebar-link active" href="#overview"><span class="num">01</span> System Overview</a>
@@ -1169,6 +1298,7 @@
             <span class="sidebar-title">API & Tooling</span>
             <a class="sidebar-link" href="#api-reference"><span class="num">12</span> REST API Reference</a>
             <a class="sidebar-link" href="#setup-guide"><span class="num">13</span> Setup & Build Guide</a>
+            </div>
         </aside>
 
         <!-- Main Content Area -->
@@ -2609,6 +2739,38 @@ flutter build apk --split-per-abi --release</code></pre>
 
             window.addEventListener('scroll', updateScrollSpy, { passive: true });
             updateScrollSpy();
+
+            // Mobile TOC Hamburger Dropdown Toggle
+            const tocSidebar = document.getElementById('docs-sidebar');
+            const tocToggle = document.getElementById('mobile-toc-toggle');
+
+            if (tocSidebar && tocToggle) {
+                tocToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = tocSidebar.classList.toggle('is-open');
+                    tocToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                });
+
+                // Auto-close dropdown when a section link is clicked on mobile
+                navLinks.forEach(link => {
+                    link.addEventListener('click', () => {
+                        if (window.innerWidth <= 680) {
+                            tocSidebar.classList.remove('is-open');
+                            tocToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                });
+
+                // Close dropdown when tapping outside
+                document.addEventListener('click', (e) => {
+                    if (window.innerWidth <= 680 && tocSidebar.classList.contains('is-open')) {
+                        if (!tocSidebar.contains(e.target)) {
+                            tocSidebar.classList.remove('is-open');
+                            tocToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                });
+            }
         });
     </script>
 </body>
