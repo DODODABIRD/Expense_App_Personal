@@ -20,7 +20,7 @@ try {
 } catch (e) {}
 admin.auth = () => mockAuth;
 
-const app = require("../api/index");
+const { createApp } = require("../api/index");
 
 test("Express /api/users API contract with Postgres backend", async (t) => {
   let server;
@@ -179,6 +179,7 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
 
   setPool(mockPool);
 
+  const app = createApp();
   await new Promise((resolve) => {
     server = app.listen(0, () => {
       baseUrl = `http://127.0.0.1:${server.address().port}`;
@@ -192,6 +193,9 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
   };
 
   try {
+    const unauthorizedRes = await fetch(`${baseUrl}/api/users`);
+    assert.equal(unauthorizedRes.status, 401);
+
     // 1. POST /api/users - Create expense
     const createRes = await fetch(`${baseUrl}/api/users`, {
       method: "POST",

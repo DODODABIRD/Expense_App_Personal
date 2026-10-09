@@ -2,6 +2,7 @@ const express = require("express");
 const path = require("path");
 const admin = require("firebase-admin");
 const cors = require("cors");
+const { requireAuth } = require("./middleware/auth");
 
 // Attempt to load local environment variables if available
 try {
@@ -94,26 +95,26 @@ function createApp() {
   app.post("/api/rag-chat", parsingRoutes.ragChat);
 
   // Notification reference routes
-  app.put("/api/ai-notification-reference", notificationsRoutes.putNotificationReference);
-  app.post("/api/ai-notification-reference/refresh", notificationsRoutes.refreshNotificationRef);
+  app.put("/api/ai-notification-reference", requireAuth, notificationsRoutes.putNotificationReference);
+  app.post("/api/ai-notification-reference/refresh", requireAuth, notificationsRoutes.refreshNotificationRef);
 
   // Parse notification route
-  app.post("/api/parse-notification", parsingRoutes.parseNotification);
+  app.post("/api/parse-notification", requireAuth, parsingRoutes.parseNotification);
 
   // Parse receipt route (streaming)
-  app.post("/api/parse-receipt", receiptsRoutes.parseReceiptRoute);
+  app.post("/api/parse-receipt", requireAuth, receiptsRoutes.parseReceiptRoute);
 
   // Exchange rates
   app.get("/api/exchange-rates", exchangeRoutes.exchangeRates);
 
   // Expense CRUD routes
-  app.post("/api/users", expensesRoutes.createExpense);
-  app.get("/api/users", expensesRoutes.listAllExpenses);
-  app.get("/api/users/:id", expensesRoutes.getExpense);
-  app.put("/api/users/:id", expensesRoutes.updateExpense);
-  app.delete("/api/users/:id", expensesRoutes.removeExpense);
-  app.post("/api/users/delete-all", expensesRoutes.deleteAllUserExpenses);
-  app.get("/api/users/local/:localId", expensesRoutes.getExpenseByLocal);
+  app.post("/api/users", requireAuth, expensesRoutes.createExpense);
+  app.get("/api/users", requireAuth, expensesRoutes.listAllExpenses);
+  app.get("/api/users/:id", requireAuth, expensesRoutes.getExpense);
+  app.put("/api/users/:id", requireAuth, expensesRoutes.updateExpense);
+  app.delete("/api/users/:id", requireAuth, expensesRoutes.removeExpense);
+  app.post("/api/users/delete-all", requireAuth, expensesRoutes.deleteAllUserExpenses);
+  app.get("/api/users/local/:localId", requireAuth, expensesRoutes.getExpenseByLocal);
 
   // SSE Events route
   app.get("/api/events", eventsRoutes.sseEvents);
