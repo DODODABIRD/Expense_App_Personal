@@ -18,6 +18,7 @@ class _DeveloperLogsPageState extends State<DeveloperLogsPage> {
   Object? _loadError;
   bool _isLoading = true;
   bool _isSharing = false;
+  bool _isDeleting = false;
 
   ErrorLogService get _errorLogService =>
       widget.errorLogService ?? ErrorLogService.instance;
@@ -74,6 +75,49 @@ class _DeveloperLogsPageState extends State<DeveloperLogsPage> {
     return renderObject.localToGlobal(Offset.zero) & renderObject.size;
   }
 
+  Future<void> _deleteAllLogs() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete all logs?'),
+        content: const Text(
+          'This will permanently delete all error logs. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    setState(() => _isDeleting = true);
+    try {
+      await _errorLogService.deleteAllLogs();
+      if (!mounted) return;
+      setState(() => _entries = []);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All logs deleted.')),
+      );
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Delete developer logs');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not delete logs: $error')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isDeleting = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -102,6 +146,16 @@ class _DeveloperLogsPageState extends State<DeveloperLogsPage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.ios_share_rounded),
+          ),
+          IconButton(
+            tooltip: 'Delete all logs',
+            onPressed: _isDeleting ? null : _deleteAllLogs,
+            icon: _isDeleting
+                ? const SizedBox.square(
+                    dimension: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.delete_outline_rounded),
           ),
         ],
       ),

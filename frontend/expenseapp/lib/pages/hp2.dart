@@ -14,6 +14,7 @@ import '../services/pdf_export_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
+import '../widgets/neo_brutalist_calendar.dart';
 import 'ExpenseAddPage.dart';
 import 'ExpenseEdit.dart';
 import 'ExpenseSumarry.dart';
@@ -40,6 +41,29 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   bool _isChangingCurrency = false;
   bool _isLoadingOnlineExpenses = false;
   int _pendingNotificationCount = 0;
+
+  // Filter state
+  String? _selectedCategory;
+  String? _selectedType;
+  DateTimeRange? _dateRange;
+  ExpenseSort _selectedSort = ExpenseSort.dateNewest;
+  final _filterPanelKey = GlobalKey<_FilterPanelState>();
+
+  bool get _hasActiveFilters {
+    return _selectedCategory != null ||
+        _selectedType != null ||
+        _dateRange != null ||
+        _selectedSort != ExpenseSort.dateNewest;
+  }
+
+  int get _activeFilterCount {
+    int count = 0;
+    if (_selectedCategory != null) count++;
+    if (_selectedType != null) count++;
+    if (_dateRange != null) count++;
+    if (_selectedSort != ExpenseSort.dateNewest) count++;
+    return count;
+  }
 
   @override
   void initState() {
@@ -218,46 +242,49 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Tooltip(
-                      message: 'Review parsed notifications',
-                      child: NeoBouncy(
-                        onTap: _openPendingNotificationReview,
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainer,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.black, width: 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black,
-                                offset: Offset(2, 2),
-                                blurRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Badge(
-                              isLabelVisible: _pendingNotificationCount > 0,
-                              label: Text(
-                                _pendingNotificationCount > 99
-                                    ? '99+'
-                                    : '$_pendingNotificationCount',
-                              ),
-                              child: Icon(
-                                Icons.receipt_long_outlined,
-                                color: Theme.of(context).colorScheme.onSurface,
-                                size: 21,
+                    _buildFiltersButton(),
+                    const SizedBox(width: 8),
+                    if (_pendingNotificationCount >= 0)
+                      Tooltip(
+                        message: 'Review parsed notifications',
+                        child: NeoBouncy(
+                          onTap: _openPendingNotificationReview,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainer,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.black, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black,
+                                  offset: Offset(2, 2),
+                                  blurRadius: 0,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Badge(
+                                isLabelVisible: _pendingNotificationCount > 0,
+                                label: Text(
+                                  _pendingNotificationCount > 99
+                                      ? '99+'
+                                      : '$_pendingNotificationCount',
+                                  style: const TextStyle(fontSize: 9),
+                                ),
+                                child: Icon(
+                                  Icons.receipt_long_outlined,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                  size: 18,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    _buildSortDropdown(),
                   ],
                 ),
               ],
@@ -347,73 +374,91 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildSortDropdown() {
+  Widget _buildFiltersButton() {
     return NeoBouncy(
+      onTap: _showFilterPanel,
       child: Container(
         height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF5DF9FF),
+          color: _hasActiveFilters ? const Color(0xFF5DF9FF) : Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.black, width: 2),
           boxShadow: const [
-            BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
+            BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0),
           ],
         ),
-        child: Theme(
-          data: Theme.of(context).copyWith(
-            canvasColor: Theme.of(context).colorScheme.surfaceContainer,
-            highlightColor: const Color(0x335DF9FF),
-            splashColor: const Color(0x555DF9FF),
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: Colors.black,
-              secondary: const Color(0xFF5DF9FF),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.filter_list_rounded,
+              size: 18,
+              color: Colors.black,
             ),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<ExpenseSort>(
-              value: listKey.currentState?._sort ?? ExpenseSort.dateNewest,
-              isDense: true,
-              dropdownColor: Theme.of(context).colorScheme.surfaceContainer,
-              borderRadius: BorderRadius.circular(14),
-              focusColor: Colors.transparent,
-              style: const TextStyle(
-                color: Colors.black,
+            const SizedBox(width: 6),
+            Text(
+              'Filters',
+              style: GoogleFonts.itim(
                 fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-              icon: const Icon(
-                Icons.keyboard_arrow_down,
-                size: 20,
+                fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: ExpenseSort.dateNewest,
-                  child: Text('Newest'),
-                ),
-                DropdownMenuItem(
-                  value: ExpenseSort.dateOldest,
-                  child: Text('Oldest'),
-                ),
-                DropdownMenuItem(
-                  value: ExpenseSort.amountHighest,
-                  child: Text('Highest'),
-                ),
-                DropdownMenuItem(
-                  value: ExpenseSort.amountLowest,
-                  child: Text('Lowest'),
-                ),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  listKey.currentState?._setSort(value);
-                  setState(() {});
-                }
-              },
             ),
-          ),
+            if (_activeFilterCount > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$_activeFilterCount',
+                  style: GoogleFonts.itim(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
+      ),
+    );
+  }
+
+  void _showFilterPanel() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _FilterPanel(
+        key: _filterPanelKey,
+        initialCategory: _selectedCategory,
+        initialType: _selectedType,
+        initialDateRange: _dateRange,
+        initialSort: _selectedSort,
+        categories: listKey.currentState?._uniqueCategories ?? [],
+        onApply: (category, type, dateRange, sort) {
+          setState(() {
+            _selectedCategory = category;
+            _selectedType = type;
+            _dateRange = dateRange;
+            _selectedSort = sort;
+          });
+          listKey.currentState?._setFilter(category, type, dateRange, sort);
+        },
+        onReset: () {
+          setState(() {
+            _selectedCategory = null;
+            _selectedType = null;
+            _dateRange = null;
+            _selectedSort = ExpenseSort.dateNewest;
+          });
+          listKey.currentState?._resetFilters();
+        },
       ),
     );
   }
@@ -846,6 +891,484 @@ class _LoadingOverlay extends StatelessWidget {
   }
 }
 
+class _FilterPanel extends StatefulWidget {
+  final String? initialCategory;
+  final String? initialType;
+  final DateTimeRange? initialDateRange;
+  final ExpenseSort initialSort;
+  final List<String> categories;
+  final Function(String?, String?, DateTimeRange?, ExpenseSort) onApply;
+  final VoidCallback onReset;
+
+  const _FilterPanel({
+    super.key,
+    this.initialCategory,
+    this.initialType,
+    this.initialDateRange,
+    required this.initialSort,
+    required this.categories,
+    required this.onApply,
+    required this.onReset,
+  });
+
+  @override
+  State<_FilterPanel> createState() => _FilterPanelState();
+}
+
+class _FilterPanelState extends State<_FilterPanel> {
+  late String? _selectedCategory;
+  late String? _selectedType;
+  late DateTimeRange? _dateRange;
+  late ExpenseSort _selectedSort;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = widget.initialCategory;
+    _selectedType = widget.initialType;
+    _dateRange = widget.initialDateRange;
+    _selectedSort = widget.initialSort;
+  }
+
+  void _clearDateRange() {
+    setState(() => _dateRange = null);
+  }
+
+  void _resetAll() {
+    setState(() {
+      _selectedCategory = null;
+      _selectedType = null;
+      _dateRange = null;
+      _selectedSort = ExpenseSort.dateNewest;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final panelBg = isDark ? const Color(0xFF22262B) : Colors.white;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 60),
+      decoration: BoxDecoration(
+        color: panelBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border.all(color: Colors.black, width: 3),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(0, -4), blurRadius: 0),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Filters',
+                  style: GoogleFonts.itim(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                NeoBouncy(
+                  onTap: () {
+                    _resetAll();
+                    widget.onReset();
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF5D5D),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.black, width: 2),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.refresh_rounded, size: 16, color: Colors.black),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Reset',
+                          style: GoogleFonts.itim(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Content
+          Flexible(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, bottomInset + 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Date Range Section
+                  _buildSectionTitle('Date Range', isDark),
+                  const SizedBox(height: 8),
+                  _buildDateRangePicker(isDark),
+                  const SizedBox(height: 20),
+
+                  // Sort Section
+                  _buildSectionTitle('Sort By', isDark),
+                  const SizedBox(height: 8),
+                  _buildSortOptions(isDark),
+                  const SizedBox(height: 20),
+
+                  // Type Section
+                  _buildSectionTitle('Type', isDark),
+                  const SizedBox(height: 8),
+                  _buildTypeOptions(isDark),
+                  const SizedBox(height: 20),
+
+                  // Category Section
+                  if (widget.categories.isNotEmpty) ...[
+                    _buildSectionTitle('Category', isDark),
+                    const SizedBox(height: 8),
+                    _buildCategoryOptions(isDark),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Apply Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: NeoBouncy(
+                      onTap: () {
+                        widget.onApply(_selectedCategory, _selectedType, _dateRange, _selectedSort);
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5DF9FF),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.black, width: 2.5),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Apply Filters',
+                            style: GoogleFonts.itim(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, bool isDark) {
+    return Text(
+      title,
+      style: GoogleFonts.itim(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: isDark ? const Color(0xFF5DF9FF) : Colors.black87,
+      ),
+    );
+  }
+
+  Widget _buildDateRangePicker(bool isDark) {
+    final isActive = _dateRange != null;
+    return GestureDetector(
+      onTap: () => _showCustomCalendar(isDark),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF5DF9FF) : (isDark ? const Color(0xFF1E2830) : const Color(0xFFF5F5F5)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black, width: 2),
+          boxShadow: isActive
+              ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.date_range_rounded,
+              size: 22,
+              color: Colors.black,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                isActive
+                    ? '${DateFormat('dd MMM yyyy', 'id_ID').format(_dateRange!.start)} - ${DateFormat('dd MMM yyyy', 'id_ID').format(_dateRange!.end)}'
+                    : 'Select date range',
+                style: GoogleFonts.itim(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            if (isActive)
+              GestureDetector(
+                onTap: () => _clearDateRange(),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded, size: 16, color: Colors.black),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCustomCalendar(bool isDark) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            NeoBrutalistCalendar(
+              initialRange: _dateRange,
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now(),
+              onRangeSelected: (range) {
+                if (range != null) {
+                  setState(() => _dateRange = range);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF5DF9FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.black, width: 2.5),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    'Done',
+                    style: GoogleFonts.itim(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortOptions(bool isDark) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _buildSortChip('Newest', ExpenseSort.dateNewest, isDark),
+        _buildSortChip('Oldest', ExpenseSort.dateOldest, isDark),
+        _buildSortChip('Highest', ExpenseSort.amountHighest, isDark),
+        _buildSortChip('Lowest', ExpenseSort.amountLowest, isDark),
+      ],
+    );
+  }
+
+  Widget _buildSortChip(String label, ExpenseSort sort, bool isDark) {
+    final isSelected = _selectedSort == sort;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedSort = sort),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF9EB5D) : (isDark ? const Color(0xFF1E2830) : Colors.white),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.black,
+            width: isSelected ? 2.5 : 2,
+          ),
+          boxShadow: isSelected
+              ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.itim(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeOptions(bool isDark) {
+    final types = ['expected', 'unexpected', 'others'];
+    final typeLabels = {'expected': 'Expected', 'unexpected': 'Unexpected', 'others': 'Others'};
+    final typeColors = {
+      'expected': const Color(0xFFF9EB5D),
+      'unexpected': const Color(0xFFFF5D5D),
+      'others': const Color(0xFF5D9BFF),
+    };
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: types.map((type) {
+        final isSelected = _selectedType == type;
+        return GestureDetector(
+          onTap: () => setState(() => _selectedType = isSelected ? null : type),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? typeColors[type] : (isDark ? const Color(0xFF1E2830) : Colors.white),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.black,
+                width: isSelected ? 2.5 : 2,
+              ),
+              boxShadow: isSelected
+                  ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+                  : null,
+            ),
+            child: Text(
+              typeLabels[type]!,
+              style: GoogleFonts.itim(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildCategoryOptions(bool isDark) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        // All category chip
+        GestureDetector(
+          onTap: () => setState(() => _selectedCategory = null),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: _selectedCategory == null ? const Color(0xFF5DF9FF) : (isDark ? const Color(0xFF1E2830) : Colors.white),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.black,
+                width: _selectedCategory == null ? 2.5 : 2,
+              ),
+              boxShadow: _selectedCategory == null
+                  ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+                  : null,
+            ),
+            child: Text(
+              'All',
+              style: GoogleFonts.itim(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
+        // Category chips
+        ...widget.categories.map((category) {
+          final isSelected = _selectedCategory == category;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedCategory = category),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF5DF9FF) : (isDark ? const Color(0xFF1E2830) : Colors.white),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.black,
+                  width: isSelected ? 2.5 : 2,
+                ),
+                boxShadow: isSelected
+                    ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+                    : null,
+              ),
+              child: Text(
+                _capitalizeCategory(category),
+                style: GoogleFonts.itim(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  String _capitalizeCategory(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toUpperCase() + s.substring(1);
+  }
+}
+
 void showNotificationSnackBar(
   BuildContext context,
   String message, {
@@ -900,6 +1423,18 @@ class _ListWithCardsState extends State<ListWithCards>
   bool _isLoading = true;
   ExpenseSort _sort = ExpenseSort.dateNewest;
   bool _isSyncing = false;
+
+  // Filter state
+  String _searchQuery = '';
+  String? _filterCategory;
+  String? _filterType;
+  DateTimeRange? _filterDateRange;
+
+  List<String> get _uniqueCategories {
+    final cats = _expenses.map((e) => e.category.toLowerCase()).toSet().toList();
+    cats.sort();
+    return cats;
+  }
 
   @override
   void initState() {
@@ -976,7 +1511,50 @@ class _ListWithCardsState extends State<ListWithCards>
   }
 
   List<ExpenseModel> get _sortedExpenses {
-    final result = [..._expenses];
+    var result = [..._expenses];
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      result = result.where((e) {
+        return e.name.toLowerCase().contains(query) ||
+            e.category.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    // Apply category filter
+    if (_filterCategory != null) {
+      result = result
+          .where((e) => e.category.toLowerCase() == _filterCategory!.toLowerCase())
+          .toList();
+    }
+
+    // Apply type filter
+    if (_filterType != null) {
+      result = result
+          .where((e) => e.type.toLowerCase() == _filterType!.toLowerCase())
+          .toList();
+    }
+
+    // Apply date range filter
+    if (_filterDateRange != null) {
+      final start = DateTime(
+        _filterDateRange!.start.year,
+        _filterDateRange!.start.month,
+        _filterDateRange!.start.day,
+      );
+      final end = DateTime(
+        _filterDateRange!.end.year,
+        _filterDateRange!.end.month,
+        _filterDateRange!.end.day,
+        23,
+        59,
+        59,
+      );
+      result = result.where((e) {
+        return !e.date.isBefore(start) && !e.date.isAfter(end);
+      }).toList();
+    }
 
     result.sort((a, b) {
       switch (_sort) {
@@ -1351,8 +1929,22 @@ class _ListWithCardsState extends State<ListWithCards>
     );
   }
 
-  void _setSort(ExpenseSort value) {
-    setState(() => _sort = value);
+  void _setFilter(String? category, String? type, DateTimeRange? dateRange, ExpenseSort sort) {
+    setState(() {
+      _filterCategory = category;
+      _filterType = type;
+      _filterDateRange = dateRange;
+      _sort = sort;
+    });
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _filterCategory = null;
+      _filterType = null;
+      _filterDateRange = null;
+      _sort = ExpenseSort.dateNewest;
+    });
   }
 }
 
@@ -1427,11 +2019,11 @@ class CardList extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 58,
-              height: 58,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.black, width: 2),
                 boxShadow: const [
                   BoxShadow(
@@ -1441,9 +2033,9 @@ class CardList extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(_getCategoryIcon(), color: Colors.black, size: 30),
+              child: Icon(_getCategoryIcon(), color: Colors.black, size: 24),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1452,18 +2044,17 @@ class CardList extends StatelessWidget {
                   Text(
                     expense.name,
                     style: GoogleFonts.itim(
-                      fontSize: 20,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
                   Text(
                     formatter.format(amountValue * appExchangeRate.value),
                     style: GoogleFonts.itim(
-                      fontSize: 17,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
@@ -1471,42 +2062,11 @@ class CardList extends StatelessWidget {
                   Text(
                     DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
                     style: GoogleFonts.itim(
-                      fontSize: 13,
+                      fontSize: 11,
                       color: Colors.black87,
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            NeoBouncy(
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  SmoothPageRoute(page: ExpenseEdit(expenseId: expense.id)),
-                );
-                onRefresh();
-              },
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.black, width: 2),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black,
-                      offset: Offset(2, 2),
-                      blurRadius: 0,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.edit_rounded,
-                  size: 18,
-                  color: Colors.black,
-                ),
               ),
             ),
           ],

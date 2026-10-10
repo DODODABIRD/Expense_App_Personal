@@ -170,6 +170,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return ListView(
       padding: const EdgeInsets.fromLTRB(24, 24, 24, 150),
       children: [
+        SizedBox(height:60),
         Text(
           'Manage your data',
           style: GoogleFonts.itim(fontSize: 28, fontWeight: FontWeight.bold),
@@ -187,7 +188,7 @@ class _SettingsPageState extends State<SettingsPage> {
           icon: Icons.cloud_download_outlined,
           title: 'Load online expenses',
           subtitle: 'Import expenses created on another device.',
-          color: const Color(0xFF5DF9FF),
+          color: const Color.fromARGB(255, 33, 229, 243),
           onTap: widget.onLoadOnlineExpenses,
         ),
         const SizedBox(height: 16),
@@ -205,7 +206,7 @@ class _SettingsPageState extends State<SettingsPage> {
           icon: Icons.picture_as_pdf_outlined,
           title: 'Export expenses as PDF',
           subtitle: 'Save a complete report of your expenses.',
-          color: const Color(0xFF5DF9FF),
+          color: const Color.fromARGB(255, 33, 236, 243),
           onTap: widget.onExportPdf,
         ),
         const SizedBox(height: 16),
@@ -289,17 +290,20 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ],
           ),
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.info_outline),
-            title: Text(
-              'Expense App',
-              style: GoogleFonts.itim(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(
-              'Version 1.7.0',
-              style: GoogleFonts.itim(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
+          child: Material(
+            color: Colors.transparent,
+            child: ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.info_outline),
+              title: Text(
+                'Expense App',
+                style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+              ),
+              subtitle: Text(
+                'Version 1.7.5',
+                style: GoogleFonts.itim(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ),
           ),
@@ -373,62 +377,64 @@ class _SettingsPageState extends State<SettingsPage> {
         children: [
           ValueListenableBuilder<String>(
             valueListenable: appCurrency,
-            builder: (context, currency, child) => ListTile(
-              leading: const Icon(Icons.payments_outlined),
-              title: const Text('Currency'),
-              subtitle: const Text('Used when displaying expense amounts'),
-              trailing: DropdownButton<String>(
-                value: currency,
-                underline: const SizedBox.shrink(),
-                items: const [
-                  DropdownMenuItem(value: 'IDR', child: Text('IDR')),
-                  DropdownMenuItem(value: 'USD', child: Text('USD')),
-                  DropdownMenuItem(value: 'EUR', child: Text('EUR')),
-                ],
-                onChanged: (value) {
-                  if (value != null) widget.onCurrencyChanged(value);
-                },
+            builder: (context, currency, child) => Material(
+              color: Colors.transparent,
+              child: ListTile(
+                leading: const Icon(Icons.payments_outlined),
+                title: const Text('Currency'),
+                subtitle: const Text('Used when displaying expense amounts'),
+                trailing: DropdownButton<String>(
+                  value: currency,
+                  underline: const SizedBox.shrink(),
+                  items: const [
+                    DropdownMenuItem(value: 'IDR', child: Text('IDR')),
+                    DropdownMenuItem(value: 'USD', child: Text('USD')),
+                    DropdownMenuItem(value: 'EUR', child: Text('EUR')),
+                  ],
+                  onChanged: (value) {
+                    if (value != null) widget.onCurrencyChanged(value);
+                  },
+                ),
               ),
             ),
           ),
           const Divider(height: 1),
           ValueListenableBuilder<ThemeMode>(
             valueListenable: appThemeMode,
-            builder: (context, mode, child) => SwitchListTile(
-              secondary: const Icon(Icons.dark_mode_outlined),
-              title: const Text('Dark theme'),
-              subtitle: const Text('Use a darker color scheme'),
-              value: mode == ThemeMode.dark,
-              onChanged: (enabled) async {
-                final mode = enabled ? ThemeMode.dark : ThemeMode.light;
-                appThemeMode.value = mode;
-                await DatabaseHelp.setSetting(
-                  'theme_mode',
-                  enabled ? 'dark' : 'light',
-                );
-              },
+            builder: (context, mode, child) => Material(
+              color: Colors.transparent,
+              child: SwitchListTile(
+                secondary: const Icon(Icons.dark_mode_outlined),
+                title: const Text('Dark theme'),
+                subtitle: const Text('Use a darker color scheme'),
+                value: mode == ThemeMode.dark,
+                onChanged: (enabled) async {
+                  final mode = enabled ? ThemeMode.dark : ThemeMode.light;
+                  appThemeMode.value = mode;
+                  await DatabaseHelp.setSetting(
+                    'theme_mode',
+                    enabled ? 'dark' : 'light',
+                  );
+                },
+              ),
             ),
           ),
           const Divider(height: 1),
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications_none_outlined),
-            title: Text(
-              'Expense reminders',
-              style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+          Material(
+            color: Colors.transparent,
+            child: SwitchListTile(
+              secondary: const Icon(Icons.notifications_none_outlined),
+              title: const Text('Expense reminders'),
+              subtitle: const Text('Enable reminders to record expenses'),
+              value: _notificationsEnabled,
+              onChanged: (enabled) async {
+                setState(() => _notificationsEnabled = enabled);
+                await DatabaseHelp.setSetting(
+                  'expense_reminders',
+                  enabled.toString(),
+                );
+              },
             ),
-            subtitle: Text(
-              'Enable reminders to record expenses',
-              style: GoogleFonts.itim(),
-            ),
-            value: _notificationsEnabled,
-            activeThumbColor: const Color(0xFF5DF9FF),
-            onChanged: (enabled) async {
-              setState(() => _notificationsEnabled = enabled);
-              await DatabaseHelp.setSetting(
-                'expense_reminders',
-                enabled.toString(),
-              );
-            },
           ),
         ],
       ),
@@ -448,22 +454,15 @@ class _SettingsPageState extends State<SettingsPage> {
       ),
       child: Column(
         children: [
-          SwitchListTile(
-            secondary: const Icon(Icons.auto_awesome_outlined),
-            title: Text(
-              'Auto Expense parser',
-              style: GoogleFonts.itim(
-                fontWeight: FontWeight.bold,
-                color: colors.onSurface,
-              ),
+          Material(
+            color: Colors.transparent,
+            child: SwitchListTile(
+              secondary: const Icon(Icons.auto_awesome_outlined),
+              title: const Text('Auto Expense parser'),
+              subtitle: const Text('Read selected payment notifications automatically.'),
+              value: _autoExpenseParserEnabled,
+              onChanged: _toggleAutoExpenseParser,
             ),
-            subtitle: Text(
-              'Read selected payment notifications automatically.',
-              style: GoogleFonts.itim(color: colors.onSurfaceVariant),
-            ),
-            value: _autoExpenseParserEnabled,
-            activeThumbColor: const Color(0xFF5DF9FF),
-            onChanged: _toggleAutoExpenseParser,
           ),
           const Divider(height: 1),
           ExpansionTile(
@@ -486,58 +485,64 @@ class _SettingsPageState extends State<SettingsPage> {
               style: GoogleFonts.itim(color: colors.onSurfaceVariant),
             ),
             children: [
-              CheckboxListTile(
-                dense: true,
-                activeColor: const Color(0xFF5DF9FF),
-                checkColor: Colors.black,
-                title: Text(
-                  'All notifications',
-                  style: GoogleFonts.itim(
-                    fontWeight: FontWeight.bold,
-                    color: colors.onSurface,
-                  ),
-                ),
-                subtitle: Text(
-                  'Include notifications from every app',
-                  style: GoogleFonts.itim(color: colors.onSurfaceVariant),
-                ),
-                value: _allowedNotificationApps.contains(
-                  NotificationExpenseService.allNotificationsKey,
-                ),
-                onChanged: (allowed) {
-                  if (allowed != null) {
-                    _setNotificationAppAllowed(
-                      NotificationExpenseService.allNotificationsKey,
-                      allowed,
-                    );
-                  }
-                },
-              ),
-              ...NotificationExpenseService.supportedApps.entries.map(
-                (entry) => CheckboxListTile(
+              Material(
+                color: Colors.transparent,
+                child: CheckboxListTile(
                   dense: true,
-                  activeColor: const Color(0xFF5DF9FF),
+                  activeColor: const Color(0xFF2196F3),
                   checkColor: Colors.black,
                   title: Text(
-                    entry.value,
+                    'All notifications',
                     style: GoogleFonts.itim(
                       fontWeight: FontWeight.bold,
                       color: colors.onSurface,
                     ),
                   ),
                   subtitle: Text(
-                    entry.key,
-                    style: GoogleFonts.itim(
-                      fontSize: 12,
-                      color: colors.onSurfaceVariant,
-                    ),
+                    'Include notifications from every app',
+                    style: GoogleFonts.itim(color: colors.onSurfaceVariant),
                   ),
-                  value: _allowedNotificationApps.contains(entry.key),
+                  value: _allowedNotificationApps.contains(
+                    NotificationExpenseService.allNotificationsKey,
+                  ),
                   onChanged: (allowed) {
                     if (allowed != null) {
-                      _setNotificationAppAllowed(entry.key, allowed);
+                      _setNotificationAppAllowed(
+                        NotificationExpenseService.allNotificationsKey,
+                        allowed,
+                      );
                     }
                   },
+                ),
+              ),
+              ...NotificationExpenseService.supportedApps.entries.map(
+                (entry) => Material(
+                  color: Colors.transparent,
+                  child: CheckboxListTile(
+                    dense: true,
+                    activeColor: const Color(0xFF2196F3),
+                    checkColor: Colors.black,
+                    title: Text(
+                      entry.value,
+                      style: GoogleFonts.itim(
+                        fontWeight: FontWeight.bold,
+                        color: colors.onSurface,
+                      ),
+                    ),
+                    subtitle: Text(
+                      entry.key,
+                      style: GoogleFonts.itim(
+                        fontSize: 12,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                    value: _allowedNotificationApps.contains(entry.key),
+                    onChanged: (allowed) {
+                      if (allowed != null) {
+                        _setNotificationAppAllowed(entry.key, allowed);
+                      }
+                    },
+                  ),
                 ),
               ),
             ],
@@ -652,7 +657,7 @@ void showNotificationSnackBar(
             isError
                 ? Icons.error_outline_rounded
                 : Icons.notifications_active_rounded,
-            color: isError ? const Color(0xFFFF5D5D) : const Color(0xFF5DF9FF),
+            color: isError ? const Color(0xFFFF5D5D) : const Color(0xFF2196F3),
             size: 18,
           ),
           const SizedBox(width: 8),
