@@ -4,16 +4,22 @@ import 'package:intl/intl.dart';
 
 class NeoBrutalistCalendar extends StatefulWidget {
   final DateTimeRange? initialRange;
+  final DateTime? initialDate;
   final DateTime? firstDate;
   final DateTime? lastDate;
   final Function(DateTimeRange?) onRangeSelected;
+  final Function(DateTime?)? onDateSelected;
+  final bool singleDateMode;
 
   const NeoBrutalistCalendar({
     super.key,
     this.initialRange,
+    this.initialDate,
     this.firstDate,
     this.lastDate,
     required this.onRangeSelected,
+    this.onDateSelected,
+    this.singleDateMode = false,
   });
 
   @override
@@ -25,6 +31,7 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
   DateTime? _hoverDate;
+  DateTime? _selectedDate;
 
   DateTime get _firstDate => widget.firstDate ?? DateTime(2020);
   DateTime get _lastDate => widget.lastDate ?? DateTime.now();
@@ -33,9 +40,13 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
   void initState() {
     super.initState();
     _focusedMonth = DateTime.now();
-    if (widget.initialRange != null) {
-      _rangeStart = widget.initialRange!.start;
-      _rangeEnd = widget.initialRange!.end;
+    if (widget.singleDateMode) {
+      _selectedDate = widget.initialDate;
+    } else {
+      if (widget.initialRange != null) {
+        _rangeStart = widget.initialRange!.start;
+        _rangeEnd = widget.initialRange!.end;
+      }
     }
   }
 
@@ -62,23 +73,32 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
     return date.isBefore(_firstDate) || date.isAfter(_lastDate);
   }
 
+  bool _isSingleDateSelected(DateTime date) {
+    if (_selectedDate == null) return false;
+    return _isSameDay(date, _selectedDate!);
+  }
+
   void _onDayTapped(DateTime day) {
     if (_isDisabled(day)) return;
 
     setState(() {
-      if (_rangeStart == null || (_rangeStart != null && _rangeEnd != null)) {
-        // Start new selection
-        _rangeStart = day;
-        _rangeEnd = null;
-      } else if (_rangeStart != null && _rangeEnd == null) {
-        // Complete selection
-        if (day.isBefore(_rangeStart!)) {
-          _rangeEnd = _rangeStart;
+      if (widget.singleDateMode) {
+        _selectedDate = day;
+        widget.onDateSelected?.call(day);
+        widget.onRangeSelected(DateTimeRange(start: day, end: day));
+      } else {
+        if (_rangeStart == null || (_rangeStart != null && _rangeEnd != null)) {
           _rangeStart = day;
-        } else {
-          _rangeEnd = day;
+          _rangeEnd = null;
+        } else if (_rangeStart != null && _rangeEnd == null) {
+          if (day.isBefore(_rangeStart!)) {
+            _rangeEnd = _rangeStart;
+            _rangeStart = day;
+          } else {
+            _rangeEnd = day;
+          }
+          widget.onRangeSelected(DateTimeRange(start: _rangeStart!, end: _rangeEnd!));
         }
-        widget.onRangeSelected(DateTimeRange(start: _rangeStart!, end: _rangeEnd!));
       }
     });
   }
@@ -99,8 +119,10 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
     setState(() {
       _rangeStart = null;
       _rangeEnd = null;
+      _selectedDate = null;
     });
     widget.onRangeSelected(null);
+    widget.onDateSelected?.call(null);
   }
 
   @override
@@ -241,8 +263,9 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
   }
 
   Widget _buildDayCell(DateTime date, bool isDark) {
-    final isSelected = _isRangeStart(date) || _isRangeEnd(date);
-    final isInRange = _isInRange(date);
+    final isSingleSelected = widget.singleDateMode && _isSingleDateSelected(date);
+    final isSelected = isSingleSelected || _isRangeStart(date) || _isRangeEnd(date);
+    final isInRange = !widget.singleDateMode && _isInRange(date);
     final isDisabled = _isDisabled(date);
     final isToday = _isSameDay(date, DateTime.now());
     final isHover = _hoverDate != null && _isSameDay(date, _hoverDate!);
@@ -317,7 +340,7 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
   }
 
   Widget _buildFooter(bool isDark) {
-    final hasSelection = _rangeStart != null;
+    final hasSelection = widget.singleDateMode ? _selectedDate != null : _rangeStart != null;
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -327,13 +350,26 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                hasSelection ? 'Selected:' : 'Tap to select start date',
+                hasSelection
+                    ? (widget.singleDateMode ? 'Selected:' : 'Selected:')
+                    : (widget.singleDateMode ? 'Tap to select date' : 'Tap to select start date'),
                 style: GoogleFonts.itim(
                   fontSize: 12,
                   color: isDark ? Colors.grey : Colors.grey[600],
                 ),
               ),
-              if (_rangeStart != null) ...[
+              if (_selectedDate != null && widget.singleDateMode) ...[
+                const SizedBox(height: 4),
+                Text(
+                  DateFormat('dd MMMM yyyy', 'id_ID').format(_selectedDate!),
+                  style: GoogleFonts.itim(
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? const Color(0xFF5DF9FF) : Colors.black,
+                  ),
+                ),
+              ],
+              if (_rangeStart != null && !widget.singleDateMode) ...[
                 const SizedBox(height: 4),
                 Text(
                   _rangeEnd != null
