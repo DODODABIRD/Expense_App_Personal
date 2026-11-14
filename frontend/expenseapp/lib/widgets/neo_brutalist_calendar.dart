@@ -130,32 +130,44 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF22262B) : Colors.white;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.black, width: 2.5),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Header with month navigation
-          _buildHeader(isDark),
-          const SizedBox(height: 12),
-          // Day names
-          _buildDayNames(isDark),
-          const SizedBox(height: 8),
-          // Calendar grid
-          _buildCalendarGrid(isDark),
-          const SizedBox(height: 12),
-          // Selection info & clear button
-          _buildFooter(isDark),
-        ],
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Fit the 7 columns inside the available width so the grid never
+        // overflows narrow screens (e.g. inside a Dialog).
+        final maxWidth = constraints.maxWidth.isFinite
+            ? constraints.maxWidth
+            : 320.0;
+        final gridWidth = maxWidth - 32 - 5; // padding + border
+        final cellSize = (gridWidth / 7).clamp(24.0, 40.0);
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: bgColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: Colors.black, width: 2.5),
+            boxShadow: const [
+              BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header with month navigation
+              _buildHeader(isDark),
+              const SizedBox(height: 12),
+              // Day names
+              _buildDayNames(isDark, cellSize),
+              const SizedBox(height: 8),
+              // Calendar grid
+              _buildCalendarGrid(isDark, cellSize),
+              const SizedBox(height: 12),
+              // Selection info & clear button
+              _buildFooter(isDark),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -201,13 +213,13 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
     );
   }
 
-  Widget _buildDayNames(bool isDark) {
+  Widget _buildDayNames(bool isDark, double cellSize) {
     final days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: days.map((day) {
         return SizedBox(
-          width: 40,
+          width: cellSize,
           child: Text(
             day,
             textAlign: TextAlign.center,
@@ -222,7 +234,7 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
     );
   }
 
-  Widget _buildCalendarGrid(bool isDark) {
+  Widget _buildCalendarGrid(bool isDark, double cellSize) {
     final firstDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month, 1);
     final lastDayOfMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0);
     final firstWeekday = firstDayOfMonth.weekday % 7;
@@ -231,13 +243,13 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
 
     // Empty cells before first day
     for (int i = 0; i < firstWeekday; i++) {
-      days.add(const SizedBox(width: 40, height: 40));
+      days.add(SizedBox(width: cellSize, height: cellSize));
     }
 
     // Day cells
     for (int day = 1; day <= lastDayOfMonth.day; day++) {
       final date = DateTime(_focusedMonth.year, _focusedMonth.month, day);
-      days.add(_buildDayCell(date, isDark));
+      days.add(_buildDayCell(date, isDark, cellSize));
     }
 
     // Build rows
@@ -246,7 +258,7 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
       final rowDays = days.sublist(i, (i + 7 > days.length) ? days.length : i + 7);
       // Pad the last row if needed
       while (rowDays.length < 7) {
-        rowDays.add(const SizedBox(width: 40, height: 40));
+        rowDays.add(SizedBox(width: cellSize, height: cellSize));
       }
       rows.add(
         Padding(
@@ -262,7 +274,7 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
     return Column(children: rows);
   }
 
-  Widget _buildDayCell(DateTime date, bool isDark) {
+  Widget _buildDayCell(DateTime date, bool isDark, double cellSize) {
     final isSingleSelected = widget.singleDateMode && _isSingleDateSelected(date);
     final isSelected = isSingleSelected || _isRangeStart(date) || _isRangeEnd(date);
     final isInRange = !widget.singleDateMode && _isInRange(date);
@@ -309,8 +321,8 @@ class _NeoBrutalistCalendarState extends State<NeoBrutalistCalendar> {
         onEnter: (_) => setState(() => _hoverDate = date),
         onExit: (_) => setState(() => _hoverDate = null),
         child: Container(
-          width: 40,
-          height: 40,
+          width: cellSize,
+          height: cellSize,
           decoration: BoxDecoration(
             color: bgColor,
             borderRadius: BorderRadius.circular(10),

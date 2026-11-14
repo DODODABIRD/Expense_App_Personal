@@ -151,9 +151,9 @@ Boris Cherny (creator of Claude Code) keeps his team's file around 100 lines. Un
 **Fill this in per project. Keep it specific. Delete sections that don't apply.**
 
 ### Stack
-- Language and version:
-- Framework(s):
-- Package manager:
+- Language and version: Dart 3.15.1 with Flutter 3.28.1
+- Framework(s): Flutter
+- Package manager: Flutter
 - Runtime / deployment target:
 
 ### Commands

@@ -4,6 +4,21 @@ const admin = require("firebase-admin");
 const cors = require("cors");
 const { requireAuth } = require("./middleware/auth");
 
+// Simple cookie parser middleware
+function cookieParser() {
+  return (req, res, next) => {
+    const cookieHeader = req.headers.cookie || "";
+    req.cookies = {};
+    cookieHeader.split(";").forEach((cookie) => {
+      const [name, ...rest] = cookie.trim().split("=");
+      if (name) {
+        req.cookies[name] = rest.join("=");
+      }
+    });
+    next();
+  };
+}
+
 // Attempt to load local environment variables if available
 try {
   const dotenv = require("dotenv");
@@ -11,18 +26,7 @@ try {
   dotenv.config();
 } catch (e) {}
 
-// Import routes
-const expensesRoutes = require("./routes/expenses");
-const notificationsRoutes = require("./routes/notifications");
-const parsingRoutes = require("./routes/parsing");
-const receiptsRoutes = require("./routes/receipts");
-const exchangeRoutes = require("./routes/exchange");
-const eventsRoutes = require("./routes/events");
-
-// Import Groq config
-const groqModel = process.env.GROQ_MODEL || "";
-const groqNotificationModel = process.env.GROQ_NOTIFICATION_MODEL || groqModel;
-
+// Initialize Firebase Admin EARLY (before route imports) so it's available for admin login
 function parseFirebaseServiceAccount(raw) {
   if (!raw) return null;
   try {
@@ -42,6 +46,38 @@ function parseFirebaseServiceAccount(raw) {
   }
 }
 
+if (!admin.apps.length) {
+  if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
+    try {
+      const serviceAccount = parseFirebaseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
+      if (serviceAccount) {
+        admin.initializeApp({
+          credential: admin.credential.cert(serviceAccount),
+        });
+        console.log("Firebase Admin initialized successfully");
+      }
+    } catch (err) {
+      console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:", err.message);
+    }
+  } else {
+    console.warn("Notice: FIREBASE_SERVICE_ACCOUNT_JSON is not configured.");
+  }
+}
+
+// Import Groq config
+const groqModel = process.env.GROQ_MODEL || "";
+const groqNotificationModel = process.env.GROQ_NOTIFICATION_MODEL || groqModel;
+
+// Import routes (after Firebase init)
+const expensesRoutes = require("./routes/expenses");
+const notificationsRoutes = require("./routes/notifications");
+const parsingRoutes = require("./routes/parsing");
+const receiptsRoutes = require("./routes/receipts");
+const exchangeRoutes = require("./routes/exchange");
+const eventsRoutes = require("./routes/events");
+const adminRoutes = require("./routes/admin");
+const { router: adminLoginRouter } = require("./routes/adminLogin");
+
 function createApp() {
   const app = express();
 
@@ -49,24 +85,7 @@ function createApp() {
   app.use(express.json({ limit: "8mb" }));
   app.use(express.urlencoded({ extended: true, limit: "8mb" }));
   app.use(cors());
-
-  // Initialize Firebase Admin if not already initialized
-  if (!admin.apps.length) {
-    if (process.env.FIREBASE_SERVICE_ACCOUNT_JSON) {
-      try {
-        const serviceAccount = parseFirebaseServiceAccount(process.env.FIREBASE_SERVICE_ACCOUNT_JSON);
-        if (serviceAccount) {
-          admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-          });
-        }
-      } catch (err) {
-        console.error("Failed to parse FIREBASE_SERVICE_ACCOUNT_JSON:", err.message);
-      }
-    } else {
-      console.warn("Notice: FIREBASE_SERVICE_ACCOUNT_JSON is not configured in local environment.");
-    }
-  }
+  app.use(cookieParser());
 
   // Serve static frontend assets locally and match vercel.json routes
   const publicDir = path.join(__dirname, "../public");
@@ -118,6 +137,12 @@ function createApp() {
 
   // SSE Events route
   app.get("/api/events", eventsRoutes.sseEvents);
+
+  // Admin login routes (public) - MUST come before admin routes
+  app.use("/dodo", adminLoginRouter);
+
+  // Admin panel routes (session protected)
+  app.use("/dodo", adminRoutes);
 
   return app;
 }
