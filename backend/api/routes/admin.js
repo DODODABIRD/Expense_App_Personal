@@ -1,9 +1,25 @@
 const express = require("express");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const { validateSession } = require("./adminLogin");
+const adminDataRouter = require("./adminData");
+const db = require("../db");
 
 const router = express.Router();
+
+const ADMIN_UI_DIR = path.resolve(__dirname, "../../admin-ui");
+const ASSET_ROOT = path.resolve(
+  process.env.ADMIN_ASSET_ROOT || path.join(__dirname, "../../public/asset")
+);
+const BACKUP_ROOT = path.resolve(
+  process.env.ADMIN_BACKUP_ROOT || path.join(__dirname, "../../data/admin-backups")
+);
+const MAX_UPLOAD_BYTES = 40 * 1024 * 1024;
+const BACKUP_LIMIT = 5;
+const IMAGE_EXTENSIONS = new Set([".png", ".jpg", ".jpeg", ".webp", ".gif", ".svg", ".ico"]);
+const REPLACEABLE_EXTENSIONS = new Set([...IMAGE_EXTENSIONS, ".apk", ".json", ".md"]);
+const BACKUP_ID_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 // Session authentication middleware
 function requireSession(req, res, next) {
@@ -11,510 +27,362 @@ function requireSession(req, res, next) {
   const session = validateSession(sessionId);
 
   if (!session) {
-    return res.status(401).json({ error: "Not authenticated", redirect: "/dodo/login" });
+    if (req.path.startsWith("/api/")) {
+      return res.status(401).json({ error: "Not authenticated", redirect: "/dodo/login" });
+    }
+    return res.redirect("/dodo/login");
   }
 
   req.adminSession = session;
   next();
 }
 
-// Apply to all routes
 router.use(requireSession);
+router.use(adminDataRouter);
 
-// Path to .env.local file
-const envFilePath = path.join(__dirname, "../../.env.local");
-const envExamplePath = path.join(__dirname, "../../.env.example");
-
-// List of allowed environment variables to manage
-const ALLOWED_VARS = [
-  "DATABASE_URL",
-  "FIREBASE_SERVICE_ACCOUNT_JSON",
-  "GROQ_API_KEY",
-  "GROQ_MODEL",
-  "GROQ_NOTIFICATION_MODEL",
-  "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT",
-  "AZURE_DOCUMENT_INTELLIGENCE_KEY",
-  "OPENROUTER_API_KEY",
-  "PORT",
-  "MONGODB_URI"
-];
-
-// Mask sensitive values for display
-function maskValue(key, value) {
-  if (!value) return "";
-  if (key.includes("KEY") || key.includes("SECRET") || key.includes("PASSWORD") || key.includes("TOKEN")) {
-    if (value.length > 8) {
-      return value.substring(0, 4) + "****" + value.substring(value.length - 4);
-    }
-    return "****";
-  }
-  if (key.includes("SERVICE_ACCOUNT")) {
-    return "[JSON Object - click to view/edit raw]";
-  }
-  return value;
+function recordAudit(req, action, target, detail) {
+  db.connectDB()
+    .then(() =>
+      db.insertAdminAudit({
+        actor: req.adminSession?.uid || "unknown",
+        action,
+        target,
+        detail,
+        ip: req.ip,
+      })
+    )
+    .catch((e) => console.warn("[admin] audit log failed:", e.message));
 }
 
-// Parse .env file content
-function parseEnvContent(content) {
-  const lines = content.split(/\r?\n/);
-  const envVars = {};
+function listAssets(dir = ASSET_ROOT, prefix = "") {
+  const assets = [];
 
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith("#")) continue;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name.startsWith(".")) continue;
 
-    const eqIndex = trimmed.indexOf("=");
-    if (eqIndex > 0) {
-      const key = trimmed.substring(0, eqIndex).trim();
-      let value = trimmed.substring(eqIndex + 1).trim();
+    const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const fullPath = path.join(dir, entry.name);
 
-      // Handle quoted values
-      if ((value.startsWith('"') && value.endsWith('"')) ||
-          (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
-      }
-
-      envVars[key] = value;
+    if (entry.isDirectory()) {
+      assets.push(...listAssets(fullPath, relativePath));
+      continue;
     }
+
+    if (!entry.isFile()) continue;
+
+    const stat = fs.statSync(fullPath);
+    const ext = path.extname(entry.name).toLowerCase();
+
+    assets.push({
+      path: relativePath,
+      name: entry.name,
+      ext,
+      size: stat.size,
+      modifiedAt: stat.mtime.toISOString(),
+      version: stat.mtimeMs,
+      url: "/asset/" + relativePath.split("/").map(encodeURIComponent).join("/"),
+      preview: IMAGE_EXTENSIONS.has(ext),
+      replaceable: REPLACEABLE_EXTENSIONS.has(ext),
+    });
   }
 
-  return envVars;
+  return assets;
 }
 
-// Serialize env vars back to file format
-function serializeEnvVars(envVars) {
-  const lines = [];
-
-  for (const [key, value] of Object.entries(envVars)) {
-    if (value.includes(" ") || value.includes("\n") || value.includes('"')) {
-      lines.push(`${key}="${value.replace(/"/g, '\\"')}"`);
-    } else {
-      lines.push(`${key}=${value}`);
-    }
+function resolveWithin(root, relativePath) {
+  if (typeof relativePath !== "string" || !relativePath || relativePath.includes("\0")) {
+    return null;
   }
 
-  return lines.join("\n");
+  const resolved = path.resolve(root, relativePath.replace(/\\/g, "/"));
+  const rootPrefix = root.endsWith(path.sep) ? root : root + path.sep;
+
+  if (!resolved.startsWith(rootPrefix)) return null;
+  return resolved;
+}
+
+function resolveAssetPath(relativePath) {
+  return resolveWithin(ASSET_ROOT, relativePath);
+}
+
+function extensionOf(relativePath) {
+  return path.extname(String(relativePath)).toLowerCase();
+}
+
+function hasHiddenSegment(relativePath) {
+  return String(relativePath)
+    .split("/")
+    .some((segment) => segment.startsWith("."));
+}
+
+function backupDirNames() {
+  if (!fs.existsSync(BACKUP_ROOT)) return [];
+  return fs
+    .readdirSync(BACKUP_ROOT, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
+    .map((entry) => entry.name)
+    .sort()
+    .reverse(); // newest first (names start with an ISO timestamp)
+}
+
+function backupFilePath(backupId, relativePath) {
+  const segments = relativePath.split("/");
+  return path.join(BACKUP_ROOT, backupId, ...segments);
+}
+
+function createBackup(relativePath, absolutePath) {
+  if (!fs.existsSync(absolutePath)) return null;
+
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const backupId = `${stamp}-${crypto.randomBytes(3).toString("hex")}`;
+  const target = backupFilePath(backupId, relativePath);
+
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.copyFileSync(absolutePath, target);
+  pruneBackups(relativePath);
+
+  return {
+    id: backupId,
+    path: relativePath,
+    size: fs.statSync(target).size,
+    createdAt: fs.statSync(target).mtime.toISOString(),
+  };
+}
+
+function listBackups(relativePath) {
+  return backupDirNames()
+    .map((backupId) => ({ backupId, fullPath: backupFilePath(backupId, relativePath) }))
+    .filter(({ fullPath }) => fs.existsSync(fullPath) && fs.statSync(fullPath).isFile())
+    .map(({ backupId, fullPath }) => {
+      const stat = fs.statSync(fullPath);
+      return {
+        id: backupId,
+        path: relativePath,
+        size: stat.size,
+        createdAt: stat.mtime.toISOString(),
+      };
+    });
+}
+
+function pruneBackups(relativePath) {
+  const keep = listBackups(relativePath).slice(0, BACKUP_LIMIT);
+  const keepIds = new Set(keep.map((backup) => backup.id));
+  for (const backupId of backupDirNames()) {
+    const fullPath = backupFilePath(backupId, relativePath);
+    if (!fs.existsSync(fullPath)) continue;
+    if (keepIds.has(backupId)) continue;
+    fs.rmSync(path.join(BACKUP_ROOT, backupId), { recursive: true, force: true });
+  }
 }
 
 // GET /dodo - Admin panel page
-router.get("/", (req, res) => {
-  let envVars = {};
-  let envFileExists = false;
-  let error = null;
-
-  try {
-    if (fs.existsSync(envFilePath)) {
-      envFileExists = true;
-      const content = fs.readFileSync(envFilePath, "utf8");
-      envVars = parseEnvContent(content);
-    } else if (fs.existsSync(envExamplePath)) {
-      const content = fs.readFileSync(envExamplePath, "utf8");
-      envVars = parseEnvContent(content);
-    }
-  } catch (e) {
-    error = "Failed to read env file: " + e.message;
-  }
-
-  // Build HTML page
-  const currentVars = {};
-  for (const key of ALLOWED_VARS) {
-    currentVars[key] = {
-      current: envVars[key] || "",
-      masked: maskValue(key, envVars[key] || "")
-    };
-  }
-
-  const varsJson = JSON.stringify(currentVars).replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Admin Panel - Env Variables</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; min-height: 100vh; padding: 20px; }
-    .container { max-width: 1000px; margin: 0 auto; }
-    h1 { color: #00d4ff; margin-bottom: 10px; }
-    .subtitle { color: #888; margin-bottom: 30px; }
-    .error { background: #ff4444; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    .success { background: #00aa55; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; }
-    .file-status { background: #2a2a4e; padding: 10px 15px; border-radius: 6px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
-    .file-status .exists { color: #00aa55; }
-    .file-status .not-exists { color: #ff8800; }
-    .var-row { background: #2a2a4e; border-radius: 8px; padding: 15px; margin-bottom: 12px; }
-    .var-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-    .var-name { font-weight: 600; color: #00d4ff; font-family: monospace; }
-    .var-toggle { background: #444; border: none; color: #fff; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-    .var-toggle:hover { background: #555; }
-    .var-input { width: 100%; background: #1a1a2e; border: 1px solid #444; border-radius: 6px; padding: 10px; color: #eee; font-family: monospace; resize: vertical; }
-    .var-input:focus { outline: none; border-color: #00d4ff; }
-    .var-display { background: #1a1a2e; padding: 10px; border-radius: 6px; font-family: monospace; word-break: break-all; color: #888; }
-    .btn-row { display: flex; gap: 10px; margin-top: 20px; }
-    .btn { padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
-    .btn-save { background: #00d4ff; color: #1a1a2e; }
-    .btn-save:hover { background: #00b8e6; }
-    .btn-cancel { background: #444; color: #fff; }
-    .btn-cancel:hover { background: #555; }
-    .btn-refresh { background: #2a2a4e; color: #00d4ff; border: 1px solid #00d4ff; }
-    .btn-refresh:hover { background: #3a3a5e; }
-    .hidden { display: none; }
-    .readonly-note { color: #ff8800; font-size: 12px; margin-top: 5px; }
-    .new-var-section { background: #2a2a4e; border: 2px dashed #444; border-radius: 8px; padding: 20px; margin-bottom: 20px; text-align: center; }
-    .new-var-section h3 { color: #888; margin-bottom: 15px; }
-    .new-var-inputs { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
-    .new-var-inputs input { padding: 10px; border-radius: 6px; border: 1px solid #444; background: #1a1a2e; color: #eee; }
-    .new-var-inputs input:first-child { width: 200px; font-family: monospace; }
-    .new-var-inputs input:last-child { width: 300px; }
-    .btn-add { background: #00aa55; color: white; }
-    .btn-add:hover { background: #008844; }
-    .header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 30px; }
-    .header-left h1 { margin-bottom: 5px; }
-    .header-left .subtitle { margin-bottom: 0; }
-    .header-right { display: flex; align-items: center; gap: 10px; }
-    .user-info { color: var(--text-secondary); font-size: 13px; }
-    .btn-logout { background: #ff4757; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
-    .btn-logout:hover { background: #ff3344; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <div class="header-row">
-      <div class="header-left">
-        <h1>🔧 Admin Panel</h1>
-        <p class="subtitle">Manage Environment Variables (.env.local)</p>
-      </div>
-      <div class="header-right">
-        <span class="user-info" id="userInfo">Admin</span>
-        <button class="btn btn-logout" onclick="logout()">🚪 Logout</button>
-      </div>
-    </div>
-
-    <div id="error" class="error hidden"></div>
-    <div id="success" class="success hidden"></div>
-
-    <div class="file-status">
-      <span>File: <code>${envFilePath}</code></span>
-      <span class="${envFileExists ? 'exists' : 'not-exists'}">
-        ${envFileExists ? '✓ File exists' : '○ File not found'}
-      </span>
-    </div>
-
-    <div class="new-var-section">
-      <h3>Add New Variable</h3>
-      <div class="new-var-inputs">
-        <input type="text" id="newKey" placeholder="VARIABLE_NAME">
-        <input type="text" id="newValue" placeholder="value">
-        <button class="btn btn-add" onclick="addNewVar()">Add</button>
-      </div>
-    </div>
-
-    <div id="varsList"></div>
-
-    <div class="btn-row">
-      <button class="btn btn-save" onclick="saveAll()">💾 Save Changes</button>
-      <button class="btn btn-cancel" onclick="resetChanges()">↺ Reset</button>
-      <button class="btn btn-refresh" onclick="loadVars()">🔄 Reload</button>
-    </div>
-  </div>
-
-  <script>
-    const allowedVars = ${JSON.stringify(ALLOWED_VARS)};
-    let envVars = ${varsJson};
-    let originalVars = JSON.parse(${JSON.stringify(JSON.stringify(currentVars))});
-    let isModified = false;
-
-    function getVarType(key) {
-      if (key.includes('KEY') || key.includes('SECRET') || key.includes('PASSWORD') || key.includes('TOKEN')) return 'password';
-      if (key.includes('SERVICE_ACCOUNT') || key.includes('JSON')) return 'textarea';
-      if (key.includes('URI') || key.includes('URL') || key.includes('ENDPOINT')) return 'url';
-      return 'text';
-    }
-
-    function renderVars() {
-      const container = document.getElementById('varsList');
-      let html = '';
-
-      for (const key of allowedVars) {
-        const varData = envVars[key];
-        const origData = originalVars[key];
-        const hasChanged = varData && origData && varData.current !== origData.current;
-        const varType = getVarType(key);
-        const isJson = varType === 'textarea';
-
-        html += \`
-          <div class="var-row">
-            <div class="var-header">
-              <span class="var-name">\${key}</span>
-              <button class="var-toggle" onclick="toggleEdit('\${key}')">
-                \${isJson ? 'View/Edit JSON' : 'Edit'}
-              </button>
-            </div>
-            \${isJson ?
-              \`<div id="display-\${key}" class="var-display">\${varData.masked || '(empty)'}</div>\` :
-              \`<div id="display-\${key}" class="var-display">\${varData.masked || '(empty)'}</div>\`
-            }
-            <div id="edit-\${key}" class="hidden" style="margin-top: 10px;">
-              <textarea id="input-\${key}" class="var-input" rows="\${isJson ? 8 : 2}"
-                placeholder="Enter value..." oninput="markModified('\${key}')">\${varData.current || ''}</textarea>
-            </div>
-            \${hasChanged ? '<div class="readonly-note">✎ Modified (unsaved)</div>' : ''}
-          </div>
-        \`;
-      }
-
-      container.innerHTML = html;
-    }
-
-    function toggleEdit(key) {
-      const display = document.getElementById('display-' + key);
-      const edit = document.getElementById('edit-' + key);
-      const input = document.getElementById('input-' + key);
-
-      if (edit.classList.contains('hidden')) {
-        display.classList.add('hidden');
-        edit.classList.remove('hidden');
-        input.focus();
-      } else {
-        // Save the value before hiding
-        envVars[key].current = input.value;
-        envVars[key].masked = maskValue(key, input.value);
-        display.classList.remove('hidden');
-        edit.classList.add('hidden');
-        renderVars();
-      }
-    }
-
-    function maskValue(key, value) {
-      if (!value) return '';
-      if (key.includes('KEY') || key.includes('SECRET') || key.includes('PASSWORD') || key.includes('TOKEN')) {
-        if (value.length > 8) {
-          return value.substring(0, 4) + '****' + value.substring(value.length - 4);
-        }
-        return '****';
-      }
-      if (key.includes('SERVICE_ACCOUNT')) {
-        return '[JSON Object]';
-      }
-      return value;
-    }
-
-    function markModified(key) {
-      isModified = true;
-    }
-
-    function addNewVar() {
-      const keyInput = document.getElementById('newKey');
-      const valueInput = document.getElementById('newValue');
-      const key = keyInput.value.trim().toUpperCase();
-      const value = valueInput.value;
-
-      if (!key) {
-        alert('Please enter a variable name');
-        return;
-      }
-
-      if (!/^[A-Z][A-Z0-9_]*$/.test(key)) {
-        alert('Variable name must start with a letter and contain only uppercase letters, numbers, and underscores');
-        return;
-      }
-
-      if (!allowedVars.includes(key)) {
-        alert('This variable is not in the allowed list. Contact admin to add it.');
-        return;
-      }
-
-      if (envVars[key]) {
-        alert('Variable already exists. Use the edit function instead.');
-        return;
-      }
-
-      envVars[key] = { current: value, masked: maskValue(key, value) };
-      keyInput.value = '';
-      valueInput.value = '';
-      isModified = true;
-      renderVars();
-    }
-
-    function saveAll() {
-      // Collect all values from inputs
-      for (const key of allowedVars) {
-        const input = document.getElementById('input-' + key);
-        if (input) {
-          envVars[key].current = input.value;
-        }
-      }
-
-      const varsToSave = {};
-      for (const [key, data] of Object.entries(envVars)) {
-        if (data.current) {
-          varsToSave[key] = data.current;
-        }
-      }
-
-      fetch('/dodo/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ vars: varsToSave })
-      })
-      .then(r => r.json())
-      .then(data => {
-        if (data.success) {
-          showSuccess('Saved successfully! File: ' + data.path);
-          originalVars = JSON.parse(JSON.stringify(envVars));
-          isModified = false;
-        } else {
-          showError('Error: ' + data.error);
-        }
-      })
-      .catch(e => showError('Save failed: ' + e.message));
-    }
-
-    function resetChanges() {
-      if (isModified && !confirm('Discard all changes?')) return;
-      envVars = JSON.parse(JSON.stringify(originalVars));
-      isModified = false;
-      renderVars();
-    }
-
-    function loadVars() {
-      fetch('/dodo/load')
-        .then(r => r.json())
-        .then(data => {
-          if (data.success) {
-            const newVars = {};
-            for (const key of allowedVars) {
-              newVars[key] = {
-                current: data.vars[key] || '',
-                masked: maskValue(key, data.vars[key] || '')
-              };
-            }
-            envVars = newVars;
-            originalVars = JSON.parse(JSON.stringify(newVars));
-            isModified = false;
-            renderVars();
-            showSuccess('Reloaded successfully');
-          } else {
-            showError('Load failed: ' + data.error);
-          }
-        })
-        .catch(e => showError('Load failed: ' + e.message));
-    }
-
-    function logout() {
-      if (!confirm('Are you sure you want to logout?')) return;
-      fetch('/dodo/api/logout', { method: 'POST' })
-        .then(() => window.location.href = '/dodo/login')
-        .catch(() => window.location.href = '/dodo/login');
-    }
-
-    // Check auth status on load
-    fetch('/dodo/api/check')
-      .then(r => r.json())
-      .then(data => {
-        if (!data.authenticated) {
-          window.location.href = '/dodo/login';
-        } else {
-          document.getElementById('userInfo').textContent = 'UID: ' + (data.uid || 'admin').substring(0, 12) + '...';
-        }
-      })
-      .catch(() => window.location.href = '/dodo/login');
-
-    function showError(msg) {
-      const el = document.getElementById('error');
-      el.textContent = msg;
-      el.classList.remove('hidden');
-      document.getElementById('success').classList.add('hidden');
-    }
-
-    function showSuccess(msg) {
-      const el = document.getElementById('success');
-      el.textContent = msg;
-      el.classList.remove('hidden');
-      document.getElementById('error').classList.add('hidden');
-    }
-
-    // Initial render
-    renderVars();
-  </script>
-</body>
-</html>`;
-
+router.get("/", (req, res, next) => {
   res.set("Cache-Control", "no-store, max-age=0");
-  res.type("html").send(html);
+  res.sendFile(path.join(ADMIN_UI_DIR, "panel.html"), (err) => {
+    if (err) next(err);
+  });
 });
 
-// GET /load - Load current env vars
-router.get("/load", (req, res) => {
+// GET /api/assets - List assets under public/asset
+router.get("/api/assets", (req, res) => {
   try {
-    let envVars = {};
-
-    if (fs.existsSync(envFilePath)) {
-      const content = fs.readFileSync(envFilePath, "utf8");
-      envVars = parseEnvContent(content);
-    } else if (fs.existsSync(envExamplePath)) {
-      const content = fs.readFileSync(envExamplePath, "utf8");
-      envVars = parseEnvContent(content);
-    }
-
-    // Only return allowed vars
-    const filtered = {};
-    for (const key of ALLOWED_VARS) {
-      filtered[key] = envVars[key] || "";
-    }
-
-    res.json({ success: true, vars: filtered });
+    res.json({ success: true, assets: listAssets() });
   } catch (e) {
-    res.json({ success: false, error: e.message });
+    res.status(500).json({ success: false, error: e.message });
   }
 });
 
-// POST /save - Save env vars
-router.post("/save", (req, res) => {
-  try {
-    const { vars } = req.body;
+// POST /api/assets/replace?file=relative/path - Overwrite an existing asset
+router.post(
+  "/api/assets/replace",
+  express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES }),
+  (req, res) => {
+    const relativePath = req.query.file;
+    const targetPath = resolveAssetPath(relativePath);
 
-    if (!vars || typeof vars !== "object") {
-      return res.json({ success: false, error: "Invalid data" });
+    if (!targetPath) {
+      return res.status(400).json({ success: false, error: "Invalid asset path" });
     }
 
-    // Validate all keys are allowed
-    for (const key of Object.keys(vars)) {
-      if (!ALLOWED_VARS.includes(key)) {
-        return res.json({ success: false, error: `Key "${key}" is not allowed` });
-      }
+    let stat;
+    try {
+      stat = fs.statSync(targetPath);
+    } catch (e) {
+      return res.status(404).json({ success: false, error: "Asset not found" });
     }
 
-    // Read existing content to preserve comments and formatting
-    let existingContent = "";
-    if (fs.existsSync(envFilePath)) {
-      existingContent = fs.readFileSync(envFilePath, "utf8");
+    if (!stat.isFile()) {
+      return res.status(400).json({ success: false, error: "Path is not a file" });
     }
 
-    // Parse existing content
-    const existingVars = parseEnvContent(existingContent);
-
-    // Merge with new values
-    const merged = { ...existingVars };
-    for (const [key, value] of Object.entries(vars)) {
-      if (value !== "") {
-        merged[key] = value;
-      } else {
-        delete merged[key];
-      }
+    const ext = extensionOf(relativePath);
+    if (!REPLACEABLE_EXTENSIONS.has(ext)) {
+      return res.status(400).json({
+        success: false,
+        error: `Files with extension "${ext}" cannot be replaced`,
+      });
     }
 
-    // Serialize back
-    const newContent = serializeEnvVars(merged);
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(400).json({ success: false, error: "Uploaded file is empty" });
+    }
 
-    // Write to file
-    fs.writeFileSync(envFilePath, newContent, "utf8");
-
-    res.json({ success: true, path: envFilePath });
-  } catch (e) {
-    res.json({ success: false, error: e.message });
+    try {
+      const backup = createBackup(relativePath, targetPath);
+      fs.writeFileSync(targetPath, req.body);
+      recordAudit(req, "asset_replaced", relativePath, {
+        size: req.body.length,
+        backup: backup?.id || null,
+      });
+      res.json({
+        success: true,
+        path: relativePath,
+        size: req.body.length,
+        backup: backup?.id || null,
+      });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
   }
+);
+
+// POST /api/assets/upload?file=relative/path - Create a new asset
+router.post(
+  "/api/assets/upload",
+  express.raw({ type: () => true, limit: MAX_UPLOAD_BYTES }),
+  (req, res) => {
+    const relativePath = String(req.query.file || "").replace(/\\/g, "/");
+    const targetPath = resolveAssetPath(relativePath);
+
+    if (!targetPath) {
+      return res.status(400).json({ success: false, error: "Invalid asset path" });
+    }
+
+    if (hasHiddenSegment(relativePath)) {
+      return res
+        .status(400)
+        .json({ success: false, error: "Hidden paths are not allowed" });
+    }
+
+    const ext = extensionOf(relativePath);
+    if (!REPLACEABLE_EXTENSIONS.has(ext)) {
+      return res.status(400).json({
+        success: false,
+        error: `Files with extension "${ext}" cannot be uploaded`,
+      });
+    }
+
+    if (fs.existsSync(targetPath)) {
+      return res.status(409).json({
+        success: false,
+        error: "File already exists. Use replace instead.",
+      });
+    }
+
+    if (!Buffer.isBuffer(req.body) || req.body.length === 0) {
+      return res.status(400).json({ success: false, error: "Uploaded file is empty" });
+    }
+
+    try {
+      fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+      fs.writeFileSync(targetPath, req.body);
+      recordAudit(req, "asset_uploaded", relativePath, { size: req.body.length });
+      res.json({ success: true, path: relativePath, size: req.body.length });
+    } catch (e) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  }
+);
+
+// DELETE /api/assets?file=relative/path - Delete an asset (keeps a backup)
+router.delete("/api/assets", (req, res) => {
+  const relativePath = String(req.query.file || "").replace(/\\/g, "/");
+  const targetPath = resolveAssetPath(relativePath);
+
+  if (!targetPath) {
+    return res.status(400).json({ success: false, error: "Invalid asset path" });
+  }
+
+  let stat;
+  try {
+    stat = fs.statSync(targetPath);
+  } catch (e) {
+    return res.status(404).json({ success: false, error: "Asset not found" });
+  }
+
+  if (!stat.isFile()) {
+    return res.status(400).json({ success: false, error: "Path is not a file" });
+  }
+
+  try {
+    const backup = createBackup(relativePath, targetPath);
+    fs.unlinkSync(targetPath);
+    recordAudit(req, "asset_deleted", relativePath, { backup: backup?.id || null });
+    res.json({ success: true, path: relativePath, backup: backup?.id || null });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// GET /api/assets/backups?file=relative/path - List backups for an asset
+router.get("/api/assets/backups", (req, res) => {
+  const relativePath = String(req.query.file || "").replace(/\\/g, "/");
+  if (!resolveAssetPath(relativePath)) {
+    return res.status(400).json({ success: false, error: "Invalid asset path" });
+  }
+
+  try {
+    res.json({ success: true, backups: listBackups(relativePath) });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+// POST /api/assets/restore - Restore an asset from a backup
+router.post("/api/assets/restore", (req, res) => {
+  const relativePath = String(req.body?.file || "").replace(/\\/g, "/");
+  const backupId = String(req.body?.backup || "");
+  const targetPath = resolveAssetPath(relativePath);
+
+  if (!targetPath) {
+    return res.status(400).json({ success: false, error: "Invalid asset path" });
+  }
+
+  if (!REPLACEABLE_EXTENSIONS.has(extensionOf(relativePath))) {
+    return res.status(400).json({
+      success: false,
+      error: `Files with extension "${extensionOf(relativePath)}" cannot be restored`,
+    });
+  }
+
+  if (!BACKUP_ID_PATTERN.test(backupId)) {
+    return res.status(400).json({ success: false, error: "Invalid backup id" });
+  }
+
+  const backupPath = resolveWithin(BACKUP_ROOT, `${backupId}/${relativePath}`);
+  if (!backupPath || !fs.existsSync(backupPath) || !fs.statSync(backupPath).isFile()) {
+    return res.status(404).json({ success: false, error: "Backup not found" });
+  }
+
+  try {
+    const currentBackup = createBackup(relativePath, targetPath);
+    fs.mkdirSync(path.dirname(targetPath), { recursive: true });
+    fs.copyFileSync(backupPath, targetPath);
+    recordAudit(req, "asset_restored", relativePath, {
+      backup: backupId,
+      replacedWith: currentBackup?.id || null,
+    });
+    res.json({ success: true, path: relativePath, size: fs.statSync(targetPath).size });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
+router.use((err, req, res, next) => {
+  if (err && err.type === "entity.too.large") {
+    return res.status(413).json({ success: false, error: "File is too large (max 40 MB)" });
+  }
+  next(err);
 });
 
 module.exports = router;

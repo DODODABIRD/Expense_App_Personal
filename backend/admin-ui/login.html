@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login - Unmurce</title>
+  <link rel="stylesheet" href="/dodo/static/admin.css">
+</head>
+<body class="login-body">
+  <div class="login-container">
+    <div class="logo-section">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <h1>Unmurce Admin</h1>
+      <p>Asset &amp; Data Management</p>
+    </div>
+
+    <div class="login-card">
+      <h2>Welcome Back</h2>
+      <p class="subtitle">Sign in to access the admin panel</p>
+
+      <div id="alert" class="status error"></div>
+
+      <form id="secretForm">
+        <div class="form-group">
+          <label for="secretKey">Admin Secret Key</label>
+          <input type="password" id="secretKey" name="secret" placeholder="Enter your admin secret" autocomplete="current-password" required>
+        </div>
+        <button type="submit" class="btn-login" id="secretBtn">Sign In with Secret</button>
+      </form>
+
+      <div class="divider"><span>or</span></div>
+
+      <form id="firebaseForm">
+        <div class="form-group">
+          <label for="firebaseToken">Firebase ID Token</label>
+          <input type="text" id="firebaseToken" name="token" class="token-input" placeholder="Paste your Firebase ID token">
+        </div>
+        <button type="submit" class="btn-firebase">Verify Firebase Token</button>
+      </form>
+
+      <div class="security-note">
+        Sessions expire after 24 hours. Login attempts are rate limited.
+      </div>
+    </div>
+
+    <div class="footer">&copy; 2026 Unmurce Admin Panel</div>
+  </div>
+
+  <script src="/dodo/static/login.js"></script>
+</body>
+</html>

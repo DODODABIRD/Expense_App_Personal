@@ -3,6 +3,13 @@ const { parseReceipt, ReceiptProviderError } = require("../services/azureService
 const { parseReceipt: groqParseReceipt, GroqError } = require("../services/groqService");
 const { AI_PROVIDER_TIMEOUT_MS, GROQ_RECEIPT_TIMEOUT_MS, isAzureConfigured } = require("../config/providers");
 const { EXPENSE_CATEGORIES, EXPENSE_TYPES } = require("../config/categories");
+const { recordAiProviderEvent } = require("../db");
+
+function logProviderEvent(ownerId, provider, status, durationMs, error) {
+  recordAiProviderEvent({ ownerId, provider, status, durationMs, error }).catch((e) => {
+    console.warn(`[ReceiptParser] Could not record ${provider} event: ${e.message}`);
+  });
+}
 
 function normalizeReceiptItem(value) {
   const amount = Number(value?.amount);
@@ -130,6 +137,7 @@ async function parseReceiptRoute(req, res) {
     let lastError;
 
     if (groqApiKey && groqModel) {
+      const groqStartedAt = Date.now();
       sendProgress("groq", "processing", 0.4, "Processing with Groq");
       try {
         const timeoutMs = Math.min(GROQ_RECEIPT_TIMEOUT_MS, remainingTime());
@@ -139,8 +147,16 @@ async function parseReceiptRoute(req, res) {
           "Groq receipt parsing timed out"
         );
         provider = "groq";
+        logProviderEvent(req.user?.uid, "groq", "success", Date.now() - groqStartedAt);
       } catch (error) {
         lastError = error;
+        logProviderEvent(
+          req.user?.uid,
+          "groq",
+          "failed",
+          Date.now() - groqStartedAt,
+          error.message
+        );
         sendProgress("groq", "failed", 0.46, `Groq failed: ${error.message}`);
         console.warn(`[ReceiptParser] Groq failed (${error.status || error.message}), trying Azure...`);
       }
@@ -149,6 +165,7 @@ async function parseReceiptRoute(req, res) {
     }
 
     if (!parsed && isAzureConfigured() && shouldUseReceiptFallback(lastError)) {
+      const azureStartedAt = Date.now();
       sendProgress("azure", "processing", 0.68, "Processing with Azure Document Intelligence");
       try {
         parsed = await withReceiptTimeout(
@@ -157,8 +174,16 @@ async function parseReceiptRoute(req, res) {
           "Receipt parsing exceeded the 8-second time limit"
         );
         provider = "azure";
+        logProviderEvent(req.user?.uid, "azure", "success", Date.now() - azureStartedAt);
       } catch (error) {
         lastError = error;
+        logProviderEvent(
+          req.user?.uid,
+          "azure",
+          "failed",
+          Date.now() - azureStartedAt,
+          error.message
+        );
         sendProgress("azure", "failed", 0.86, `Azure failed: ${error.message}`);
       }
     } else if (!parsed) {

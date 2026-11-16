@@ -48,6 +48,28 @@ async function ensureSchema() {
     );
     ALTER TABLE ai_notification_references
       ADD COLUMN IF NOT EXISTS summary JSONB NOT NULL DEFAULT '{}'::jsonb;
+    CREATE TABLE IF NOT EXISTS admin_audit_log (
+      id BIGSERIAL PRIMARY KEY,
+      actor TEXT NOT NULL,
+      action TEXT NOT NULL,
+      target TEXT,
+      detail JSONB NOT NULL DEFAULT '{}'::jsonb,
+      ip TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS admin_audit_log_created_at_idx
+      ON admin_audit_log (created_at DESC);
+    CREATE TABLE IF NOT EXISTS ai_provider_events (
+      id BIGSERIAL PRIMARY KEY,
+      owner_id TEXT,
+      provider TEXT NOT NULL,
+      status TEXT NOT NULL,
+      duration_ms INTEGER,
+      error TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS ai_provider_events_created_at_idx
+      ON ai_provider_events (created_at DESC);
   `);
   schemaReady = true;
 }
@@ -222,17 +244,208 @@ function setPool(customPool) {
   schemaReady = false;
 }
 
+async function insertAdminAudit({ actor, action, target, detail, ip }) {
+  await getPool().query(
+    `INSERT INTO admin_audit_log (actor, action, target, detail, ip)
+     VALUES ($1, $2, $3, $4::jsonb, $5)`,
+    [
+      String(actor || "unknown"),
+      String(action),
+      target ? String(target) : null,
+      JSON.stringify(detail || {}),
+      ip ? String(ip) : null,
+    ]
+  );
+}
+
+async function listAdminAuditLogs(limit = 100) {
+  const result = await getPool().query(
+    `SELECT * FROM admin_audit_log ORDER BY created_at DESC, id DESC LIMIT $1`,
+    [limit]
+  );
+  return result.rows.map((row) => ({
+    id: Number(row.id),
+    actor: row.actor,
+    action: row.action,
+    target: row.target,
+    detail: row.detail || {},
+    ip: row.ip,
+    createdAt: row.created_at,
+  }));
+}
+
+async function listExpenseOwners() {
+  const result = await getPool().query(
+    `SELECT owner_id,
+            COUNT(*)::int AS expense_count,
+            COALESCE(SUM(amount), 0)::bigint AS total_amount,
+            MAX(date) AS last_expense_date,
+            MAX(updated_at) AS last_updated_at
+     FROM expenses
+     GROUP BY owner_id
+     ORDER BY total_amount DESC
+     LIMIT 500`
+  );
+  return result.rows.map((row) => ({
+    ownerId: row.owner_id,
+    expenseCount: Number(row.expense_count),
+    totalAmount: Number(row.total_amount),
+    lastExpenseDate: row.last_expense_date,
+    lastUpdatedAt: row.last_updated_at,
+  }));
+}
+
+async function listAdminExpenses({ ownerId, search, from, to, page, pageSize } = {}) {
+  const clauses = [];
+  const params = [];
+
+  if (ownerId) {
+    params.push(String(ownerId));
+    clauses.push(`owner_id = $${params.length}`);
+  }
+  if (search) {
+    params.push(`%${String(search)}%`);
+    clauses.push(
+      `(name ILIKE $${params.length} OR category ILIKE $${params.length} OR local_id ILIKE $${params.length} OR owner_id ILIKE $${params.length})`
+    );
+  }
+  if (from) {
+    params.push(String(from));
+    clauses.push(`date >= $${params.length}`);
+  }
+  if (to) {
+    params.push(String(to));
+    clauses.push(`date <= $${params.length}`);
+  }
+
+  const safePage = Math.max(1, Number(page) || 1);
+  const safePageSize = Math.min(500, Math.max(1, Number(pageSize) || 50));
+  const offset = (safePage - 1) * safePageSize;
+
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  params.push(safePageSize, offset);
+
+  const result = await getPool().query(
+    `SELECT *, COUNT(*) OVER() AS total_count
+     FROM expenses
+     ${where}
+     ORDER BY date DESC, created_at DESC
+     LIMIT $${params.length - 1} OFFSET $${params.length}`,
+    params
+  );
+
+  return {
+    expenses: result.rows.map(toExpenseJson),
+    total: Number(result.rows[0]?.total_count || 0),
+    page: safePage,
+    pageSize: safePageSize,
+  };
+}
+
+async function getAdminOverview() {
+  const db = getPool();
+  const totals = await db.query(
+    `SELECT COUNT(DISTINCT owner_id)::int AS owners,
+            COUNT(*)::int AS expenses,
+            COALESCE(SUM(amount), 0)::bigint AS total_amount,
+            COALESCE(SUM(amount) FILTER (WHERE created_at >= now() - interval '30 days'), 0)::bigint AS total_amount_30d,
+            MAX(date) AS last_expense_date
+     FROM expenses`
+  );
+  const categories = await db.query(
+    `SELECT category,
+            COUNT(*)::int AS count,
+            COALESCE(SUM(amount), 0)::bigint AS total
+     FROM expenses
+     GROUP BY category
+     ORDER BY total DESC`
+  );
+  const daily = await db.query(
+    `SELECT date,
+            COUNT(*)::int AS count,
+            COALESCE(SUM(amount), 0)::bigint AS total
+     FROM expenses
+     WHERE date >= to_char(now() - interval '13 days', 'YYYY-MM-DD')
+     GROUP BY date
+     ORDER BY date ASC`
+  );
+
+  const totalsRow = totals.rows[0] || {};
+  return {
+    totals: {
+      owners: Number(totalsRow.owners || 0),
+      expenses: Number(totalsRow.expenses || 0),
+      totalAmount: Number(totalsRow.total_amount || 0),
+      totalAmount30d: Number(totalsRow.total_amount_30d || 0),
+      lastExpenseDate: totalsRow.last_expense_date || null,
+    },
+    categories: categories.rows.map((row) => ({
+      category: row.category,
+      count: Number(row.count),
+      total: Number(row.total),
+    })),
+    daily: daily.rows.map((row) => ({
+      date: row.date,
+      count: Number(row.count),
+      total: Number(row.total),
+    })),
+  };
+}
+
+async function recordAiProviderEvent({ ownerId, provider, status, durationMs, error }) {
+  await ensureSchema();
+  await getPool().query(
+    `INSERT INTO ai_provider_events (owner_id, provider, status, duration_ms, error)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [
+      ownerId ? String(ownerId) : null,
+      String(provider),
+      String(status),
+      Number.isFinite(Number(durationMs)) ? Math.round(Number(durationMs)) : null,
+      error ? String(error).slice(0, 500) : null,
+    ]
+  );
+}
+
+async function getAiProviderStats() {
+  const db = getPool();
+  const providers = await db.query(
+    `SELECT provider,
+            status,
+            COUNT(*)::int AS count,
+            ROUND(AVG(duration_ms))::int AS avg_duration_ms
+     FROM ai_provider_events
+     WHERE created_at >= now() - interval '7 days'
+     GROUP BY provider, status
+     ORDER BY provider ASC, status ASC`
+  );
+  const recent = await db.query(
+    `SELECT provider, status, duration_ms, error, created_at
+     FROM ai_provider_events
+     ORDER BY created_at DESC
+     LIMIT 25`
+  );
+  return { providers: providers.rows, recent: recent.rows };
+}
+
 module.exports = {
   connectDB,
   deleteAllExpenses,
   deleteExpenseByLocalId,
   ensureSchema,
+  getAdminOverview,
+  getAiProviderStats,
   getExpenseByLocalId,
   getPool,
+  insertAdminAudit,
+  listAdminAuditLogs,
+  listAdminExpenses,
+  listExpenseOwners,
   listExpenses,
   listRecentExpensesForContext,
   loadNotificationReferenceItems,
   loadNotificationSummary,
+  recordAiProviderEvent,
   setPool,
   sslFromDatabaseUrl,
   toExpenseJson,
@@ -240,3 +453,4 @@ module.exports = {
   upsertExpense,
   upsertNotificationReference,
 };
+

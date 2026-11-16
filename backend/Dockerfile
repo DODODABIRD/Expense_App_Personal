@@ -16,7 +16,7 @@ RUN npm ci --omit=dev --no-audit --no-fund \
 # Copy application source with non-root ownership.
 COPY --chown=node:node . .
 
-# The admin panel writes .env.local at runtime, so /app must be writable.
+# The admin asset manager overwrites files under public/asset at runtime, so /app must be writable.
 RUN chown node:node /app
 
 USER node

@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel - Unmurce</title>
+  <link rel="stylesheet" href="/dodo/static/admin.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header-row">
+      <div>
+        <h1>Admin Panel</h1>
+        <p class="subtitle">Assets, expenses, users and AI monitoring</p>
+      </div>
+      <div class="header-right">
+        <button class="btn btn-danger" id="logoutBtn">Logout</button>
+      </div>
+    </div>
+
+    <nav class="tabs">
+      <button class="tab active" data-tab="assets">Assets</button>
+      <button class="tab" data-tab="overview">Overview</button>
+      <button class="tab" data-tab="transactions">Transactions</button>
+      <button class="tab" data-tab="users">Users</button>
+      <button class="tab" data-tab="ai">AI Usage</button>
+      <button class="tab" data-tab="audit">Audit Log</button>
+    </nav>
+
+    <div class="status" id="status"></div>
+
+    <section class="section active" id="section-assets">
+      <div class="toolbar">
+        <input class="grow" id="assetSearch" type="search" placeholder="Filter by file name or path...">
+        <select id="assetType">
+          <option value="all">All types</option>
+          <option value="image">Images</option>
+          <option value="apk">APK</option>
+          <option value="json">JSON</option>
+          <option value="md">Markdown</option>
+        </select>
+        <span class="count" id="assetCount"></span>
+        <button class="btn btn-primary" id="uploadBtn">Upload New</button>
+        <button class="btn btn-ghost" id="refreshAssetsBtn">Refresh</button>
+      </div>
+      <div class="grid" id="assetGrid"></div>
+      <input class="hidden" id="fileInput" type="file">
+    </section>
+
+    <section class="section" id="section-overview">
+      <div class="toolbar">
+        <span class="count">All data comes from the Postgres expenses table.</span>
+        <button class="btn btn-ghost" id="refreshOverviewBtn">Refresh</button>
+      </div>
+      <div class="stat-grid" id="overviewStats"></div>
+      <div class="panel-card">
+        <h2>Spending by category</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Category</th><th class="right">Transactions</th><th class="right">Total</th></tr></thead>
+            <tbody id="categoryBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel-card">
+        <h2>Last 14 days</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Date</th><th class="right">Transactions</th><th class="right">Total</th></tr></thead>
+            <tbody id="dailyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="section-transactions">
+      <div class="toolbar">
+        <input class="grow" id="txSearch" type="search" placeholder="Search name, category, local id...">
+        <input id="txOwner" type="text" placeholder="Owner UID">
+        <input id="txFrom" type="date" title="From date">
+        <input id="txTo" type="date" title="To date">
+        <button class="btn btn-primary" id="txApplyBtn">Apply</button>
+        <button class="btn btn-ghost" id="txResetBtn">Reset</button>
+        <button class="btn btn-ghost" id="txExportBtn">Export CSV</button>
+      </div>
+      <div class="panel-card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Type</th>
+                <th class="right">Amount</th>
+                <th>Owner</th>
+              </tr>
+            </thead>
+            <tbody id="expensesBody"></tbody>
+          </table>
+        </div>
+        <div class="pager">
+          <button class="btn btn-small btn-ghost" id="txPrevBtn">Prev</button>
+          <span class="count" id="txPageInfo"></span>
+          <button class="btn btn-small btn-ghost" id="txNextBtn">Next</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="section-users">
+      <div class="toolbar">
+        <span class="count">Owners are derived from the expenses table. Firebase users come from the Admin SDK.</span>
+        <button class="btn btn-ghost" id="refreshOwnersBtn">Refresh</button>
+      </div>
+      <div class="panel-card">
+        <h2>Expense owners</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Owner UID</th>
+                <th class="right">Transactions</th>
+                <th class="right">Total</th>
+                <th>Last expense</th>
+              </tr>
+            </thead>
+            <tbody id="ownersBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel-card">
+        <h2>Firebase users</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>UID</th>
+                <th>Email</th>
+                <th>Display name</th>
+                <th>Status</th>
+                <th>Last sign in</th>
+              </tr>
+            </thead>
+            <tbody id="firebaseUsersBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="section-ai">
+      <div class="toolbar">
+        <span class="count">Receipt parsing events for the last 7 days.</span>
+        <button class="btn btn-ghost" id="refreshAiBtn">Refresh</button>
+      </div>
+      <div class="panel-card">
+        <h2>Provider summary</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Provider</th>
+                <th>Status</th>
+                <th class="right">Count</th>
+                <th class="right">Avg duration</th>
+              </tr>
+            </thead>
+            <tbody id="aiProvidersBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel-card">
+        <h2>Recent events</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Provider</th>
+                <th>Status</th>
+                <th class="right">Duration</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody id="aiRecentBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="section-audit">
+      <div class="toolbar">
+        <span class="count">Most recent 100 admin actions.</span>
+        <button class="btn btn-ghost" id="refreshAuditBtn">Refresh</button>
+      </div>
+      <div class="panel-card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Actor</th>
+                <th>Action</th>
+                <th>Target</th>
+                <th>Detail</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody id="auditBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <dialog id="uploadDialog">
+    <form id="uploadForm">
+      <h2>Upload new asset</h2>
+      <div class="field">
+        <label for="uploadPath">Target path inside public/asset</label>
+        <input type="text" id="uploadPath" placeholder="unmurce/app_screens/new-preview.jpg" required>
+      </div>
+      <div class="field">
+        <label for="uploadFile">File</label>
+        <input type="file" id="uploadFile" required>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" id="cancelUploadBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Upload</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="backupsDialog">
+    <h2 id="backupsTitle">Backups</h2>
+    <div class="backups-list" id="backupsList"></div>
+    <div class="actions">
+      <button type="button" class="btn btn-ghost" id="closeBackupsBtn">Close</button>
+    </div>
+  </dialog>
+
+  <script src="/dodo/static/panel.js"></script>
+</body>
+</html>

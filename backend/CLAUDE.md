@@ -110,7 +110,8 @@ backend/
 │   │   ├── receipts.js      # Streaming receipt OCR (Groq → Azure fallback)
 │   │   ├── exchange.js      # IDR/USD/EUR exchange rates from open.er-api.com
 │   │   ├── events.js        # SSE endpoint for real-time expense updates
-│   │   ├── admin.js         # Admin panel (session-protected, manages .env.local)
+│   │   ├── admin.js         # Admin panel routes + asset manager (session-protected)
+│   │   ├── adminData.js     # Admin data APIs (overview, expenses, owners, AI, audit)
 │   │   └── adminLogin.js    # Admin login (public)
 │   └── services/
 │       ├── groqService.js   # Groq chat completion + receipt parsing
@@ -120,6 +121,11 @@ backend/
 │   ├── index.html           # Portfolio/landing page
 │   ├── script.js, style.css
 │   └── projects/unmurce/    # Unmurce expense tracker SPA
+├── admin-ui/                # Admin panel UI (served by routes, not express.static)
+│   ├── login.html
+│   ├── panel.html
+│   └── static/              # admin.css, login.js, panel.js
+├── data/admin-backups/      # Runtime backups written by the asset manager (gitignored)
 ├── test/                    # Node.js test files
 └── vercel.json              # Vercel routing config
 ```
@@ -167,13 +173,25 @@ backend/
 | Method | Path | Description |
 |--------|------|-------------|
 | GET | `/dodo/login` | Admin login page |
-| POST | `/dodo/api/login-secret` | Login with ADMIN_SECRET |
-| POST | `/dodo/api/login-firebase` | Login with Firebase ID token |
+| POST | `/dodo/api/login-secret` | Login with ADMIN_SECRET (503 when unset) |
+| POST | `/dodo/api/login-firebase` | Login with Firebase ID token (503 when ADMIN_FIREBASE_UIDS unset) |
 | POST | `/dodo/api/logout` | Logout |
 | GET | `/dodo/api/check` | Check session status |
-| GET | `/dodo` | Admin panel (manage .env.local) |
-| GET | `/dodo/load` | Load current env vars |
-| POST | `/dodo/save` | Save env vars to .env.local |
+| GET | `/dodo` | Admin panel (assets, overview, transactions, users, AI usage, audit) |
+| GET | `/dodo/static/*` | Panel CSS/JS (public, no data) |
+| GET | `/dodo/api/assets` | List assets under `public/asset` |
+| POST | `/dodo/api/assets/replace?file=<path>` | Overwrite an existing asset with the raw request body |
+| POST | `/dodo/api/assets/upload?file=<path>` | Create a new asset with the raw request body |
+| DELETE | `/dodo/api/assets?file=<path>` | Delete an asset (keeps a backup) |
+| GET | `/dodo/api/assets/backups?file=<path>` | List backups for an asset (max 5) |
+| POST | `/dodo/api/assets/restore` | Restore `{file, backup}` from a backup |
+| GET | `/dodo/api/overview` | Totals, per-category and 14-day breakdown |
+| GET | `/dodo/api/owners` | Expense owners with aggregate stats |
+| GET | `/dodo/api/expenses` | Paginated expense browser (`q`, `owner`, `from`, `to`, `page`, `pageSize`) |
+| GET | `/dodo/api/expenses/export.csv` | CSV export of the same filters |
+| GET | `/dodo/api/firebase-users` | Firebase Auth user directory (Admin SDK) |
+| GET | `/dodo/api/ai-usage` | Groq vs Azure receipt parsing events (7 days) |
+| GET | `/dodo/api/audit` | Recent admin actions |
 
 ---
 
@@ -200,6 +218,28 @@ backend/
 | summary | JSONB | Per-user aggregated template: category, count, priceRange, averagePrice, commonItems, types |
 | updated_at | TIMESTAMPTZ | |
 
+### `admin_audit_log` table
+| Column | Type | Notes |
+|--------|------|-------|
+| id | BIGSERIAL | Primary key |
+| actor | TEXT | Session UID or `admin_secret` |
+| action | TEXT | e.g. `login_success`, `asset_replaced`, `asset_deleted` |
+| target | TEXT | Asset path or `admin-session` |
+| detail | JSONB | Backup id, size, reason |
+| ip | TEXT | Client IP |
+| created_at | TIMESTAMPTZ | Indexed DESC |
+
+### `ai_provider_events` table
+| Column | Type | Notes |
+|--------|------|-------|
+| id | BIGSERIAL | Primary key |
+| owner_id | TEXT | Firebase UID (nullable) |
+| provider | TEXT | `groq` or `azure` |
+| status | TEXT | `success` or `failed` |
+| duration_ms | INTEGER | Provider call duration |
+| error | TEXT | Truncated error message |
+| created_at | TIMESTAMPTZ | Indexed DESC |
+
 ---
 
 ## 11. Environment Variables
@@ -213,8 +253,10 @@ backend/
 | GROQ_NOTIFICATION_MODEL | No | Groq model for notification parsing |
 | AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT | No | Azure endpoint |
 | AZURE_DOCUMENT_INTELLIGENCE_KEY | No | Azure key |
-| ADMIN_SECRET | No | Admin panel secret key (if not set, panel is open in dev) |
-| ADMIN_FIREBASE_UIDS | No | Comma-separated Firebase UIDs allowed for admin |
+| ADMIN_SECRET | No | Admin secret key. When unset, secret login is disabled (no open dev mode) |
+| ADMIN_FIREBASE_UIDS | No | Comma-separated Firebase UIDs allowed for admin. When unset, Firebase login is disabled |
+| ADMIN_ASSET_ROOT | No | Override asset root (defaults to `public/asset`, used by tests) |
+| ADMIN_BACKUP_ROOT | No | Override backup directory (defaults to `data/admin-backups`) |
 | PORT | No | Server port (default 3000) |
 
 ---
@@ -251,9 +293,17 @@ All amounts are **integers in smallest unit** (IDR: no decimals, e.g., 50000 = R
 Groq is tried first. If it fails (400, 404, 429, 5xx), Azure Document Intelligence is used as fallback.
 
 ### Admin Panel
-Access at `/dodo/login`. Session-based auth (24hr expiry). Two login methods:
-- **Secret key**: Set `ADMIN_SECRET` env var
-- **Firebase token**: Set `ADMIN_FIREBASE_UIDS` to restrict access to specific users
+Access at `/dodo/login`. Session-based auth (24hr expiry, in-memory store), login throttled to 10 attempts per IP per 15 minutes. Two login methods:
+- **Secret key**: Set `ADMIN_SECRET` env var. When it is unset, secret login returns 503 instead of allowing open access.
+- **Firebase token**: Set `ADMIN_FIREBASE_UIDS` to restrict access to specific users. When it is unset, Firebase login returns 503.
+
+The panel UI lives in `backend/admin-ui/` (`login.html`, `panel.html`, `static/admin.css`, `static/login.js`, `static/panel.js`) and is served by the routes, not by `express.static`, so the panel pages stay behind the session check.
+
+The Assets tab manages files under `public/asset`: list, replace, upload, delete, and restore. Replace, delete, and restore first copy the current file to `data/admin-backups/<timestamp>-<id>/<relative path>` (max 5 backups per file). Allowed extensions: images (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.svg`, `.ico`), `.apk`, `.json`, `.md`. Max upload size is 40 MB.
+
+Other tabs read from Postgres: overview totals, expense browser + CSV export, owners, and the audit log. AI usage reads `ai_provider_events`, which `receipts.js` writes on each Groq/Azure attempt.
+
+Note: the asset writes require a writable filesystem (Docker deployment). On Vercel serverless the filesystem is read-only, so asset mutations fail there.
 
 ### Admin route mounting order
 Login routes (`adminLogin`) MUST be mounted BEFORE admin panel routes (`adminRoutes`) to ensure `/dodo/login` is accessible.

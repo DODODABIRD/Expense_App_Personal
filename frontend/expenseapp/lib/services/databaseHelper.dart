@@ -484,8 +484,9 @@ class DatabaseHelp {
     return fresh;
   }
 
-  /// Inserts expenses restored from a PDF backup, marked as already synced so
-  /// they are not pushed to the server again.
+  /// Inserts expenses restored from a PDF backup and pushes them to the
+  /// server. Rows stay marked as unsynced until the push succeeds, so the
+  /// regular pending-sync retries pick them up when offline.
   static Future<void> insertRestoredExpenses(
     List<Map<String, dynamic>> expenses,
   ) async {
@@ -504,10 +505,11 @@ class DatabaseHelp {
         'date': expense['date']?.toString() ?? '',
         'category': expense['category']?.toString() ?? 'general',
         'type': expense['type']?.toString() ?? 'others',
-        'synced': 1,
+        'synced': 0,
       });
     }
     await batch.commit(noResult: true);
+    unawaited(Throw.syncPendingExpenses());
   }
 
   static String _expenseIdentity(Map<String, dynamic> expense) {
