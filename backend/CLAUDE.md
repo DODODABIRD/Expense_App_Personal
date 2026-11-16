@@ -133,11 +133,10 @@ backend/
 |--------|------|-------------|
 | POST | `/api/users` | Create/upsert expense |
 | GET | `/api/users` | List all expenses |
-| GET | `/api/users/:id` | Get expense by UUID |
-| PUT | `/api/users/:id` | Update expense |
-| DELETE | `/api/users/:id` | Delete expense |
+| GET | `/api/users/:localId` | Get expense by localId |
+| PUT | `/api/users/:localId` | Update expense by localId |
+| DELETE | `/api/users/:localId` | Delete expense by localId |
 | POST | `/api/users/delete-all` | Bulk delete all expenses |
-| GET | `/api/users/local/:localId` | Get expense by localId |
 
 ### AI Parsing (auth required)
 | Method | Path | Description |
@@ -149,8 +148,8 @@ backend/
 ### Notification Reference (auth required)
 | Method | Path | Description |
 |--------|------|-------------|
-| PUT | `/api/ai-notification-reference` | Save expense reference items for RAG |
-| POST | `/api/ai-notification-reference/refresh` | Refresh from recent expenses |
+| PUT | `/api/ai-notification-reference` | Save expense reference items and regenerate the per-user summary template |
+| POST | `/api/ai-notification-reference/refresh` | Refresh from recent expenses and regenerate the per-user summary template |
 
 ### Real-time
 | Method | Path | Description |
@@ -183,9 +182,8 @@ backend/
 ### `expenses` table
 | Column | Type | Notes |
 |--------|------|-------|
-| id | UUID | Primary key |
 | owner_id | TEXT | Firebase UID, indexed |
-| local_id | TEXT | Client-generated ID, UNIQUE with owner_id |
+| local_id | TEXT | Client-generated ID, UNIQUE with owner_id (natural identity) |
 | name | TEXT | |
 | amount | INTEGER | In smallest currency unit (IDR tanpa decimals) |
 | category | TEXT | One of EXPENSE_CATEGORIES |
@@ -199,6 +197,7 @@ backend/
 |--------|------|-------|
 | owner_id | TEXT | Primary key |
 | items | JSONB | Array of {expenseitem, expenseprice, category?, type?, date?} |
+| summary | JSONB | Per-user aggregated template: category, count, priceRange, averagePrice, commonItems, types |
 | updated_at | TIMESTAMPTZ | |
 
 ---
@@ -229,7 +228,7 @@ const { requireAuth } = require("./api/middleware/auth");
 ```
 
 ### Database schema initialization
-Schema auto-creates on first connection via `ensureSchema()`. No migrations needed.
+Schema auto-creates on first connection via `ensureSchema()`, which also drops the legacy `id` UUID column (`ALTER TABLE expenses DROP COLUMN IF EXISTS id`).
 
 ### Real-time broadcast
 ```js

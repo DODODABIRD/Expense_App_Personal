@@ -8,12 +8,12 @@ import 'error_log_service.dart';
 
 const String baseUrl = String.fromEnvironment(
   'EXPENSE_API_BASE_URL',
-  defaultValue: 'https://vps.dododabird.us/api',
+  defaultValue: 'https://main.dododabird.us/api',
 );
 
 const String wsUrl = String.fromEnvironment(
   'EXPENSE_WS_URL',
-  defaultValue: 'wss://vps.dododabird.us/ws',
+  defaultValue: 'wss://main.dododabird.us/ws',
 );
 
 typedef ReceiptScanProgress =
@@ -238,23 +238,6 @@ class Throw {
     return body['itemCount'] is int ? body['itemCount'] as int : 0;
   }
 
-  static Future<String?> getServerIdFromLocalId(int localId) async {
-    final url = Uri.parse('$baseUrl/users/local/$localId');
-
-    final response = await http.get(url, headers: await _headers());
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['_id'] as String?;
-    }
-
-    print('User not found');
-    return null;
-  }
-
-  static Future<String?> getMongoIdFromLocalId(int localId) =>
-      getServerIdFromLocalId(localId);
-
   static Future<bool> updateUserByLocalId(
     int? localId,
     String name,
@@ -264,11 +247,8 @@ class Throw {
     String date,
   ) async {
     if (localId == null) return false;
-    final serverId = await getServerIdFromLocalId(localId);
 
-    if (serverId == null) return false;
-
-    final url = Uri.parse('$baseUrl/users/$serverId');
+    final url = Uri.parse('$baseUrl/users/$localId');
 
     final response = await http
         .put(
@@ -284,22 +264,20 @@ class Throw {
         )
         .timeout(const Duration(seconds: 10));
 
+    if (response.statusCode == 404) return false;
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
         'Update failed (${response.statusCode}): ${response.body}',
       );
     }
 
-    await DatabaseHelp.updateMongoId(localId, serverId);
+    await DatabaseHelp.markSynced(localId);
     return true;
   }
 
   static Future<void> deleteUserByLocalId(int localId) async {
-    final serverId = await getServerIdFromLocalId(localId);
-
-    if (serverId == null) return;
-
-    final url = Uri.parse('$baseUrl/users/$serverId');
+    final url = Uri.parse('$baseUrl/users/$localId');
 
     await http.delete(url, headers: await _headers());
   }
@@ -357,13 +335,8 @@ class Throw {
         );
       }
 
-      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
-      final serverId = responseData['_id'] as String?;
-      if (serverId != null) {
-        await DatabaseHelp.updateMongoId(localId, serverId);
-      }
-
-      return serverId != null;
+      await DatabaseHelp.markSynced(localId);
+      return true;
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Create expense sync');
       print('Sync failed: $error');
@@ -377,26 +350,16 @@ class Throw {
 
     for (final expense in pendingExpenses) {
       try {
-        final serverId = expense['mongoId'] as String?;
-        if (serverId == null || serverId.isEmpty) {
-          await createExpense(
-            expense['id'] as int,
-            expense['name'] as String,
-            expense['amount'] as int,
-            expense['category'] as String,
-            expense['type'] as String,
-            expense['date'] as String,
-          );
-        } else {
-          await updateUserByLocalId(
-            expense['id'] as int,
-            expense['name'] as String,
-            expense['amount'] as int,
-            expense['category'] as String,
-            expense['type'] as String,
-            expense['date'] as String,
-          );
-        }
+        // POST /users upserts by (owner, localId), so unsynced rows only ever
+        // need a single push regardless of whether the server already knows them.
+        await createExpense(
+          expense['id'] as int,
+          expense['name'] as String,
+          expense['amount'] as int,
+          expense['category'] as String,
+          expense['type'] as String,
+          expense['date'] as String,
+        );
       } catch (error, stackTrace) {
         captureAppError(error, stackTrace, 'Pending expense sync');
         print('Pending sync failed: $error');

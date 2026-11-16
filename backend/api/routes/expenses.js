@@ -2,13 +2,11 @@ const { requireAuth } = require("../middleware/auth");
 const {
   listExpenses,
   upsertExpense,
-  getExpenseById,
   getExpenseByLocalId,
-  updateExpenseById,
-  deleteExpenseById,
+  updateExpenseByLocalId,
+  deleteExpenseByLocalId,
   deleteAllExpenses,
   connectDB,
-  isInvalidUuidError,
 } = require("../db");
 const { broadcastLiveChange } = require("../lib/broadcast");
 
@@ -53,25 +51,22 @@ async function listAllExpenses(req, res) {
 
 /**
  * READ (one)
- * GET /api/users/:id
+ * GET /api/users/:localId
  */
 async function getExpense(req, res) {
   try {
     await connectDB();
-    const user = await getExpenseById(req.user.uid, req.params.id);
+    const user = await getExpenseByLocalId(req.user.uid, req.params.localId);
     if (!user) return res.status(404).json({ message: "Not found" });
     res.json(user);
   } catch (err) {
-    if (isInvalidUuidError(err)) {
-      return res.status(404).json({ message: "Not found" });
-    }
     res.status(500).json({ error: err.message });
   }
 }
 
 /**
  * UPDATE
- * PUT /api/users/:id
+ * PUT /api/users/:localId
  */
 async function updateExpense(req, res) {
   try {
@@ -83,32 +78,33 @@ async function updateExpense(req, res) {
       type: req.body.type,
       date: req.body.date,
     };
-    const user = await updateExpenseById(req.user.uid, req.params.id, updates);
+    const user = await updateExpenseByLocalId(
+      req.user.uid,
+      req.params.localId,
+      updates
+    );
     if (!user) return res.status(404).json({ message: "Not found" });
     broadcastLiveChange(req.user.uid, { type: "expense_updated", item: user });
     res.json(user);
   } catch (err) {
-    if (isInvalidUuidError(err)) {
-      return res.status(404).json({ message: "Not found" });
-    }
     res.status(400).json({ error: err.message });
   }
 }
 
 /**
  * DELETE
- * DELETE /api/users/:id
+ * DELETE /api/users/:localId
  */
 async function removeExpense(req, res) {
   try {
     await connectDB();
-    await deleteExpenseById(req.user.uid, req.params.id);
-    broadcastLiveChange(req.user.uid, { type: "expense_deleted", id: req.params.id });
+    await deleteExpenseByLocalId(req.user.uid, req.params.localId);
+    broadcastLiveChange(req.user.uid, {
+      type: "expense_deleted",
+      localId: req.params.localId,
+    });
     res.json({ message: "Deleted" });
   } catch (err) {
-    if (isInvalidUuidError(err)) {
-      return res.status(404).json({ message: "Not found" });
-    }
     res.status(500).json({ error: err.message });
   }
 }
@@ -128,23 +124,6 @@ async function deleteAllUserExpenses(req, res) {
   }
 }
 
-/**
- * READ (one by localId)
- * GET /api/users/local/:localId
- */
-async function getExpenseByLocal(req, res) {
-  try {
-    await connectDB();
-    const user = await getExpenseByLocalId(req.user.uid, req.params.localId);
-    if (!user) {
-      return res.status(404).json({ message: "Not found" });
-    }
-    res.json(user);
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-}
-
 module.exports = {
   createExpense,
   listAllExpenses,
@@ -152,5 +131,4 @@ module.exports = {
   updateExpense,
   removeExpense,
   deleteAllUserExpenses,
-  getExpenseByLocal,
 };

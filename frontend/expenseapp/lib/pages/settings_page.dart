@@ -10,9 +10,11 @@ import '../widgets/neo_animations.dart';
 class SettingsPage extends StatefulWidget {
   final Future<void> Function() onDeleteAll;
   final Future<void> Function() onExportPdf;
+  final Future<void> Function() onImportPdf;
   final Future<void> Function() onDeleteAccount;
   final Future<void> Function() onChangePassword;
   final Future<void> Function() onRetrySync;
+  final Future<void> Function() onForceResyncAll;
   final Future<void> Function(String) onCurrencyChanged;
   final Future<void> Function() onLoadOnlineExpenses;
   final Future<void> Function() onPendingNotificationAdded;
@@ -21,9 +23,11 @@ class SettingsPage extends StatefulWidget {
     super.key,
     required this.onDeleteAll,
     required this.onExportPdf,
+    required this.onImportPdf,
     required this.onDeleteAccount,
     required this.onChangePassword,
     required this.onRetrySync,
+    required this.onForceResyncAll,
     required this.onCurrencyChanged,
     required this.onLoadOnlineExpenses,
     required this.onPendingNotificationAdded,
@@ -141,6 +145,20 @@ class _SettingsPageState extends State<SettingsPage> {
     }
   }
 
+  Future<void> _forceResyncAll() async {
+    try {
+      await widget.onForceResyncAll();
+      if (!mounted) return;
+      await _loadSyncStatus();
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Force re-sync all expenses');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not re-sync expenses: $error')),
+      );
+    }
+  }
+
   Future<void> _updateAiNotificationReference() async {
     if (_isUpdatingAiReference) return;
     setState(() => _isUpdatingAiReference = true);
@@ -185,6 +203,14 @@ class _SettingsPageState extends State<SettingsPage> {
         _buildSyncCard(),
         const SizedBox(height: 16),
         _SettingsAction(
+          icon: Icons.sync_outlined,
+          title: 'Re-sync all expenses',
+          subtitle: 'Push every local change to the server again. Use this as a fallback after changing servers.',
+          color: const Color(0xFFE5E7EB),
+          onTap: _forceResyncAll,
+        ),
+        const SizedBox(height: 16),
+        _SettingsAction(
           icon: Icons.cloud_download_outlined,
           title: 'Load online expenses',
           subtitle: 'Import expenses created on another device.',
@@ -208,6 +234,14 @@ class _SettingsPageState extends State<SettingsPage> {
           subtitle: 'Save a complete report of your expenses.',
           color: const Color.fromARGB(255, 33, 236, 243),
           onTap: widget.onExportPdf,
+        ),
+        const SizedBox(height: 16),
+        _SettingsAction(
+          icon: Icons.upload_file_outlined,
+          title: 'Import expenses from PDF',
+          subtitle: 'Restore expenses from an exported PDF report.',
+          color: const Color.fromARGB(255, 33, 236, 243),
+          onTap: widget.onImportPdf,
         ),
         const SizedBox(height: 16),
         _SettingsAction(

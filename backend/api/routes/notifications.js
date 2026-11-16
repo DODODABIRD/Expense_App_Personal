@@ -1,5 +1,6 @@
 const { requireAuth } = require("../middleware/auth");
 const {
+  buildNotificationTemplate,
   loadNotificationContext,
   refreshNotificationContext,
   MAX_NOTIFICATION_CONTEXT_ITEMS,
@@ -39,7 +40,12 @@ async function putNotificationReference(req, res) {
 
   try {
     await connectDB();
-    const savedItems = await upsertNotificationReference(req.user.uid, items);
+    const summary = buildNotificationTemplate(items);
+    const savedItems = await upsertNotificationReference(
+      req.user.uid,
+      items,
+      summary
+    );
     return res.json({ updated: true, itemCount: savedItems.length });
   } catch (err) {
     return res.status(500).json({ error: err.message });

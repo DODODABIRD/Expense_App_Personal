@@ -22,7 +22,7 @@ The Vercel backend also needs this environment variable:
 FIREBASE_SERVICE_ACCOUNT_JSON=<the Firebase Admin SDK service-account JSON>
 ```
 
-The MongoDB documents now use `ownerId` from the verified Firebase token. The
+The cloud records now use `ownerId` from the verified Firebase token. The
 existing anonymous SQLite rows do not have an owner and will not appear after
 an account signs in; migrate them to an account deliberately before deleting
 or reusing the old database.

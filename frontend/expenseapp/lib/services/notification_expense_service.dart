@@ -133,7 +133,6 @@ class NotificationExpenseService {
 
     for (final expense in localExpenses) {
       final ids = <String>[
-        if (expense['mongoId'] != null) 'mongo:${expense['mongoId']}',
         if (expense['id'] != null) 'local:${expense['id']}',
       ];
       final item = _toAiReferenceItem(expense);
@@ -144,7 +143,6 @@ class NotificationExpenseService {
 
     for (final expense in onlineExpenses) {
       final ids = <String>[
-        if (expense['_id'] != null) 'mongo:${expense['_id']}',
         if (expense['localId'] != null) 'local:${expense['localId']}',
       ];
       if (ids.any(knownIds.contains)) continue;

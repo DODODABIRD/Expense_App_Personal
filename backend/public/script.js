@@ -21,7 +21,7 @@ let isGuestMode = false;
 let currentExpenses = [];
 let activeView = 'dashboard';
 let isRegistering = false;
-let editingExpenseId = null;
+let editingExpenseLocalId = null;
 let currentSort = 'newest';
 let detectedOcrItems = [];
 let ocrReceiptDate = '';
@@ -30,7 +30,6 @@ let liveSyncConnection = null;
 
 const DEMO_EXPENSES = [
     {
-        _id: 'demo-1',
         localId: 'demo-1',
         name: 'Kopi Kenangan Mantan',
         amount: 24000,
@@ -39,7 +38,6 @@ const DEMO_EXPENSES = [
         date: new Date(Date.now() - 3600000 * 3).toISOString().split('T')[0]
     },
     {
-        _id: 'demo-2',
         localId: 'demo-2',
         name: 'Bensin Pertamax Full',
         amount: 50000,
@@ -48,7 +46,6 @@ const DEMO_EXPENSES = [
         date: new Date(Date.now() - 86400000 * 1).toISOString().split('T')[0]
     },
     {
-        _id: 'demo-3',
         localId: 'demo-3',
         name: 'Mouse Logitech G304',
         amount: 389000,
@@ -57,7 +54,6 @@ const DEMO_EXPENSES = [
         date: new Date(Date.now() - 86400000 * 2).toISOString().split('T')[0]
     },
     {
-        _id: 'demo-4',
         localId: 'demo-4',
         name: 'Makan Siang Nasi Padang',
         amount: 32000,
@@ -66,7 +62,6 @@ const DEMO_EXPENSES = [
         date: new Date(Date.now() - 86400000 * 3).toISOString().split('T')[0]
     },
     {
-        _id: 'demo-5',
         localId: 'demo-5',
         name: 'Spotify Family Subscription',
         amount: 86900,
@@ -75,7 +70,7 @@ const DEMO_EXPENSES = [
         date: new Date(Date.now() - 86400000 * 4).toISOString().split('T')[0]
     },
     {
-        _id: 'demo-6',
+        localId: 'demo-6',
         localId: 'demo-6',
         name: 'Tambal Ban Motor Bocor',
         amount: 25000,
@@ -213,15 +208,11 @@ function showConfirmDialog(title, message, onConfirm) {
 
 function deduplicateExpenses(expenses) {
     if (!Array.isArray(expenses)) return [];
-    const seenIds = new Set();
     const seenLocals = new Set();
     return expenses.filter(item => {
         if (!item) return false;
-        const id = item._id || item.id;
         const localId = item.localId || item.local_id;
-        if (id && seenIds.has(String(id))) return false;
         if (localId && seenLocals.has(String(localId))) return false;
-        if (id) seenIds.add(String(id));
         if (localId) seenLocals.add(String(localId));
         return true;
     });
@@ -229,13 +220,10 @@ function deduplicateExpenses(expenses) {
 
 function upsertExpenseInList(expense) {
     if (!expense) return;
-    const expId = expense._id || expense.id;
     const expLocal = expense.localId || expense.local_id;
     const idx = currentExpenses.findIndex(item => {
-        const itemId = item._id || item.id;
         const itemLocal = item.localId || item.local_id;
-        return (expId && itemId && String(itemId) === String(expId)) ||
-               (expLocal && itemLocal && String(itemLocal) === String(expLocal));
+        return expLocal && itemLocal && String(itemLocal) === String(expLocal);
     });
 
     if (idx !== -1) {
@@ -423,13 +411,10 @@ class LiveSyncManager {
         console.log('[LiveSync] Event received:', data.type);
 
         if (data.type === 'expense_created' && data.item) {
-            const expId = data.item._id || data.item.id;
             const expLocal = data.item.localId || data.item.local_id;
             const exists = currentExpenses.some(e => {
-                const itemId = e._id || e.id;
                 const itemLocal = e.localId || e.local_id;
-                return (expId && itemId && String(itemId) === String(expId)) ||
-                       (expLocal && itemLocal && String(itemLocal) === String(expLocal));
+                return expLocal && itemLocal && String(itemLocal) === String(expLocal);
             });
             upsertExpenseInList(data.item);
             this.refreshActiveView();
@@ -440,8 +425,8 @@ class LiveSyncManager {
             upsertExpenseInList(data.item);
             this.refreshActiveView();
             showToast(`Updated ${data.item.name || 'Expense'}`);
-        } else if (data.type === 'expense_deleted' && data.id) {
-            currentExpenses = currentExpenses.filter(e => String(e._id || e.id) !== String(data.id));
+        } else if (data.type === 'expense_deleted' && data.localId) {
+            currentExpenses = currentExpenses.filter(e => String(e.localId || e.local_id) !== String(data.localId));
             this.refreshActiveView();
             showToast('Transaction deleted');
         } else if (data.type === 'bulk_deleted') {
@@ -564,7 +549,7 @@ function renderDashboard() {
     sorted.forEach(item => {
         const card = document.createElement('article');
         card.className = 'neo-transaction-card';
-        card.setAttribute('data-id', item._id || '');
+        card.setAttribute('data-id', item.localId || '');
 
         const iconSvg = getCategoryIconSvg(item.category);
         const amtStr = formatCurrency(item.amount);
@@ -604,7 +589,6 @@ function setupExpenseForm(params = {}) {
     const titleEl = document.getElementById('form-title');
     const deleteBtn = document.getElementById('form-delete-btn');
     const submitBtn = document.getElementById('form-submit-btn');
-    const idInput = document.getElementById('edit-expense-id');
     const localIdInput = document.getElementById('edit-expense-localId');
     const amountInput = document.getElementById('amount-input');
     const nameInput = document.getElementById('expense-name-input');
@@ -612,13 +596,12 @@ function setupExpenseForm(params = {}) {
     const dateLabel = document.getElementById('date-display-label');
 
     const expense = params.expense || null;
-    editingExpenseId = expense ? (expense._id || null) : null;
+    editingExpenseLocalId = expense ? (expense.localId || null) : null;
 
     if (expense) {
         titleEl.textContent = 'Edit Expense';
         submitBtn.textContent = 'Update Transaction';
         deleteBtn.style.display = 'inline-flex';
-        idInput.value = expense._id || '';
         localIdInput.value = expense.localId || '';
         amountInput.value = String(Math.round(Number(expense.amount) || 0));
         nameInput.value = expense.name || '';
@@ -630,7 +613,6 @@ function setupExpenseForm(params = {}) {
         titleEl.textContent = 'Add Expense';
         submitBtn.textContent = 'Save Transaction';
         deleteBtn.style.display = 'none';
-        idInput.value = '';
         localIdInput.value = Date.now().toString();
         amountInput.value = '';
         nameInput.value = '';
@@ -1241,7 +1223,6 @@ async function saveSelectedOcrItems() {
         if (isGuestMode) {
             selected.forEach((item, idx) => {
                 currentExpenses.unshift({
-                    _id: 'demo_ocr_' + Date.now() + '_' + idx,
                     localId: Date.now().toString() + '_' + idx,
                     name: item.name || 'Receipt Item',
                     amount: item.amount,
@@ -1569,7 +1550,6 @@ document.addEventListener('DOMContentLoaded', () => {
         expenseForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const submitBtn = document.getElementById('form-submit-btn');
-            const id = document.getElementById('edit-expense-id').value;
             const localId = document.getElementById('edit-expense-localId').value || Date.now().toString();
             const amount = Math.max(0, parseFloat(amountInput.value) || 0);
             const name = document.getElementById('expense-name-input').value.trim();
@@ -1587,14 +1567,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 if (isGuestMode) {
-                    if (id) {
-                        const idx = currentExpenses.findIndex(item => (item._id || item.id) === id);
+                    if (editingExpenseLocalId) {
+                        const idx = currentExpenses.findIndex(item => String(item.localId || item.local_id) === String(editingExpenseLocalId));
                         if (idx !== -1) {
                             currentExpenses[idx] = { ...currentExpenses[idx], name, amount, category, type, date };
                         }
                         showToast('Transaction updated!');
                     } else {
-                        const created = { _id: 'demo_' + Date.now(), localId, name, amount, category, type, date };
+                        const created = { localId, name, amount, category, type, date };
                         upsertExpenseInList(created);
                         showToast('Transaction saved!');
                     }
@@ -1606,9 +1586,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 const headers = await authHeaders();
-                if (id) {
+                if (editingExpenseLocalId) {
                     // Update
-                    const res = await fetch(`${API_BASE_URL}/users/${id}`, {
+                    const res = await fetch(`${API_BASE_URL}/users/${editingExpenseLocalId}`, {
                         method: 'PUT',
                         headers,
                         body: JSON.stringify({ name, amount, category, type, date })
@@ -1644,10 +1624,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const formDeleteBtn = document.getElementById('form-delete-btn');
     if (formDeleteBtn) {
         formDeleteBtn.addEventListener('click', () => {
-            if (!editingExpenseId) return;
+            if (!editingExpenseLocalId) return;
             showConfirmDialog('Delete Transaction', 'Are you sure you want to permanently delete this expense?', async () => {
                 if (isGuestMode) {
-                    currentExpenses = currentExpenses.filter(e => e._id !== editingExpenseId);
+                    currentExpenses = currentExpenses.filter(e => String(e.localId || e.local_id) !== String(editingExpenseLocalId));
                     localStorage.setItem('unmurce_demo_expenses', JSON.stringify(currentExpenses));
                     renderDashboard();
                     showToast('Transaction deleted');
@@ -1656,11 +1636,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 try {
                     const headers = await authHeaders();
-                    await fetch(`${API_BASE_URL}/users/${editingExpenseId}`, {
+                    await fetch(`${API_BASE_URL}/users/${editingExpenseLocalId}`, {
                         method: 'DELETE',
                         headers
                     });
-                    currentExpenses = currentExpenses.filter(e => e._id !== editingExpenseId);
+                    currentExpenses = currentExpenses.filter(e => String(e.localId || e.local_id) !== String(editingExpenseLocalId));
                     showToast('Transaction deleted');
                     navigateToView('dashboard');
                 } catch (err) {

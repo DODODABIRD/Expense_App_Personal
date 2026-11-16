@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -11,6 +12,7 @@ import '../services/databaseHelper.dart';
 import '../services/ApiService.dart';
 import '../services/error_log_service.dart';
 import '../services/pdf_export_service.dart';
+import '../services/pdf_import_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
@@ -40,6 +42,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   DateTime? _settingsTapStartedAt;
   bool _isChangingCurrency = false;
   bool _isLoadingOnlineExpenses = false;
+  bool _isImportingPdf = false;
   int _pendingNotificationCount = 0;
 
   // Filter state
@@ -216,6 +219,8 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
             const _LoadingOverlay(message: 'Getting newest exchange rate...'),
           if (_isLoadingOnlineExpenses)
             const _LoadingOverlay(message: 'Loading online expenses...'),
+          if (_isImportingPdf)
+            const _LoadingOverlay(message: 'Reading expense report...'),
         ],
       ),
     );
@@ -343,9 +348,11 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     return SettingsPage(
       onDeleteAll: _deleteAllExpenses,
       onExportPdf: _exportExpenses,
+      onImportPdf: _importExpensesFromPdf,
       onDeleteAccount: _deleteAccount,
       onChangePassword: _changePassword,
       onRetrySync: _retrySync,
+      onForceResyncAll: _forceResyncAll,
       onCurrencyChanged: _changeCurrency,
       onLoadOnlineExpenses: _loadOnlineExpenses,
       onPendingNotificationAdded: _handlePendingNotificationAdded,
@@ -584,6 +591,167 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     }
   }
 
+  Future<void> _importExpensesFromPdf() async {
+    if (!mounted || _isImportingPdf) return;
+    setState(() => _isImportingPdf = true);
+
+    PdfImportResult parsed;
+    List<Map<String, dynamic>> candidates;
+    try {
+      final picked = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      parsed = await PdfImportService.parse(
+        bytes,
+        exchangeRateFor: DatabaseHelp.getCachedExchangeRate,
+      );
+      candidates = await DatabaseHelp.filterNewExpenses(parsed.expenses);
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Import expense report');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not import PDF: $error')),
+        );
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _isImportingPdf = false);
+    }
+
+    if (!mounted) return;
+    if (parsed.expenses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No transactions found in this PDF.')),
+      );
+      return;
+    }
+    if (candidates.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'All ${parsed.expenses.length} expense(s) in this PDF are '
+            'already present.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await _showPdfImportSummary(parsed, candidates);
+    if (!confirmed || !mounted) return;
+
+    try {
+      await DatabaseHelp.insertRestoredExpenses(candidates);
+      if (!mounted) return;
+      listKey.currentState?._loadData();
+      final skipped = parsed.expenses.length - candidates.length;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Restored ${candidates.length} expense(s) from PDF'
+            '${skipped > 0 ? ' ($skipped duplicate(s) skipped)' : ''}.',
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Restore expenses from PDF');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not restore expenses: $error')),
+      );
+    }
+  }
+
+  Future<bool> _showPdfImportSummary(
+    PdfImportResult parsed,
+    List<Map<String, dynamic>> candidates,
+  ) async {
+    final formatter = NumberFormat.currency(
+      locale: currencyLocale,
+      symbol: currencySymbol,
+      decimalDigits: currencyDecimalDigits,
+    );
+    double totalIdr = 0;
+    DateTime? firstDate;
+    DateTime? lastDate;
+    for (final expense in candidates) {
+      totalIdr += (expense['amount'] as num?)?.toDouble() ?? 0;
+      final date = DateTime.tryParse(expense['date']?.toString() ?? '');
+      if (date == null) continue;
+      if (firstDate == null || date.isBefore(firstDate)) firstDate = date;
+      if (lastDate == null || date.isAfter(lastDate)) lastDate = date;
+    }
+    final total = formatter.format(totalIdr * appExchangeRate.value);
+    final period = firstDate == null
+        ? '-'
+        : '${DateFormat('dd MMM yyyy').format(firstDate)} - '
+            '${DateFormat('dd MMM yyyy').format(lastDate!)}';
+    final skipped = parsed.expenses.length - candidates.length;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Colors.black, width: 2),
+        ),
+        title: Text(
+          'Import expenses from PDF',
+          style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Transactions found: ${parsed.expenses.length}'),
+            Text('To import: ${candidates.length}'),
+            Text('Duplicates skipped: $skipped'),
+            Text('Period: $period'),
+            Text('Total: $total'),
+            if (!parsed.fromBackupData) ...[
+              const SizedBox(height: 12),
+              Text(
+                parsed.currency == 'IDR'
+                    ? 'Restored from the printed report table.'
+                    : 'Restored from the printed report table. Non-IDR '
+                        'amounts are converted back with the current '
+                        'exchange rate and may differ slightly.',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.itim()),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF5DF9FF),
+              foregroundColor: Colors.black,
+              side: const BorderSide(color: Colors.black, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Import', style: GoogleFonts.itim()),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
 
   Future<void> _changeCurrency(String currency) async {
     if (mounted) setState(() => _isChangingCurrency = true);
@@ -640,6 +808,32 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Could not retry sync: $error')));
+    }
+  }
+
+  Future<void> _forceResyncAll() async {
+    try {
+      await DatabaseHelp.markAllUnsyncedForCurrentUser();
+      await Throw.syncPendingExpenses();
+      if (!mounted) return;
+      listKey.currentState?._loadData();
+      final pending = await DatabaseHelp.getUnsyncedData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            pending.isEmpty
+                ? 'All expenses re-synced with the server.'
+                : '${pending.length} expense(s) could not be re-synced.',
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Force re-sync all expenses');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not re-sync expenses: $error')),
+      );
     }
   }
 

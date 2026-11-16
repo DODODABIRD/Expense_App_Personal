@@ -9,14 +9,12 @@ void main() {
             localExpenses: [
               {
                 'id': 7,
-                'mongoId': 'mongo-7',
                 'name': 'Updated shop name',
                 'amount': 42000,
               },
             ],
             onlineExpenses: [
               {
-                '_id': 'mongo-7',
                 'localId': '7',
                 'name': 'Old shop name',
                 'amount': 40000,
@@ -38,7 +36,6 @@ void main() {
             ],
             onlineExpenses: [
               {
-                '_id': 'mongo-3',
                 'localId': '3',
                 'name': 'Coffee',
                 'amount': 25000,

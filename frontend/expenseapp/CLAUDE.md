@@ -103,7 +103,7 @@ This file follows the [AGENTS.md](https://agents.md) open standard (Linux Founda
 - **Framework:** Flutter (Material 3)
 - **State Management:** ValueNotifier + StatefulWidget
 - **Local Storage:** sqflite (SQLite)
-- **Backend:** Node.js/VPS backend (MongoDB via postgres)
+- **Backend:** Node.js/VPS backend (PostgreSQL)
 - **Auth:** Firebase Auth
 - **Package Manager:** flutter pub
 
@@ -161,8 +161,8 @@ test/                       # Widget and unit tests
 
 **Backend API (ApiService.dart):**
 - `Throw` class contains all API methods
-- `baseUrl`: `https://vps.dododabird.us/api`
-- `wsUrl`: `wss://vps.dododabird.us/ws` (WebSocket)
+- `baseUrl`: `https://main.dododabird.us/api`
+- `wsUrl`: `wss://main.dododabird.us/ws` (WebSocket)
 - JWT auth via Firebase ID token in `Authorization: Bearer <token>`
 
 **Categories:** makanan, transportasi, hiburan, school supply, baju, elektronik, kesehatan, lainnya

@@ -29,6 +29,7 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
   // In-memory table to simulate Postgres
   const dbStore = new Map();
   let aiRefStore = new Map();
+  let aiSummaryStore = new Map();
 
   const mockPool = {
     async query(sql, params) {
@@ -45,7 +46,6 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
         const key = `${ownerId}:${localId}`;
         const existing = dbStore.get(key);
         const row = {
-          id: existing ? existing.id : "11111111-2222-3333-4444-555555555555",
           owner_id: ownerId,
           local_id: localId,
           name,
@@ -69,20 +69,6 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
         return { rows };
       }
 
-      // getExpenseById
-      if (trimmed.startsWith("SELECT * FROM expenses WHERE id = $1 AND owner_id = $2")) {
-        const [id, ownerId] = params;
-        if (id === "not-a-uuid") {
-          const err = new Error("invalid input syntax for type uuid");
-          err.code = "22P02";
-          throw err;
-        }
-        const row = Array.from(dbStore.values()).find(
-          (r) => r.id === id && r.owner_id === ownerId
-        );
-        return { rows: row ? [row] : [] };
-      }
-
       // getExpenseByLocalId
       if (trimmed.startsWith("SELECT * FROM expenses WHERE local_id = $1 AND owner_id = $2")) {
         const [localId, ownerId] = params;
@@ -92,17 +78,12 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
         return { rows: row ? [row] : [] };
       }
 
-      // updateExpenseById
+      // updateExpenseByLocalId
       if (trimmed.startsWith("UPDATE expenses")) {
-        const [id, ownerId, name, amount, category, type, date] = params;
-        if (id === "not-a-uuid") {
-          const err = new Error("invalid input syntax for type uuid");
-          err.code = "22P02";
-          throw err;
-        }
+        const [localId, ownerId, name, amount, category, type, date] = params;
         let updatedRow = null;
         for (const [key, row] of dbStore.entries()) {
-          if (row.id === id && row.owner_id === ownerId) {
+          if (row.local_id === localId && row.owner_id === ownerId) {
             updatedRow = {
               ...row,
               name,
@@ -119,16 +100,11 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
         return { rows: updatedRow ? [updatedRow] : [] };
       }
 
-      // deleteExpenseById
-      if (trimmed.startsWith("DELETE FROM expenses WHERE id = $1 AND owner_id = $2")) {
-        const [id, ownerId] = params;
-        if (id === "not-a-uuid") {
-          const err = new Error("invalid input syntax for type uuid");
-          err.code = "22P02";
-          throw err;
-        }
+      // deleteExpenseByLocalId
+      if (trimmed.startsWith("DELETE FROM expenses WHERE local_id = $1 AND owner_id = $2")) {
+        const [localId, ownerId] = params;
         for (const [key, row] of dbStore.entries()) {
-          if (row.id === id && row.owner_id === ownerId) {
+          if (row.local_id === localId && row.owner_id === ownerId) {
             dbStore.delete(key);
             break;
           }
@@ -160,10 +136,17 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
 
       // upsertNotificationReference
       if (trimmed.startsWith("INSERT INTO ai_notification_references")) {
-        const [ownerId, itemsJson] = params;
+        const [ownerId, itemsJson, summaryJson] = params;
         const items = JSON.parse(itemsJson);
         aiRefStore.set(ownerId, items);
+        aiSummaryStore.set(ownerId, JSON.parse(summaryJson));
         return { rows: [{ items }] };
+      }
+
+      // loadNotificationSummary
+      if (trimmed.startsWith("SELECT summary FROM ai_notification_references")) {
+        const [ownerId] = params;
+        return { rows: [{ summary: aiSummaryStore.get(ownerId) || {} }] };
       }
 
       // loadNotificationReferenceItems
@@ -211,7 +194,7 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
     });
     assert.equal(createRes.status, 200);
     const created = await createRes.json();
-    assert.equal(created._id, "11111111-2222-3333-4444-555555555555");
+    assert.equal(created._id, undefined);
     assert.equal(created.ownerId, "test-owner-id");
     assert.equal(created.localId, "local-001");
     assert.equal(created.name, "Sate Ayam");
@@ -225,28 +208,19 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
     assert.equal(listRes.status, 200);
     const list = await listRes.json();
     assert.equal(list.length, 1);
-    assert.equal(list[0]._id, created._id);
+    assert.equal(list[0].localId, created.localId);
 
-    // 3. GET /api/users/:id - Read one
-    const getRes = await fetch(`${baseUrl}/api/users/${created._id}`, {
+    // 3. GET /api/users/:localId - Read one
+    const getRes = await fetch(`${baseUrl}/api/users/${created.localId}`, {
       headers: authHeaders,
     });
     assert.equal(getRes.status, 200);
     const fetched = await getRes.json();
-    assert.equal(fetched._id, created._id);
+    assert.equal(fetched.localId, created.localId);
     assert.equal(fetched.name, "Sate Ayam");
 
-    // 4. GET /api/users/local/:localId - Read one by localId
-    const getLocalRes = await fetch(`${baseUrl}/api/users/local/local-001`, {
-      headers: authHeaders,
-    });
-    assert.equal(getLocalRes.status, 200);
-    const fetchedLocal = await getLocalRes.json();
-    assert.equal(fetchedLocal.localId, "local-001");
-    assert.equal(fetchedLocal._id, created._id);
-
-    // 5. PUT /api/users/:id - Update
-    const putRes = await fetch(`${baseUrl}/api/users/${created._id}`, {
+    // 4. PUT /api/users/:localId - Update
+    const putRes = await fetch(`${baseUrl}/api/users/${created.localId}`, {
       method: "PUT",
       headers: authHeaders,
       body: JSON.stringify({
@@ -256,18 +230,18 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
     });
     assert.equal(putRes.status, 200);
     const updated = await putRes.json();
-    assert.equal(updated._id, created._id);
+    assert.equal(updated.localId, created.localId);
     assert.equal(updated.name, "Sate Ayam Madura");
     assert.equal(updated.amount, 35000);
     assert.equal(updated.category, "makanan"); // Preserved
 
-    // 6. Test invalid UUID error handling -> 404
-    const invalidUuidRes = await fetch(`${baseUrl}/api/users/not-a-uuid`, {
+    // 5. Unknown localId -> 404
+    const missingRes = await fetch(`${baseUrl}/api/users/does-not-exist`, {
       headers: authHeaders,
     });
-    assert.equal(invalidUuidRes.status, 404);
+    assert.equal(missingRes.status, 404);
 
-    // 7. Refresh notification context
+    // 6. Refresh notification context
     const refreshRes = await fetch(
       `${baseUrl}/api/ai-notification-reference/refresh`,
       {
@@ -280,8 +254,16 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
     assert.equal(refreshData.updated, true);
     assert.equal(refreshData.itemCount, 1);
 
-    // 8. DELETE /api/users/:id
-    const deleteRes = await fetch(`${baseUrl}/api/users/${created._id}`, {
+    const savedSummary = aiSummaryStore.get("test-owner-id");
+    assert.equal(savedSummary.sampleSize, 1);
+    assert.equal(savedSummary.categories[0].category, "makanan");
+    assert.deepEqual(savedSummary.categories[0].priceRange, {
+      min: 35000,
+      max: 35000,
+    });
+
+    // 7. DELETE /api/users/:localId
+    const deleteRes = await fetch(`${baseUrl}/api/users/${created.localId}`, {
       method: "DELETE",
       headers: authHeaders,
     });
@@ -289,7 +271,7 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
     const deleteData = await deleteRes.json();
     assert.equal(deleteData.message, "Deleted");
 
-    // 9. Re-insert and test POST /api/users/delete-all
+    // 8. Re-insert and test POST /api/users/delete-all
     await fetch(`${baseUrl}/api/users`, {
       method: "POST",
       headers: authHeaders,

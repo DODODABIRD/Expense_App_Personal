@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import '../main.dart';
 import '../services/auth_service.dart';
 import '../services/error_log_service.dart';
+import 'pdf_import_service.dart';
 
 class PdfExportService {
   static Future<void> exportExpenses({
@@ -29,122 +30,12 @@ class PdfExportService {
         return;
       }
 
-      final sortedExpenses = [...expenses]
-        ..sort((first, second) {
-          final firstDate = DateTime.tryParse(first['date']?.toString() ?? '');
-          final secondDate = DateTime.tryParse(
-            second['date']?.toString() ?? '',
-          );
-          if (firstDate == null && secondDate == null) return 0;
-          if (firstDate == null) return 1;
-          if (secondDate == null) return -1;
-          return secondDate.compareTo(firstDate);
-        });
-
-      final formatter = NumberFormat.currency(
-        locale: currencyLocale,
-        symbol: currencySymbol,
-        decimalDigits: currencyDecimalDigits,
+      final bytes = await buildExpenseReportBytes(
+        expenses,
+        accountLabel: AuthService.currentUser?.email ?? 'Unknown',
       );
-
-      // Aggregations for summary section
-      double grandTotal = 0;
-      final Map<String, double> categoryAmounts = {};
-      final Map<String, int> categoryCounts = {};
-      final Map<String, double> typeAmounts = {
-        'expected': 0.0,
-        'unexpected': 0.0,
-        'others': 0.0,
-      };
-      final Map<String, int> typeCounts = {
-        'expected': 0,
-        'unexpected': 0,
-        'others': 0,
-      };
-
-      Map<String, dynamic>? highestExpenseItem;
-      double highestExpenseAmount = 0.0;
-
-      for (final expense in sortedExpenses) {
-        final amountIdr = expense['amount'] is int
-            ? expense['amount'] as int
-            : int.tryParse(expense['amount'].toString()) ?? 0;
-        final amount = amountIdr * appExchangeRate.value;
-        grandTotal += amount;
-
-        if (amount > highestExpenseAmount) {
-          highestExpenseAmount = amount;
-          highestExpenseItem = expense;
-        }
-
-        final cat = (expense['category']?.toString() ?? 'lainnya')
-            .trim()
-            .toLowerCase();
-        categoryAmounts[cat] = (categoryAmounts[cat] ?? 0.0) + amount;
-        categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
-
-        final t = (expense['type']?.toString() ?? 'others')
-            .trim()
-            .toLowerCase();
-        final key = typeAmounts.containsKey(t) ? t : 'others';
-        typeAmounts[key] = typeAmounts[key]! + amount;
-        typeCounts[key] = (typeCounts[key] ?? 0) + 1;
-      }
-
-      final sortedCategories = categoryAmounts.keys.toList()
-        ..sort((a, b) => categoryAmounts[b]!.compareTo(categoryAmounts[a]!));
-
-      final avgExpense = sortedExpenses.isNotEmpty
-          ? grandTotal / sortedExpenses.length
-          : 0.0;
-      final expectedPct = grandTotal > 0
-          ? (typeAmounts['expected']! / grandTotal) * 100
-          : 0.0;
-      final unexpectedPct = grandTotal > 0
-          ? (typeAmounts['unexpected']! / grandTotal) * 100
-          : 0.0;
-      final othersPct = grandTotal > 0
-          ? (typeAmounts['others']! / grandTotal) * 100
-          : 0.0;
-      final isHighUnexpected = unexpectedPct > 35;
-
-      final document = pw.Document();
-      document.addPage(
-        pw.MultiPage(
-          build: (context) => [
-            _buildPage1Header(),
-            pw.SizedBox(height: 6),
-            _buildPage1Metadata(),
-            pw.SizedBox(height: 14),
-            _buildTransactionsTable(sortedExpenses, formatter),
-            pw.SizedBox(height: 10),
-            _buildTotalBox(grandTotal, formatter),
-          ],
-        ),
-      );
-
-      // PAGE 2: EXPENSE SUMMARY & ANALYTICS
-      document.addPage(
-        pw.MultiPage(
-          build: (context) => [
-            _buildPage2Header(),
-            pw.SizedBox(height: 6),
-            _buildPage2Metadata(),
-            pw.SizedBox(height: 14),
-            _buildKpiBoxes(grandTotal, avgExpense, highestExpenseAmount,
-                highestExpenseItem, sortedExpenses.length, sortedCategories.length, formatter),
-            pw.SizedBox(height: 14),
-            _buildCategoryBreakdown(
-                grandTotal, categoryAmounts, categoryCounts, sortedCategories, formatter),
-            pw.SizedBox(height: 14),
-            _buildTypeBreakdown(
-                expectedPct, unexpectedPct, othersPct, typeAmounts, typeCounts,
-                isHighUnexpected, formatter),
-          ],
-        ),
-      );
-
-      await _saveAndOpenPdf(context, document);
+      if (!context.mounted) return;
+      await _saveAndOpenPdf(context, bytes);
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Export expense report');
       if (!context.mounted) return;
@@ -152,6 +43,132 @@ class PdfExportService {
         context,
       ).showSnackBar(SnackBar(content: Text('Could not export PDF: $error')));
     }
+  }
+
+  /// Builds the expense-report PDF bytes, embedding the raw rows as a backup
+  /// payload so they can be restored exactly via PdfImportService.
+  static Future<Uint8List> buildExpenseReportBytes(
+    List<Map<String, dynamic>> expenses, {
+    String accountLabel = 'Unknown',
+  }) async {
+    final sortedExpenses = [...expenses]
+      ..sort((first, second) {
+        final firstDate = DateTime.tryParse(first['date']?.toString() ?? '');
+        final secondDate = DateTime.tryParse(
+          second['date']?.toString() ?? '',
+        );
+        if (firstDate == null && secondDate == null) return 0;
+        if (firstDate == null) return 1;
+        if (secondDate == null) return -1;
+        return secondDate.compareTo(firstDate);
+      });
+
+    final formatter = NumberFormat.currency(
+      locale: currencyLocale,
+      symbol: currencySymbol,
+      decimalDigits: currencyDecimalDigits,
+    );
+
+    // Aggregations for summary section
+    double grandTotal = 0;
+    final Map<String, double> categoryAmounts = {};
+    final Map<String, int> categoryCounts = {};
+    final Map<String, double> typeAmounts = {
+      'expected': 0.0,
+      'unexpected': 0.0,
+      'others': 0.0,
+    };
+    final Map<String, int> typeCounts = {
+      'expected': 0,
+      'unexpected': 0,
+      'others': 0,
+    };
+
+    Map<String, dynamic>? highestExpenseItem;
+    double highestExpenseAmount = 0.0;
+
+    for (final expense in sortedExpenses) {
+      final amountIdr = expense['amount'] is int
+          ? expense['amount'] as int
+          : int.tryParse(expense['amount'].toString()) ?? 0;
+      final amount = amountIdr * appExchangeRate.value;
+      grandTotal += amount;
+
+      if (amount > highestExpenseAmount) {
+        highestExpenseAmount = amount;
+        highestExpenseItem = expense;
+      }
+
+      final cat = (expense['category']?.toString() ?? 'lainnya')
+          .trim()
+          .toLowerCase();
+      categoryAmounts[cat] = (categoryAmounts[cat] ?? 0.0) + amount;
+      categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
+
+      final t = (expense['type']?.toString() ?? 'others')
+          .trim()
+          .toLowerCase();
+      final key = typeAmounts.containsKey(t) ? t : 'others';
+      typeAmounts[key] = typeAmounts[key]! + amount;
+      typeCounts[key] = (typeCounts[key] ?? 0) + 1;
+    }
+
+    final sortedCategories = categoryAmounts.keys.toList()
+      ..sort((a, b) => categoryAmounts[b]!.compareTo(categoryAmounts[a]!));
+
+    final avgExpense = sortedExpenses.isNotEmpty
+        ? grandTotal / sortedExpenses.length
+        : 0.0;
+    final expectedPct = grandTotal > 0
+        ? (typeAmounts['expected']! / grandTotal) * 100
+        : 0.0;
+    final unexpectedPct = grandTotal > 0
+        ? (typeAmounts['unexpected']! / grandTotal) * 100
+        : 0.0;
+    final othersPct = grandTotal > 0
+        ? (typeAmounts['others']! / grandTotal) * 100
+        : 0.0;
+    final isHighUnexpected = unexpectedPct > 35;
+
+    final document = pw.Document(
+      keywords: PdfImportService.backupPayload(expenses),
+    );
+    document.addPage(
+      pw.MultiPage(
+        build: (context) => [
+          _buildPage1Header(),
+          pw.SizedBox(height: 6),
+          _buildPage1Metadata(accountLabel),
+          pw.SizedBox(height: 14),
+          _buildTransactionsTable(sortedExpenses, formatter),
+          pw.SizedBox(height: 10),
+          _buildTotalBox(grandTotal, formatter),
+        ],
+      ),
+    );
+
+    // PAGE 2: EXPENSE SUMMARY & ANALYTICS
+    document.addPage(
+      pw.MultiPage(
+        build: (context) => [
+          _buildPage2Header(),
+          pw.SizedBox(height: 6),
+          _buildPage2Metadata(accountLabel),
+          pw.SizedBox(height: 14),
+          _buildKpiBoxes(grandTotal, avgExpense, highestExpenseAmount,
+              highestExpenseItem, sortedExpenses.length, sortedCategories.length, formatter),
+          pw.SizedBox(height: 14),
+          _buildCategoryBreakdown(
+              grandTotal, categoryAmounts, categoryCounts, sortedCategories, formatter),
+          pw.SizedBox(height: 14),
+          _buildTypeBreakdown(
+              expectedPct, unexpectedPct, othersPct, typeAmounts, typeCounts,
+              isHighUnexpected, formatter),
+        ],
+      ),
+    );
+
+    return document.save();
   }
 
   // --- PAGE 1 BUILDERS ---
@@ -194,12 +211,12 @@ class PdfExportService {
     );
   }
 
-  static pw.Widget _buildPage1Metadata() {
+  static pw.Widget _buildPage1Metadata(String accountLabel) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Text(
-          'Account: ${AuthService.currentUser?.email ?? 'Unknown'}',
+          'Account: $accountLabel',
           style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
         ),
         pw.Text(
@@ -406,12 +423,12 @@ class PdfExportService {
     );
   }
 
-  static pw.Widget _buildPage2Metadata() {
+  static pw.Widget _buildPage2Metadata(String accountLabel) {
     return pw.Row(
       mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
       children: [
         pw.Text(
-          'Account: ${AuthService.currentUser?.email ?? 'Unknown'}',
+          'Account: $accountLabel',
           style: const pw.TextStyle(fontSize: 9, color: pdf.PdfColors.grey700),
         ),
         pw.Text(
@@ -700,8 +717,7 @@ class PdfExportService {
   // --- SAVE & OPEN ---
 
   static Future<void> _saveAndOpenPdf(
-      BuildContext context, pw.Document document) async {
-    final Uint8List bytes = await document.save();
+      BuildContext context, Uint8List bytes) async {
     final fileName =
         'expense-report-${DateTime.now().millisecondsSinceEpoch}.pdf';
     String? path;

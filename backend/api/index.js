@@ -129,11 +129,10 @@ function createApp() {
   // Expense CRUD routes
   app.post("/api/users", requireAuth, expensesRoutes.createExpense);
   app.get("/api/users", requireAuth, expensesRoutes.listAllExpenses);
-  app.get("/api/users/:id", requireAuth, expensesRoutes.getExpense);
-  app.put("/api/users/:id", requireAuth, expensesRoutes.updateExpense);
-  app.delete("/api/users/:id", requireAuth, expensesRoutes.removeExpense);
+  app.get("/api/users/:localId", requireAuth, expensesRoutes.getExpense);
+  app.put("/api/users/:localId", requireAuth, expensesRoutes.updateExpense);
+  app.delete("/api/users/:localId", requireAuth, expensesRoutes.removeExpense);
   app.post("/api/users/delete-all", requireAuth, expensesRoutes.deleteAllUserExpenses);
-  app.get("/api/users/local/:localId", requireAuth, expensesRoutes.getExpenseByLocal);
 
   // SSE Events route
   app.get("/api/events", eventsRoutes.sseEvents);

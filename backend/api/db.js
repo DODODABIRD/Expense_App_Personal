@@ -27,7 +27,6 @@ async function ensureSchema() {
   const db = getPool();
   await db.query(`
     CREATE TABLE IF NOT EXISTS expenses (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       owner_id TEXT NOT NULL,
       local_id TEXT NOT NULL,
       name TEXT NOT NULL,
@@ -40,11 +39,15 @@ async function ensureSchema() {
       UNIQUE (owner_id, local_id)
     );
     CREATE INDEX IF NOT EXISTS expenses_owner_id_idx ON expenses (owner_id);
+    ALTER TABLE expenses DROP COLUMN IF EXISTS id;
     CREATE TABLE IF NOT EXISTS ai_notification_references (
       owner_id TEXT PRIMARY KEY,
       items JSONB NOT NULL DEFAULT '[]'::jsonb,
+      summary JSONB NOT NULL DEFAULT '{}'::jsonb,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    ALTER TABLE ai_notification_references
+      ADD COLUMN IF NOT EXISTS summary JSONB NOT NULL DEFAULT '{}'::jsonb;
   `);
   schemaReady = true;
 }
@@ -57,7 +60,6 @@ async function connectDB() {
 function toExpenseJson(row) {
   if (!row) return null;
   return {
-    _id: String(row.id),
     ownerId: row.owner_id,
     localId: row.local_id,
     name: row.name,
@@ -74,7 +76,7 @@ async function upsertExpense(ownerId, fields) {
   const localId = String(fields.localId);
   const name = String(fields.name ?? "");
   const amount = Number.isFinite(Number(fields.amount))
-    ? Math.round(Number(fields.amount))
+    ? Math.round(Number(fields.amount)) 
     : 0;
   const category = String(fields.category ?? "lainnya");
   const type = String(fields.type ?? "unexpected");
@@ -112,14 +114,6 @@ async function listExpenses(ownerId) {
   return result.rows.map(toExpenseJson);
 }
 
-async function getExpenseById(ownerId, id) {
-  const result = await getPool().query(
-    `SELECT * FROM expenses WHERE id = $1 AND owner_id = $2`,
-    [id, ownerId]
-  );
-  return toExpenseJson(result.rows[0]);
-}
-
 async function getExpenseByLocalId(ownerId, localId) {
   const result = await getPool().query(
     `SELECT * FROM expenses WHERE local_id = $1 AND owner_id = $2`,
@@ -128,8 +122,8 @@ async function getExpenseByLocalId(ownerId, localId) {
   return toExpenseJson(result.rows[0]);
 }
 
-async function updateExpenseById(ownerId, id, fields) {
-  const existing = await getExpenseById(ownerId, id);
+async function updateExpenseByLocalId(ownerId, localId, fields) {
+  const existing = await getExpenseByLocalId(ownerId, localId);
   if (!existing) return null;
 
   const name = fields.name !== undefined ? String(fields.name) : existing.name;
@@ -150,10 +144,10 @@ async function updateExpenseById(ownerId, id, fields) {
          type = $6,
          date = $7,
          updated_at = now()
-     WHERE id = $1 AND owner_id = $2
+     WHERE local_id = $1 AND owner_id = $2
      RETURNING *`,
     [
-      id,
+      String(localId),
       ownerId,
       name,
       amount,
@@ -165,10 +159,10 @@ async function updateExpenseById(ownerId, id, fields) {
   return toExpenseJson(result.rows[0]);
 }
 
-async function deleteExpenseById(ownerId, id) {
+async function deleteExpenseByLocalId(ownerId, localId) {
   await getPool().query(
-    `DELETE FROM expenses WHERE id = $1 AND owner_id = $2`,
-    [id, ownerId]
+    `DELETE FROM expenses WHERE local_id = $1 AND owner_id = $2`,
+    [String(localId), ownerId]
   );
 }
 
@@ -192,17 +186,27 @@ async function listRecentExpensesForContext(ownerId, limit) {
   return result.rows;
 }
 
-async function upsertNotificationReference(ownerId, items) {
+async function upsertNotificationReference(ownerId, items, summary = {}) {
   const result = await getPool().query(
-    `INSERT INTO ai_notification_references (owner_id, items, updated_at)
-     VALUES ($1, $2::jsonb, now())
+    `INSERT INTO ai_notification_references (owner_id, items, summary, updated_at)
+     VALUES ($1, $2::jsonb, $3::jsonb, now())
      ON CONFLICT (owner_id) DO UPDATE SET
        items = EXCLUDED.items,
+       summary = EXCLUDED.summary,
        updated_at = now()
      RETURNING items`,
-    [ownerId, JSON.stringify(items)]
+    [ownerId, JSON.stringify(items), JSON.stringify(summary)]
   );
   return result.rows[0]?.items || [];
+}
+
+async function loadNotificationSummary(ownerId) {
+  const result = await getPool().query(
+    `SELECT summary FROM ai_notification_references WHERE owner_id = $1`,
+    [ownerId]
+  );
+  const summary = result.rows[0]?.summary;
+  return summary && typeof summary === "object" ? summary : null;
 }
 
 async function loadNotificationReferenceItems(ownerId) {
@@ -213,10 +217,6 @@ async function loadNotificationReferenceItems(ownerId) {
   return result.rows[0]?.items || [];
 }
 
-function isInvalidUuidError(err) {
-  return err?.code === "22P02";
-}
-
 function setPool(customPool) {
   pool = customPool;
   schemaReady = false;
@@ -225,19 +225,18 @@ function setPool(customPool) {
 module.exports = {
   connectDB,
   deleteAllExpenses,
-  deleteExpenseById,
+  deleteExpenseByLocalId,
   ensureSchema,
-  getExpenseById,
   getExpenseByLocalId,
   getPool,
-  isInvalidUuidError,
   listExpenses,
   listRecentExpensesForContext,
   loadNotificationReferenceItems,
+  loadNotificationSummary,
   setPool,
   sslFromDatabaseUrl,
   toExpenseJson,
-  updateExpenseById,
+  updateExpenseByLocalId,
   upsertExpense,
   upsertNotificationReference,
 };

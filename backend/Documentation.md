@@ -17,7 +17,7 @@ Dokumen ini memuat spesifikasi arsitektur, daftar seluruh fitur, alur kerja sist
 10. [Mesin Sinkronisasi Offline-First & Rekonsiliasi Cloud](#10-mesin-sinkronisasi-offline-first--rekonsiliasi-cloud)
 11. [Mesin Ekspor Dokumen Laporan PDF](#11-mesin-ekspor-dokumen-laporan-pdf)
 12. [Struktur Database Lokal (SQLite Schema)](#12-struktur-database-lokal-sqlite-schema)
-13. [Spesifikasi Lengkap Cloud Backend REST API & Mongoose Schema](#13-spesifikasi-lengkap-cloud-backend-rest-api--mongoose-schema)
+13. [Spesifikasi Lengkap Cloud Backend REST API & PostgreSQL Schema](#13-spesifikasi-lengkap-cloud-backend-rest-api--postgresql-schema)
 
 ---
 
@@ -32,7 +32,7 @@ graph TD
     Services <--> DB
     Services <--> Firebase[Firebase Authentication]
     Services <--> Backend[Cloud API: dododabird.us/api]
-    Backend <--> Mongo[(MongoDB Cloud Database)]
+    Backend <--> PG[(PostgreSQL Database)]
     AndroidNative[Android NotificationListenerService] -->|EventChannel| Services
 ```
 
@@ -40,7 +40,7 @@ graph TD
 * **Frontend Framework:** Flutter (Dart SDK ^3.11.0)
 * **Local Database:** SQLite via `sqflite` (untuk penyimpanan instan offline & state cache)
 * **User Authentication:** Firebase Authentication (Email/Password, Token Refresh)
-* **Cloud API & Storage:** Node.js / Express API dengan MongoDB (Cloud Sync, Exchange Rates, Receipt OCR, & AI Parser)
+* **Cloud API & Storage:** Node.js / Express API dengan PostgreSQL (Cloud Sync, Exchange Rates, Receipt OCR, & AI Parser)
 * **Native Android Integration:** Kotlin `NotificationListenerService`, `MethodChannel`, dan `EventChannel`
 
 ---
@@ -277,23 +277,22 @@ Diatur oleh [notification_permission_page.dart](file:///c:/Dev/Flutter/Expense_A
 
 ## 10. Mesin Sinkronisasi Offline-First & Rekonsiliasi Cloud
 
-Aplikasi dirancang agar dapat digunakan sepenuhnya tanpa internet, dan melakukan rekonsiliasi data secara cerdas saat terhubung ke server backend MongoDB.
+Aplikasi dirancang agar dapat digunakan sepenuhnya tanpa internet, dan melakukan rekonsiliasi data secara cerdas saat terhubung ke server backend PostgreSQL.
 
 ### Protokol Sinkronisasi:
 1. **Penanda Status (`synced` flag):**
-   * `synced = 0`: Transaksi dibuat/diubah secara lokal dan belum tersinkron ke MongoDB.
-   * `synced = 1`: Transaksi sudah tersimpan identik di cloud dengan memegang referensi `mongoId`.
+   * `synced = 0`: Transaksi dibuat/diubah secara lokal dan belum tersinkron ke cloud.
+   * `synced = 1`: Transaksi sudah tersimpan identik di cloud. Tidak ada ID server yang disimpan di perangkat; identitas transaksi adalah pasangan `ownerId` + `localId`.
 2. **Background Push (`syncPendingExpenses`):**
    * Mengambil seluruh baris di `my_table` dengan `synced = 0`.
-   * Jika belum memiliki `mongoId`: Memanggil `POST /users` $\rightarrow$ mendapatkan `_id` $\rightarrow$ update `mongoId` & `synced = 1`.
-   * Jika sudah memiliki `mongoId`: Memanggil `PUT /users/:id` $\rightarrow$ update data cloud $\rightarrow$ tandai `synced = 1`.
+   * Memanggil `POST /users` (upsert idempoten berdasarkan `ownerId` + `localId`) $\rightarrow$ tandai `synced = 1`.
 3. **Rekonsiliasi Tarik Data Cloud (`importMissingExpenses`):**
    * Saat user berpindah perangkat atau menginstal ulang, fitur "Load Online Expenses" menarik seluruh data dari backend.
    * **Algoritma Deduplikasi:**
      ```dart
-     final localMongoIds = localRows.map((r) => r['mongoId']).toSet();
+     final localIds = localRows.map((r) => r['id'].toString()).toSet();
      for (final online in onlineExpenses) {
-       if (!localMongoIds.contains(online['_id'])) {
+       if (!localIds.contains(online['localId'].toString())) {
          // Masukkan hanya transaksi yang belum ada di database lokal
          await db.insert('my_table', ...);
        }
@@ -327,7 +326,7 @@ Database tersimpan di path aplikasi lokal sebagai `my_db.db` (versi database: 5)
 | Kolom | Tipe Data | Keterangan |
 | :--- | :--- | :--- |
 | `id` | INTEGER PRIMARY KEY AUTOINCREMENT | ID transaksi lokal unik |
-| `mongoId` | TEXT (Nullable) | ID dokumen ObjectId di MongoDB Cloud |
+| `mongoId` | TEXT (Nullable) | Kolom legacy; tidak dipakai lagi |
 | `ownerId` | TEXT NOT NULL | Firebase UID pemilik transaksi (Multi-tenant) |
 | `name` | TEXT NOT NULL | Nama pengeluaran / Merchant |
 | `amount` | INTEGER NOT NULL | Nominal uang dalam mata uang basis IDR |
@@ -353,27 +352,27 @@ Database tersimpan di path aplikasi lokal sebagai `my_db.db` (versi database: 5)
 
 ---
 
-## 13. Spesifikasi Lengkap Cloud Backend REST API & Mongoose Schema
+## 13. Spesifikasi Lengkap Cloud Backend REST API & PostgreSQL Schema
 
-Backend dibangun di atas Node.js & Express 5 yang di-host secara serverless di Vercel, diamankan dengan Cloudflare Edge, dan menggunakan MongoDB Atlas sebagai basis data dokumen cloud.
+Backend dibangun di atas Node.js & Express 5 yang di-host secara serverless di Vercel, diamankan dengan Cloudflare Edge, dan menggunakan PostgreSQL sebagai basis data cloud.
 
-### Skema Mongoose (`ExpenseSchema`):
-```javascript
-const ExpenseSchema = new mongoose.Schema(
-  {
-    ownerId: { type: String, required: true, index: true },
-    localId: { type: String, required: true },
-    name: { type: String, required: true },
-    amount: { type: Number, required: true },
-    category: { type: String, required: true },
-    type: { type: String, required: true }, // 'expected' | 'unexpected' | 'others'
-    date: { type: String, required: true }, // 'YYYY-MM-DD'
-  },
-  { timestamps: true }
+### Skema PostgreSQL (`expenses`):
+```sql
+CREATE TABLE expenses (
+  owner_id TEXT NOT NULL,
+  local_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  category TEXT NOT NULL,
+  type TEXT NOT NULL,
+  date TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Identitas natural: setiap operasi client memakai (owner_id, local_id)
+  UNIQUE (owner_id, local_id)
 );
 
-// Compound unique index menjamin idempotensi upsert per local ID
-ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
+CREATE INDEX expenses_owner_id_idx ON expenses (owner_id);
 ```
 
 ### Matriks Endpoint REST API:
@@ -382,11 +381,10 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });
 | :--- | :--- | :--- | :--- |
 | `GET` | `/api/users` | Bearer JWT | Mengambil seluruh transaksi milik pengguna yang terautentikasi |
 | `POST` | `/api/users` | Bearer JWT | Membuat atau meng-upsert transaksi baru berdasarkan `localId` |
-| `GET` | `/api/users/:id` | Bearer JWT | Mengambil satu transaksi berdasarkan MongoDB ObjectId |
-| `PUT` | `/api/users/:id` | Bearer JWT | Memperbarui data transaksi berdasarkan MongoDB ObjectId |
-| `DELETE` | `/api/users/:id` | Bearer JWT | Menghapus permanen satu transaksi berdasarkan MongoDB ObjectId |
+| `GET` | `/api/users/:localId` | Bearer JWT | Mengambil satu transaksi berdasarkan identifier lokal SQLite |
+| `PUT` | `/api/users/:localId` | Bearer JWT | Memperbarui data transaksi berdasarkan identifier lokal SQLite |
+| `DELETE` | `/api/users/:localId` | Bearer JWT | Menghapus permanen satu transaksi berdasarkan identifier lokal SQLite |
 | `POST` | `/api/users/delete-all` | Bearer JWT | Menghapus massal seluruh transaksi milik pengguna |
-| `GET` | `/api/users/local/:localId` | Bearer JWT | Mengambil transaksi berdasarkan identifier lokal SQLite |
 | `POST` | `/api/parse-receipt` | Bearer JWT | Upload foto struk base64 & ekstraksi item via Groq -> Azure fallback (maksimal 8 detik) |
 | `POST` | `/api/parse-notification` | Bearer JWT | AI Parsing teks notifikasi Android perbankan menjadi objek transaksi |
 | `GET` | `/api/exchange-rates` | Bearer JWT | Mengambil kurs mata uang global real-time (basis IDR) |
