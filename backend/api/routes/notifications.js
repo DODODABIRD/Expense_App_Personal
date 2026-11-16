@@ -1,6 +1,7 @@
 const { requireAuth } = require("../middleware/auth");
 const {
   buildNotificationTemplate,
+  isNotificationTemplate,
   loadNotificationContext,
   refreshNotificationContext,
   MAX_NOTIFICATION_CONTEXT_ITEMS,
@@ -8,9 +9,30 @@ const {
 const {
   listRecentExpensesForContext,
   upsertNotificationReference,
+  loadNotificationReference,
   loadNotificationReferenceItems,
   connectDB,
 } = require("../db");
+
+async function getNotificationReference(req, res) {
+  try {
+    await connectDB();
+    const stored = await loadNotificationReference(req.user.uid);
+    const items = Array.isArray(stored?.items) ? stored.items : [];
+    const summary = stored?.summary;
+    const template = isNotificationTemplate(summary)
+      ? summary
+      : buildNotificationTemplate(items);
+    return res.json({
+      updated: true,
+      itemCount: items.length,
+      updatedAt: stored?.updated_at || null,
+      template,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+}
 
 async function putNotificationReference(req, res) {
   if (!Array.isArray(req.body?.items)) {
@@ -69,6 +91,7 @@ async function refreshNotificationRef(req, res) {
 }
 
 module.exports = {
+  getNotificationReference,
   putNotificationReference,
   refreshNotificationRef,
 };

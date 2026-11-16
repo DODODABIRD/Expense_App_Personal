@@ -1,5 +1,10 @@
 const { Pool } = require("pg");
 
+// Static requires keep the seeds inside the serverless bundle. The database is
+// the source of truth after the first read; these files are only the seed.
+const PORTFOLIO_SEED = require("../content/portfolio.json");
+const RAG_KNOWLEDGE_SEED = require("../public/asset/rag_knowledge.json");
+
 let pool = null;
 let schemaReady = false;
 
@@ -70,6 +75,45 @@ async function ensureSchema() {
     );
     CREATE INDEX IF NOT EXISTS ai_provider_events_created_at_idx
       ON ai_provider_events (created_at DESC);
+    CREATE TABLE IF NOT EXISTS portfolio_content (
+      key TEXT PRIMARY KEY,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS rag_knowledge (
+      key TEXT PRIMARY KEY,
+      data JSONB NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS rag_chat_events (
+      id BIGSERIAL PRIMARY KEY,
+      question TEXT NOT NULL,
+      answer TEXT,
+      provider TEXT NOT NULL,
+      latency_ms INTEGER,
+      interested BOOLEAN NOT NULL DEFAULT false,
+      answered BOOLEAN NOT NULL DEFAULT false,
+      feedback TEXT,
+      feedback_at TIMESTAMPTZ,
+      resolved_at TIMESTAMPTZ,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS rag_chat_events_created_at_idx
+      ON rag_chat_events (created_at DESC);
+    CREATE INDEX IF NOT EXISTS rag_chat_events_feedback_idx
+      ON rag_chat_events (feedback);
+    CREATE TABLE IF NOT EXISTS device_syncs (
+      owner_id TEXT NOT NULL,
+      device_id TEXT NOT NULL,
+      device_name TEXT,
+      platform TEXT,
+      app_version TEXT,
+      expense_count INTEGER,
+      last_sync_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (owner_id, device_id)
+    );
+    CREATE INDEX IF NOT EXISTS device_syncs_last_sync_idx
+      ON device_syncs (last_sync_at DESC);
   `);
   schemaReady = true;
 }
@@ -231,6 +275,14 @@ async function loadNotificationSummary(ownerId) {
   return summary && typeof summary === "object" ? summary : null;
 }
 
+async function loadNotificationReference(ownerId) {
+  const result = await getPool().query(
+    `SELECT items, summary, updated_at FROM ai_notification_references WHERE owner_id = $1`,
+    [ownerId]
+  );
+  return result.rows[0] || null;
+}
+
 async function loadNotificationReferenceItems(ownerId) {
   const result = await getPool().query(
     `SELECT items FROM ai_notification_references WHERE owner_id = $1`,
@@ -369,6 +421,15 @@ async function getAdminOverview() {
      GROUP BY date
      ORDER BY date ASC`
   );
+  const monthly = await db.query(
+    `SELECT substring(date, 1, 7) AS month,
+            COUNT(*)::int AS count,
+            COALESCE(SUM(amount), 0)::bigint AS total
+     FROM expenses
+     WHERE substring(date, 1, 7) >= to_char(now() - interval '12 months', 'YYYY-MM')
+     GROUP BY month
+     ORDER BY month ASC`
+  );
 
   const totalsRow = totals.rows[0] || {};
   return {
@@ -386,6 +447,11 @@ async function getAdminOverview() {
     })),
     daily: daily.rows.map((row) => ({
       date: row.date,
+      count: Number(row.count),
+      total: Number(row.total),
+    })),
+    monthly: monthly.rows.map((row) => ({
+      month: row.month,
       count: Number(row.count),
       total: Number(row.total),
     })),
@@ -428,6 +494,257 @@ async function getAiProviderStats() {
   return { providers: providers.rows, recent: recent.rows };
 }
 
+async function getPortfolioContent() {
+  await ensureSchema();
+  const result = await getPool().query(
+    `SELECT data FROM portfolio_content WHERE key = 'main'`
+  );
+  if (result.rows[0]?.data) return result.rows[0].data;
+
+  await savePortfolioContent(PORTFOLIO_SEED);
+  return PORTFOLIO_SEED;
+}
+
+async function savePortfolioContent(data) {
+  await ensureSchema();
+  await getPool().query(
+    `INSERT INTO portfolio_content (key, data, updated_at)
+     VALUES ('main', $1::jsonb, now())
+     ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
+    [JSON.stringify(data)]
+  );
+  return data;
+}
+
+async function getRagKnowledge() {
+  await ensureSchema();
+  const result = await getPool().query(
+    `SELECT data FROM rag_knowledge WHERE key = 'main'`
+  );
+  if (result.rows[0]?.data) return result.rows[0].data;
+
+  await saveRagKnowledge(RAG_KNOWLEDGE_SEED);
+  return RAG_KNOWLEDGE_SEED;
+}
+
+async function saveRagKnowledge(data) {
+  await ensureSchema();
+  await getPool().query(
+    `INSERT INTO rag_knowledge (key, data, updated_at)
+     VALUES ('main', $1::jsonb, now())
+     ON CONFLICT (key) DO UPDATE SET data = EXCLUDED.data, updated_at = now()`,
+    [JSON.stringify(data)]
+  );
+  return data;
+}
+
+async function recordRagChatEvent({
+  question,
+  answer,
+  provider,
+  latencyMs,
+  interested,
+  answered,
+}) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `INSERT INTO rag_chat_events
+       (question, answer, provider, latency_ms, interested, answered)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id`,
+    [
+      String(question).slice(0, 1000),
+      answer ? String(answer).slice(0, 4000) : null,
+      String(provider || "local"),
+      Number.isFinite(Number(latencyMs)) ? Math.round(Number(latencyMs)) : null,
+      Boolean(interested),
+      Boolean(answered),
+    ]
+  );
+  return Number(result.rows[0]?.id) || null;
+}
+
+async function updateRagFeedback(id, vote) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `UPDATE rag_chat_events
+     SET feedback = $2, feedback_at = now()
+     WHERE id = $1
+     RETURNING id, feedback`,
+    [Number(id), String(vote)]
+  );
+  return result.rows[0] || null;
+}
+
+function toRagEventJson(row) {
+  return {
+    id: Number(row.id),
+    question: row.question,
+    answer: row.answer,
+    provider: row.provider,
+    latencyMs: row.latency_ms === null ? null : Number(row.latency_ms),
+    interested: Boolean(row.interested),
+    answered: Boolean(row.answered),
+    feedback: row.feedback || null,
+    resolvedAt: row.resolved_at,
+    createdAt: row.created_at,
+  };
+}
+
+async function listRagEvents({ limit, feedback, unanswered } = {}) {
+  await ensureSchema();
+  const clauses = [];
+  const params = [];
+
+  if (feedback) {
+    params.push(String(feedback));
+    clauses.push(`feedback = $${params.length}`);
+  }
+  if (unanswered) {
+    clauses.push(`(answered = false OR feedback = 'down') AND resolved_at IS NULL`);
+  }
+
+  params.push(Math.min(500, Math.max(1, Number(limit) || 100)));
+  const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+  const result = await getPool().query(
+    `SELECT id, question, answer, provider, latency_ms, interested, answered,
+            feedback, resolved_at, created_at
+     FROM rag_chat_events
+     ${where}
+     ORDER BY created_at DESC, id DESC
+     LIMIT $${params.length}`,
+    params
+  );
+  return result.rows.map(toRagEventJson);
+}
+
+async function getRagStats() {
+  await ensureSchema();
+  const stats = await getPool().query(
+    `SELECT COUNT(*)::int AS total,
+            COUNT(*) FILTER (WHERE created_at >= now() - interval '7 days')::int AS total_7d,
+            COUNT(*) FILTER (WHERE feedback = 'up')::int AS up,
+            COUNT(*) FILTER (WHERE feedback = 'down')::int AS down,
+            COUNT(*) FILTER (
+              WHERE (answered = false OR feedback = 'down') AND resolved_at IS NULL
+            )::int AS unanswered,
+            ROUND(AVG(latency_ms))::int AS avg_latency_ms
+     FROM rag_chat_events`
+  );
+  const providers = await getPool().query(
+    `SELECT provider,
+            COUNT(*)::int AS count,
+            ROUND(AVG(latency_ms))::int AS avg_latency_ms
+     FROM rag_chat_events
+     GROUP BY provider
+     ORDER BY count DESC`
+  );
+
+  const row = stats.rows[0] || {};
+  return {
+    totals: {
+      total: Number(row.total || 0),
+      total7d: Number(row.total_7d || 0),
+      up: Number(row.up || 0),
+      down: Number(row.down || 0),
+      unanswered: Number(row.unanswered || 0),
+      avgLatencyMs: row.avg_latency_ms === null ? null : Number(row.avg_latency_ms),
+    },
+    providers: providers.rows.map((item) => ({
+      provider: item.provider,
+      count: Number(item.count),
+      avgLatencyMs:
+        item.avg_latency_ms === null ? null : Number(item.avg_latency_ms),
+    })),
+  };
+}
+
+async function resolveRagEvent(id) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `UPDATE rag_chat_events
+     SET resolved_at = now()
+     WHERE id = $1
+     RETURNING id`,
+    [Number(id)]
+  );
+  return Boolean(result.rows[0]);
+}
+
+async function getMonthlyTrend() {
+  const result = await getPool().query(
+    `SELECT substring(date, 1, 7) AS month,
+            COUNT(*)::int AS count,
+            COALESCE(SUM(amount), 0)::bigint AS total
+     FROM expenses
+     WHERE substring(date, 1, 7) >= to_char(now() - interval '12 months', 'YYYY-MM')
+     GROUP BY month
+     ORDER BY month ASC`
+  );
+  return result.rows.map((row) => ({
+    month: row.month,
+    count: Number(row.count),
+    total: Number(row.total),
+  }));
+}
+
+async function upsertDeviceSync(ownerId, {
+  deviceId,
+  deviceName,
+  platform,
+  appVersion,
+  expenseCount,
+} = {}) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `INSERT INTO device_syncs
+       (owner_id, device_id, device_name, platform, app_version, expense_count, last_sync_at)
+     VALUES ($1, $2, $3, $4, $5, $6, now())
+     ON CONFLICT (owner_id, device_id) DO UPDATE SET
+       device_name = COALESCE(EXCLUDED.device_name, device_syncs.device_name),
+       platform = COALESCE(EXCLUDED.platform, device_syncs.platform),
+       app_version = COALESCE(EXCLUDED.app_version, device_syncs.app_version),
+       expense_count = COALESCE(EXCLUDED.expense_count, device_syncs.expense_count),
+       last_sync_at = now()
+     RETURNING *`,
+    [
+      String(ownerId),
+      String(deviceId),
+      deviceName ? String(deviceName).slice(0, 200) : null,
+      platform ? String(platform).slice(0, 100) : null,
+      appVersion ? String(appVersion).slice(0, 50) : null,
+      Number.isFinite(Number(expenseCount)) ? Math.round(Number(expenseCount)) : null,
+    ]
+  );
+  return result.rows[0] || null;
+}
+
+async function listDeviceSyncs(ownerId) {
+  await ensureSchema();
+  const params = [];
+  let where = "";
+  if (ownerId) {
+    params.push(String(ownerId));
+    where = `WHERE owner_id = $${params.length}`;
+  }
+  const result = await getPool().query(
+    `SELECT * FROM device_syncs
+     ${where}
+     ORDER BY last_sync_at DESC
+     LIMIT 500`,
+    params
+  );
+  return result.rows.map((row) => ({
+    ownerId: row.owner_id,
+    deviceId: row.device_id,
+    deviceName: row.device_name,
+    platform: row.platform,
+    appVersion: row.app_version,
+    expenseCount: row.expense_count === null ? null : Number(row.expense_count),
+    lastSyncAt: row.last_sync_at,
+  }));
+}
+
 module.exports = {
   connectDB,
   deleteAllExpenses,
@@ -436,20 +753,33 @@ module.exports = {
   getAdminOverview,
   getAiProviderStats,
   getExpenseByLocalId,
+  getMonthlyTrend,
   getPool,
+  getPortfolioContent,
+  getRagKnowledge,
+  getRagStats,
   insertAdminAudit,
   listAdminAuditLogs,
   listAdminExpenses,
+  listDeviceSyncs,
   listExpenseOwners,
   listExpenses,
+  listRagEvents,
   listRecentExpensesForContext,
+  loadNotificationReference,
   loadNotificationReferenceItems,
   loadNotificationSummary,
   recordAiProviderEvent,
+  recordRagChatEvent,
+  resolveRagEvent,
+  savePortfolioContent,
+  saveRagKnowledge,
   setPool,
   sslFromDatabaseUrl,
   toExpenseJson,
   updateExpenseByLocalId,
+  updateRagFeedback,
+  upsertDeviceSync,
   upsertExpense,
   upsertNotificationReference,
 };

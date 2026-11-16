@@ -29,7 +29,8 @@ class NotificationExpenseService {
 
   static const supportedApps = <String, String>{
     'com.bca': 'BCA Mobile',
-    'mybca': 'myBCA',
+    'com.mybca': 'myBCA',
+    'com.bca.mybca.omni.android': 'myBCA (Play Store)',
     'id.bmri.livin': 'Livin’ by Mandiri',
     'id.co.bni.newmobile': 'wondr by BNI',
     'src.com.bni': 'BNI Mobile',
@@ -121,7 +122,23 @@ class NotificationExpenseService {
   }
 
   Future<int> updateAiNotificationReference() async {
-    return Throw.updateAiNotificationReference();
+    final localExpenses = await DatabaseHelp.getData();
+    List<Map<String, dynamic>> onlineExpenses = const [];
+    try {
+      onlineExpenses = await Throw.getOnlineExpenses();
+    } catch (error, stackTrace) {
+      // Local expenses are enough to build the reference, so keep going offline.
+      captureAppError(
+        error,
+        stackTrace,
+        'Load online expenses for AI reference',
+      );
+    }
+    final items = buildAiNotificationReferenceItems(
+      localExpenses: localExpenses,
+      onlineExpenses: onlineExpenses,
+    );
+    return Throw.saveAiNotificationReference(items);
   }
 
   static List<Map<String, dynamic>> buildAiNotificationReferenceItems({
@@ -164,7 +181,12 @@ class NotificationExpenseService {
         ? rawAmount.round()
         : int.tryParse(rawAmount?.toString() ?? '');
     if (name.isEmpty || amount == null || amount <= 0) return null;
-    return {'expenseitem': name, 'expenseprice': amount};
+    final item = <String, dynamic>{'expenseitem': name, 'expenseprice': amount};
+    for (final field in ['category', 'type', 'date']) {
+      final value = expense[field]?.toString().trim();
+      if (value != null && value.isNotEmpty) item[field] = value;
+    }
+    return item;
   }
 
   Future<bool> isParserEnabled() async {
@@ -202,9 +224,15 @@ class NotificationExpenseService {
     if (onPendingNotificationAdded != null) {
       _onPendingNotificationAdded = onPendingNotificationAdded;
     }
-    if (_started || !Platform.isAndroid) return;
+    if (!Platform.isAndroid) return;
+
+    // Re-apply native settings on every call. The listener service may have
+    // been (re)created after the last call, and its SharedPreferences are the
+    // only state it reads on startup.
     await _methods.invokeMethod<void>('setParserActive', {'active': true});
     await setAllowedApps(await getAllowedApps());
+
+    if (_started) return;
     _started = true;
 
     // Retry any notifications that were queued when offline
@@ -247,10 +275,25 @@ class NotificationExpenseService {
           postTime: postTime,
         );
       } catch (error, stackTrace) {
+        if (error is UnparseableNotificationException) {
+          _logUnparsedNotification(
+            title: title,
+            message: message,
+            packageName: packageName,
+            reason: 'no local or cloud result',
+          );
+        } else if (error is AiRequiredNotificationException) {
+          _logUnparsedNotification(
+            title: title,
+            message: message,
+            packageName: packageName,
+            reason: 'queued for AI',
+          );
+        } else {
+          captureAppError(error, stackTrace, 'Process payment notification');
+        }
+
         if (error is! UnparseableNotificationException) {
-          if (error is! AiRequiredNotificationException) {
-            captureAppError(error, stackTrace, 'Process payment notification');
-          }
           await _enqueuePendingCloudNotification({
             'title': title,
             'message': message,
@@ -273,7 +316,6 @@ class NotificationExpenseService {
     required String message,
     required String packageName,
     required DateTime postTime,
-    bool aiRequired = false,
   }) async {
     Map<String, dynamic>? cloudParsed;
     Object? cloudError;
@@ -289,54 +331,94 @@ class NotificationExpenseService {
     }
 
     if (cloudParsed != null) {
-      await DatabaseHelp.insertPendingNotificationExpense(
-        name: cloudParsed['name'] as String,
-        amount: cloudParsed['amount'] as int,
-        date: postTime.toIso8601String().substring(0, 10),
-        category: cloudParsed['category'] as String,
-        type: cloudParsed['type'] as String,
-        sourceApp: packageName,
-        receivedAt: postTime,
+      await _insertPendingParsed(
+        parsed: cloudParsed,
+        packageName: packageName,
+        postTime: postTime,
       );
-      await _onPendingNotificationAdded?.call();
       return;
     }
 
-    final localParsed = aiRequired
-        ? null
-        : LocalNotificationParser.parse(
-            title: title,
-            message: message,
-            packageName: packageName,
-            timestamp: postTime,
-          );
-    if (aiRequired ||
-        LocalNotificationParser.isAmbiguousNotification(
-          title,
-          message,
-          localParsed,
-        )) {
+    final localParsed = LocalNotificationParser.parse(
+      title: title,
+      message: message,
+      packageName: packageName,
+      timestamp: postTime,
+    );
+
+    if (LocalNotificationParser.isAmbiguousNotification(
+      title,
+      message,
+      localParsed,
+    )) {
+      // Show what the local parser found instead of hiding it in the retry
+      // queue. The review page lets the user fix the merchant/category.
+      if (localParsed != null && localParsed.amount > 0) {
+        await _insertPendingParsed(
+          parsed: {
+            'name': localParsed.name,
+            'amount': localParsed.amount,
+            'category': localParsed.category,
+            'type': localParsed.type,
+          },
+          packageName: packageName,
+          postTime: postTime,
+          date: localParsed.date,
+        );
+        return;
+      }
       throw const AiRequiredNotificationException();
     }
 
     if (localParsed != null && localParsed.amount > 0) {
-      final date =
-          localParsed.date ?? postTime.toIso8601String().substring(0, 10);
-      await DatabaseHelp.insertPendingNotificationExpense(
-        name: localParsed.name,
-        amount: localParsed.amount,
-        date: date,
-        category: localParsed.category,
-        type: localParsed.type,
-        sourceApp: packageName,
-        receivedAt: postTime,
+      await _insertPendingParsed(
+        parsed: {
+          'name': localParsed.name,
+          'amount': localParsed.amount,
+          'category': localParsed.category,
+          'type': localParsed.type,
+        },
+        packageName: packageName,
+        postTime: postTime,
+        date: localParsed.date,
       );
-      await _onPendingNotificationAdded?.call();
       return;
     }
 
     if (cloudError != null) throw cloudError;
     throw const UnparseableNotificationException();
+  }
+
+  Future<void> _insertPendingParsed({
+    required Map<String, dynamic> parsed,
+    required String packageName,
+    required DateTime postTime,
+    String? date,
+  }) async {
+    await DatabaseHelp.insertPendingNotificationExpense(
+      name: parsed['name'] as String,
+      amount: parsed['amount'] as int,
+      date: date ?? postTime.toIso8601String().substring(0, 10),
+      category: parsed['category'] as String,
+      type: parsed['type'] as String,
+      sourceApp: packageName,
+      receivedAt: postTime,
+    );
+    await _onPendingNotificationAdded?.call();
+  }
+
+  void _logUnparsedNotification({
+    required String title,
+    required String message,
+    required String packageName,
+    required String reason,
+  }) {
+    captureAppError(
+      'Notification could not be parsed ($reason). '
+      'title="$title" text="$message"',
+      StackTrace.current,
+      'Unparsed notification from $packageName',
+    );
   }
 
   Future<Map<String, dynamic>?> _parseWithCloudParser({
@@ -448,7 +530,6 @@ class NotificationExpenseService {
             message: message,
             packageName: packageName,
             postTime: postTime,
-            aiRequired: item['aiRequired'] == true,
           );
         } on UnparseableNotificationException {
           // The notification was not an expense; it cannot succeed on retry.

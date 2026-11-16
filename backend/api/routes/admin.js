@@ -2,6 +2,8 @@ const express = require("express");
 const fs = require("fs");
 const path = require("path");
 const crypto = require("crypto");
+const { execFileSync } = require("child_process");
+const admin = require("firebase-admin");
 const { validateSession } = require("./adminLogin");
 const adminDataRouter = require("./adminData");
 const db = require("../db");
@@ -115,29 +117,21 @@ function hasHiddenSegment(relativePath) {
     .some((segment) => segment.startsWith("."));
 }
 
-function backupDirNames() {
-  if (!fs.existsSync(BACKUP_ROOT)) return [];
-  return fs
-    .readdirSync(BACKUP_ROOT, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && !entry.name.startsWith("."))
-    .map((entry) => entry.name)
-    .sort()
-    .reverse(); // newest first (names start with an ISO timestamp)
-}
-
-function backupFilePath(backupId, relativePath) {
-  const segments = relativePath.split("/");
-  return path.join(BACKUP_ROOT, backupId, ...segments);
+function backupDir(relativePath) {
+  return resolveWithin(BACKUP_ROOT, relativePath);
 }
 
 function createBackup(relativePath, absolutePath) {
   if (!fs.existsSync(absolutePath)) return null;
 
+  const dir = backupDir(relativePath);
+  if (!dir) return null;
+
   const stamp = new Date().toISOString().replace(/[:.]/g, "-");
   const backupId = `${stamp}-${crypto.randomBytes(3).toString("hex")}`;
-  const target = backupFilePath(backupId, relativePath);
+  const target = path.join(dir, backupId);
 
-  fs.mkdirSync(path.dirname(target), { recursive: true });
+  fs.mkdirSync(dir, { recursive: true });
   fs.copyFileSync(absolutePath, target);
   pruneBackups(relativePath);
 
@@ -150,10 +144,17 @@ function createBackup(relativePath, absolutePath) {
 }
 
 function listBackups(relativePath) {
-  return backupDirNames()
-    .map((backupId) => ({ backupId, fullPath: backupFilePath(backupId, relativePath) }))
-    .filter(({ fullPath }) => fs.existsSync(fullPath) && fs.statSync(fullPath).isFile())
-    .map(({ backupId, fullPath }) => {
+  const dir = backupDir(relativePath);
+  if (!dir || !fs.existsSync(dir)) return [];
+
+  return fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && BACKUP_ID_PATTERN.test(entry.name))
+    .map((entry) => entry.name)
+    .sort()
+    .reverse() // newest first (names start with an ISO timestamp)
+    .map((backupId) => {
+      const fullPath = path.join(dir, backupId);
       const stat = fs.statSync(fullPath);
       return {
         id: backupId,
@@ -165,13 +166,15 @@ function listBackups(relativePath) {
 }
 
 function pruneBackups(relativePath) {
-  const keep = listBackups(relativePath).slice(0, BACKUP_LIMIT);
-  const keepIds = new Set(keep.map((backup) => backup.id));
-  for (const backupId of backupDirNames()) {
-    const fullPath = backupFilePath(backupId, relativePath);
-    if (!fs.existsSync(fullPath)) continue;
-    if (keepIds.has(backupId)) continue;
-    fs.rmSync(path.join(BACKUP_ROOT, backupId), { recursive: true, force: true });
+  const dir = backupDir(relativePath);
+  if (!dir) return;
+
+  const backups = listBackups(relativePath);
+  const keep = new Set(backups.slice(0, BACKUP_LIMIT).map((backup) => backup.id));
+
+  for (const backup of backups) {
+    if (keep.has(backup.id)) continue;
+    fs.rmSync(path.join(dir, backup.id), { force: true });
   }
 }
 
@@ -359,15 +362,17 @@ router.post("/api/assets/restore", (req, res) => {
     return res.status(400).json({ success: false, error: "Invalid backup id" });
   }
 
-  const backupPath = resolveWithin(BACKUP_ROOT, `${backupId}/${relativePath}`);
+  const backupPath = resolveWithin(BACKUP_ROOT, `${relativePath}/${backupId}`);
   if (!backupPath || !fs.existsSync(backupPath) || !fs.statSync(backupPath).isFile()) {
     return res.status(404).json({ success: false, error: "Backup not found" });
   }
 
   try {
+    // Read first: creating the pre-restore backup can prune the selected one.
+    const restored = fs.readFileSync(backupPath);
     const currentBackup = createBackup(relativePath, targetPath);
     fs.mkdirSync(path.dirname(targetPath), { recursive: true });
-    fs.copyFileSync(backupPath, targetPath);
+    fs.writeFileSync(targetPath, restored);
     recordAudit(req, "asset_restored", relativePath, {
       backup: backupId,
       replacedWith: currentBackup?.id || null,
@@ -376,6 +381,142 @@ router.post("/api/assets/restore", (req, res) => {
   } catch (e) {
     res.status(500).json({ success: false, error: e.message });
   }
+});
+
+const HEALTH_ENV_KEYS = [
+  "DATABASE_URL",
+  "FIREBASE_SERVICE_ACCOUNT_JSON",
+  "ADMIN_SECRET",
+  "ADMIN_FIREBASE_UIDS",
+  "GROQ_API_KEY",
+  "GROQ_MODEL",
+  "GROQ_NOTIFICATION_MODEL",
+  "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT",
+  "AZURE_DOCUMENT_INTELLIGENCE_KEY",
+  "OPENROUTER_API_KEY",
+  "MONGODB_URI",
+];
+
+function directoryStats(root) {
+  const stats = { files: 0, totalBytes: 0, latestAt: null };
+
+  function walk(dir) {
+    let entries;
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch (e) {
+      return;
+    }
+
+    for (const entry of entries) {
+      if (entry.name.startsWith(".")) continue;
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        walk(fullPath);
+        continue;
+      }
+      if (!entry.isFile()) continue;
+
+      try {
+        const stat = fs.statSync(fullPath);
+        stats.files += 1;
+        stats.totalBytes += stat.size;
+        if (!stats.latestAt || stat.mtime > stats.latestAt) {
+          stats.latestAt = stat.mtime;
+        }
+      } catch (e) {}
+    }
+  }
+
+  walk(root);
+  return stats;
+}
+
+function gitValue(args) {
+  try {
+    return execFileSync("git", args, {
+      cwd: path.join(__dirname, "../.."),
+      encoding: "utf8",
+      timeout: 1500,
+      stdio: ["ignore", "pipe", "ignore"],
+    }).trim();
+  } catch (e) {
+    return null;
+  }
+}
+
+function runtimeCommit() {
+  const commit =
+    process.env.VERCEL_GIT_COMMIT_SHA ||
+    process.env.GIT_COMMIT ||
+    process.env.SOURCE_COMMIT ||
+    gitValue(["rev-parse", "HEAD"]);
+  const branch =
+    process.env.VERCEL_GIT_COMMIT_REF ||
+    gitValue(["rev-parse", "--abbrev-ref", "HEAD"]);
+  const status = gitValue(["status", "--porcelain"]);
+
+  return {
+    commit: commit || null,
+    shortCommit: commit ? commit.slice(0, 7) : null,
+    branch: branch || null,
+    message: gitValue(["log", "-1", "--pretty=%s"]),
+    dirty: status === null ? null : status.length > 0,
+  };
+}
+
+// GET /api/health - Database, Firebase, env, backups and runtime commit
+router.get("/api/health", async (req, res) => {
+  const database = { ok: false, latencyMs: null, error: null };
+  try {
+    await db.connectDB();
+    const started = Date.now();
+    await db.getPool().query("SELECT 1 AS ok");
+    database.ok = true;
+    database.latencyMs = Date.now() - started;
+  } catch (e) {
+    database.error = e.message;
+  }
+
+  let firebase = { initialized: false, projectId: null };
+  try {
+    if (admin.apps.length > 0) {
+      firebase = {
+        initialized: true,
+        projectId: admin.app().options?.projectId || null,
+      };
+    }
+  } catch (e) {}
+
+  const backups = directoryStats(BACKUP_ROOT);
+  const env = HEALTH_ENV_KEYS.map((key) => ({
+    key,
+    configured: Boolean(String(process.env[key] || "").trim()),
+  }));
+
+  res.set("Cache-Control", "no-store, max-age=0");
+  res.json({
+    success: true,
+    health: {
+      database,
+      firebase,
+      env,
+      missingEnv: env.filter((item) => !item.configured).map((item) => item.key),
+      backups: {
+        count: backups.files,
+        totalBytes: backups.totalBytes,
+        latestAt: backups.latestAt,
+      },
+      runtime: {
+        ...runtimeCommit(),
+        nodeVersion: process.version,
+        uptimeSeconds: Math.round(process.uptime()),
+        memoryRssBytes: process.memoryUsage().rss,
+        pid: process.pid,
+        nodeEnv: process.env.NODE_ENV || "development",
+      },
+    },
+  });
 });
 
 router.use((err, req, res, next) => {

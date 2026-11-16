@@ -9,7 +9,10 @@ const state = {
   pageSize: 50,
   txTotal: 0,
   backupsAsset: null,
-  activeTab: 'assets'
+  activeTab: 'assets',
+  portfolio: null,
+  ragEvents: [],
+  ragUnanswered: []
 };
 
 const rupiah = new Intl.NumberFormat('id-ID', {
@@ -71,6 +74,25 @@ function emptyRow(tbody, columns, message) {
   tbody.appendChild(tr);
 }
 
+function actionButton(label, className, onClick) {
+  const button = document.createElement('button');
+  button.className = 'btn ' + className;
+  button.textContent = label;
+  button.addEventListener('click', onClick);
+  return button;
+}
+
+function formatDuration(seconds) {
+  const total = Math.max(0, Math.round(Number(seconds) || 0));
+  const days = Math.floor(total / 86400);
+  const hours = Math.floor((total % 86400) / 3600);
+  const minutes = Math.floor((total % 3600) / 60);
+  if (days > 0) return days + 'd ' + hours + 'h';
+  if (hours > 0) return hours + 'h ' + minutes + 'm';
+  if (minutes > 0) return minutes + 'm ' + (total % 60) + 's';
+  return total + 's';
+}
+
 async function api(url, options) {
   const res = await fetch(url, Object.assign({ cache: 'no-store' }, options));
   if (res.status === 401) {
@@ -95,10 +117,13 @@ async function api(url, options) {
 
 const loaders = {
   assets: loadAssets,
+  content: loadContent,
   overview: loadOverview,
   transactions: loadTransactions,
   users: loadUsers,
   ai: loadAiUsage,
+  rag: loadRag,
+  health: loadHealth,
   audit: loadAudit
 };
 
@@ -404,6 +429,31 @@ async function loadOverview() {
       dailyBody.appendChild(tr);
     });
   }
+
+  const monthlyBody = $('monthlyBody');
+  monthlyBody.innerHTML = '';
+  const monthly = data.monthly || [];
+  const maxMonthTotal = monthly.reduce(function (max, row) {
+    return Math.max(max, row.total);
+  }, 0);
+
+  if (monthly.length === 0) {
+    emptyRow(monthlyBody, 4, 'No expenses in the last 12 months.');
+  } else {
+    monthly.forEach(function (row) {
+      const tr = document.createElement('tr');
+      const share = document.createElement('div');
+      share.className = 'bar';
+      const fill = document.createElement('span');
+      fill.style.width = (maxMonthTotal > 0 ? (row.total / maxMonthTotal) * 100 : 0) + '%';
+      share.appendChild(fill);
+      tr.appendChild(cell(row.month));
+      tr.appendChild(cell(String(row.count), 'right'));
+      tr.appendChild(cell(rupiah.format(row.total), 'right'));
+      tr.appendChild(cell(share));
+      monthlyBody.appendChild(tr);
+    });
+  }
 }
 
 /* Transactions */
@@ -432,7 +482,7 @@ async function loadTransactions() {
   const body = $('expensesBody');
   body.innerHTML = '';
   if ((data.expenses || []).length === 0) {
-    emptyRow(body, 6, 'No transactions match these filters.');
+    emptyRow(body, 7, 'No transactions match these filters.');
   } else {
     data.expenses.forEach(function (expense) {
       const tr = document.createElement('tr');
@@ -442,6 +492,20 @@ async function loadTransactions() {
       tr.appendChild(cell(expense.type));
       tr.appendChild(cell(rupiah.format(expense.amount), 'right'));
       tr.appendChild(cell(expense.ownerId, 'mono'));
+
+      const actions = document.createElement('div');
+      actions.className = 'row-actions';
+      actions.appendChild(
+        actionButton('Edit', 'btn-small btn-ghost', function () {
+          openExpenseDialog(expense);
+        })
+      );
+      actions.appendChild(
+        actionButton('Delete', 'btn-small btn-danger', function () {
+          deleteExpense(expense);
+        })
+      );
+      tr.appendChild(cell(actions));
       body.appendChild(tr);
     });
   }
@@ -457,6 +521,80 @@ function exportCsv() {
   window.location.href = '/dodo/api/expenses/export.csv?' + params.toString();
 }
 
+function openExpenseDialog(expense) {
+  $('expenseOwner').value = expense.ownerId;
+  $('expenseLocalId').value = expense.localId;
+  $('expenseName').value = expense.name || '';
+  $('expenseAmount').value = expense.amount || 0;
+  $('expenseCategory').value = expense.category || '';
+  $('expenseType').value = expense.type || 'unexpected';
+  $('expenseDate').value = formatDay(expense.date);
+  $('expenseDialog').showModal();
+}
+
+async function saveExpense(event) {
+  event.preventDefault();
+  const owner = $('expenseOwner').value;
+  const localId = $('expenseLocalId').value;
+
+  const payload = {
+    name: $('expenseName').value.trim(),
+    amount: Number($('expenseAmount').value),
+    category: $('expenseCategory').value.trim(),
+    type: $('expenseType').value,
+    date: $('expenseDate').value
+  };
+
+  try {
+    await api(
+      '/dodo/api/expenses/' +
+        encodeURIComponent(owner) +
+        '/' +
+        encodeURIComponent(localId),
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      }
+    );
+    $('expenseDialog').close();
+    showStatus('Expense updated. Live clients refresh immediately.', 'success');
+    await loadTransactions();
+  } catch (err) {
+    showStatus('Update failed: ' + err.message, 'error');
+  }
+}
+
+async function deleteExpense(expense) {
+  const label = expense.name + ' (' + rupiah.format(expense.amount) + ')';
+  if (!confirm('Delete ' + label + ' for ' + expense.ownerId + '? This removes it for the owner too.')) {
+    return;
+  }
+
+  try {
+    await api(
+      '/dodo/api/expenses/' +
+        encodeURIComponent(expense.ownerId) +
+        '/' +
+        encodeURIComponent(expense.localId),
+      { method: 'DELETE' }
+    );
+    showStatus('Expense deleted.', 'success');
+    await loadTransactions();
+  } catch (err) {
+    showStatus('Delete failed: ' + err.message, 'error');
+  }
+}
+
+function filterByOwner(ownerId) {
+  $('txOwner').value = ownerId;
+  $('txSearch').value = '';
+  $('txFrom').value = '';
+  $('txTo').value = '';
+  state.page = 1;
+  activateTab('transactions');
+}
+
 /* Users */
 
 async function loadUsers() {
@@ -464,23 +602,65 @@ async function loadUsers() {
   ownersBody.innerHTML = '';
   const firebaseBody = $('firebaseUsersBody');
   firebaseBody.innerHTML = '';
+  const devicesBody = $('devicesBody');
+  devicesBody.innerHTML = '';
 
   try {
     const data = await api('/dodo/api/owners');
     if ((data.owners || []).length === 0) {
-      emptyRow(ownersBody, 4, 'No expense owners yet.');
+      emptyRow(ownersBody, 5, 'No expense owners yet.');
     } else {
       data.owners.forEach(function (owner) {
         const tr = document.createElement('tr');
+        tr.className = 'clickable';
+        tr.title = 'Show transactions for this owner';
+        tr.addEventListener('click', function () {
+          filterByOwner(owner.ownerId);
+        });
         tr.appendChild(cell(owner.ownerId, 'mono'));
         tr.appendChild(cell(String(owner.expenseCount), 'right'));
         tr.appendChild(cell(rupiah.format(owner.totalAmount), 'right'));
         tr.appendChild(cell(formatDay(owner.lastExpenseDate)));
+        tr.appendChild(
+          cell(
+            actionButton('View', 'btn-small btn-ghost', function (event) {
+              event.stopPropagation();
+              filterByOwner(owner.ownerId);
+            })
+          )
+        );
         ownersBody.appendChild(tr);
       });
     }
   } catch (err) {
-    emptyRow(ownersBody, 4, 'Failed to load owners: ' + err.message);
+    emptyRow(ownersBody, 5, 'Failed to load owners: ' + err.message);
+  }
+
+  try {
+    const data = await api('/dodo/api/devices');
+    if ((data.devices || []).length === 0) {
+      emptyRow(devicesBody, 6, 'No device syncs yet. Devices appear after the mobile app syncs once.');
+    } else {
+      data.devices.forEach(function (device) {
+        const tr = document.createElement('tr');
+        tr.appendChild(cell(device.ownerId, 'mono'));
+        tr.appendChild(cell(device.deviceName || device.deviceId, 'mono'));
+        tr.appendChild(cell(device.platform || '-'));
+        tr.appendChild(cell(device.appVersion || '-'));
+        tr.appendChild(
+          cell(
+            device.expenseCount === null || device.expenseCount === undefined
+              ? '-'
+              : String(device.expenseCount),
+            'right'
+          )
+        );
+        tr.appendChild(cell(formatDate(device.lastSyncAt)));
+        devicesBody.appendChild(tr);
+      });
+    }
+  } catch (err) {
+    emptyRow(devicesBody, 6, 'Failed to load devices: ' + err.message);
   }
 
   try {
@@ -538,6 +718,357 @@ async function loadAiUsage() {
       recentBody.appendChild(tr);
     });
   }
+}
+
+/* Portfolio content */
+
+function renderPortfolioPreview(content) {
+  const list = $('portfolioPreview');
+  list.innerHTML = '';
+  const profile = content.profile || {};
+  const apk = content.apk || {};
+  const projects = Array.isArray(content.projects) ? content.projects : [];
+  const experience = Array.isArray(content.experience) ? content.experience : [];
+
+  function line(label, value) {
+    const row = document.createElement('div');
+    row.className = 'preview-row';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'preview-label';
+    labelEl.textContent = label;
+    const valueEl = document.createElement('strong');
+    valueEl.textContent = value === null || value === undefined || value === '' ? '-' : String(value);
+    row.appendChild(labelEl);
+    row.appendChild(valueEl);
+    list.appendChild(row);
+  }
+
+  line('Name', profile.name);
+  line('Role', profile.role);
+  line('Location', profile.location);
+  line('Status', profile.status);
+  line('Projects', projects.length + ' in the extra grid');
+  line('Experience', experience.length + ' timeline entries');
+  line('APK', apk.version ? 'v' + apk.version : 'not set');
+  line('APK size', apk.size_bytes ? formatBytes(apk.size_bytes) : 'not set');
+  line('APK file', apk.url);
+
+  const note = document.createElement('p');
+  note.className = 'muted preview-note';
+  note.textContent = 'Changes appear on / and /projects/unmurce after saving. The static HTML is only the fallback.';
+  list.appendChild(note);
+}
+
+async function loadContent() {
+  const data = await api('/dodo/api/portfolio');
+  state.portfolio = data.content || {};
+  $('portfolioJson').value = JSON.stringify(state.portfolio, null, 2);
+  renderPortfolioPreview(state.portfolio);
+}
+
+function parsePortfolioJson() {
+  try {
+    return JSON.parse($('portfolioJson').value);
+  } catch (err) {
+    showStatus('Invalid JSON: ' + err.message, 'error');
+    return null;
+  }
+}
+
+function formatPortfolioJson() {
+  const parsed = parsePortfolioJson();
+  if (!parsed) return;
+  $('portfolioJson').value = JSON.stringify(parsed, null, 2);
+  renderPortfolioPreview(parsed);
+  showStatus('JSON formatted.', 'success');
+}
+
+async function saveContent() {
+  const parsed = parsePortfolioJson();
+  if (!parsed) return;
+
+  try {
+    await api('/dodo/api/portfolio', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: parsed })
+    });
+    state.portfolio = parsed;
+    renderPortfolioPreview(parsed);
+    showStatus('Portfolio content saved. Public pages now render this data.', 'success');
+  } catch (err) {
+    showStatus('Save failed: ' + err.message, 'error');
+  }
+}
+
+/* RAG chatbot monitoring */
+
+function shortText(value, max) {
+  const text = String(value || '');
+  return text.length > max ? text.slice(0, max - 1) + '…' : text;
+}
+
+function voteText(event) {
+  if (event.feedback === 'up') return '👍';
+  if (event.feedback === 'down') return '👎';
+  return '-';
+}
+
+function needsAttention(event) {
+  return (!event.answered || event.feedback === 'down') && !event.resolvedAt;
+}
+
+function renderRagTable(body, events, mode) {
+  body.innerHTML = '';
+  const columns = mode === 'queue' ? 5 : 7;
+
+  if (events.length === 0) {
+    emptyRow(
+      body,
+      columns,
+      mode === 'queue' ? 'No unanswered questions. The bot is covering the current traffic.' : 'No chat events yet.'
+    );
+    return;
+  }
+
+  events.forEach(function (event) {
+    const tr = document.createElement('tr');
+
+    tr.appendChild(cell(formatDate(event.createdAt)));
+    const question = cell(shortText(event.question, 120));
+    question.title = event.question || '';
+    tr.appendChild(question);
+    const answer = cell(shortText(event.answer, 160));
+    answer.title = event.answer || '';
+    tr.appendChild(answer);
+
+    if (mode !== 'queue') {
+      tr.appendChild(cell(tag(event.provider, event.provider === 'groq' ? 'success' : undefined)));
+      tr.appendChild(
+        cell(event.latencyMs === null ? '-' : event.latencyMs + ' ms', 'right')
+      );
+      tr.appendChild(cell(voteText(event)));
+    } else {
+      tr.appendChild(cell(voteText(event)));
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+    actions.appendChild(
+      actionButton('Add to KB', 'btn-small btn-primary', function () {
+        openRagAddDialog(event);
+      })
+    );
+    if (needsAttention(event)) {
+      actions.appendChild(
+        actionButton('Dismiss', 'btn-small btn-ghost', function () {
+          resolveRagQuestion(event);
+        })
+      );
+    }
+    tr.appendChild(cell(actions));
+    body.appendChild(tr);
+  });
+}
+
+async function loadRag() {
+  const results = await Promise.all([
+    api('/dodo/api/rag/stats'),
+    api('/dodo/api/rag/events?limit=100'),
+    api('/dodo/api/rag/events?limit=100&unanswered=1'),
+    api('/dodo/api/rag/knowledge')
+  ]);
+
+  const stats = results[0].totals || {};
+  const statsEl = $('ragStats');
+  statsEl.innerHTML = '';
+  statsEl.appendChild(statCard('Questions logged', String(stats.total || 0), 'All time'));
+  statsEl.appendChild(statCard('Last 7 days', String(stats.total7d || 0), 'Recent traffic'));
+  statsEl.appendChild(statCard('Helpful votes', '👍 ' + (stats.up || 0) + ' / 👎 ' + (stats.down || 0), 'Visitor feedback'));
+  statsEl.appendChild(statCard('Unanswered', String(stats.unanswered || 0), 'Queue that needs a FAQ'));
+  statsEl.appendChild(
+    statCard(
+      'Avg latency',
+      stats.avgLatencyMs === null || stats.avgLatencyMs === undefined ? '-' : stats.avgLatencyMs + ' ms',
+      'Request to reply'
+    )
+  );
+  const providers = results[0].providers || [];
+  statsEl.appendChild(
+    statCard(
+      'Providers',
+      providers.length === 0
+        ? '-'
+        : providers.map(function (item) {
+            return item.provider + ' ' + item.count;
+          }).join(' · '),
+      'Answers by provider'
+    )
+  );
+
+  state.ragEvents = results[1].events || [];
+  state.ragUnanswered = results[2].events || [];
+  renderRagTable($('ragEventsBody'), state.ragEvents, 'recent');
+  renderRagTable($('ragUnansweredBody'), state.ragUnanswered, 'queue');
+  $('ragKnowledgeJson').value = JSON.stringify(results[3].knowledge || {}, null, 2);
+}
+
+function keywordsFromQuestion(question) {
+  const stopWords = new Set([
+    'what', 'who', 'when', 'where', 'why', 'how', 'does', 'your', 'you',
+    'the', 'and', 'for', 'with', 'about', 'this', 'that', 'are', 'can',
+    'apa', 'siapa', 'kapan', 'dimana', 'bagaimana', 'yang', 'dan', 'untuk',
+    'dengan', 'tentang', 'bisa', 'kamu', 'saya'
+  ]);
+  const words = String(question || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, ' ')
+    .split(/\s+/)
+    .filter(function (word) {
+      return word.length > 3 && !stopWords.has(word);
+    });
+  return Array.from(new Set(words)).slice(0, 6);
+}
+
+function openRagAddDialog(event) {
+  $('ragAddEventId').value = event.id;
+  $('ragAddQuestion').value = event.question || '';
+  $('ragAddAnswer').value = event.answer || '';
+  $('ragAddKeywords').value = keywordsFromQuestion(event.question).join(', ');
+  $('ragAddDialog').showModal();
+}
+
+async function saveRagKnowledge() {
+  let parsed;
+  try {
+    parsed = JSON.parse($('ragKnowledgeJson').value);
+  } catch (err) {
+    showStatus('Invalid knowledge JSON: ' + err.message, 'error');
+    return;
+  }
+
+  try {
+    await api('/dodo/api/rag/knowledge', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ knowledge: parsed })
+    });
+    showStatus('Knowledge base saved. New chats use it immediately.', 'success');
+  } catch (err) {
+    showStatus('Save failed: ' + err.message, 'error');
+  }
+}
+
+async function addRagKnowledgeEntry(event) {
+  event.preventDefault();
+  const id = $('ragAddEventId').value;
+
+  try {
+    const data = await api(
+      '/dodo/api/rag/events/' + encodeURIComponent(id) + '/add-to-knowledge',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: $('ragAddQuestion').value.trim(),
+          answer: $('ragAddAnswer').value.trim(),
+          keywords: $('ragAddKeywords').value
+        })
+      }
+    );
+    $('ragAddDialog').close();
+    showStatus('FAQ added. Knowledge base now has ' + data.faqs + ' entries.', 'success');
+    await loadRag();
+  } catch (err) {
+    showStatus('Could not add FAQ: ' + err.message, 'error');
+  }
+}
+
+async function resolveRagQuestion(event) {
+  try {
+    await api('/dodo/api/rag/events/' + encodeURIComponent(event.id) + '/resolve', {
+      method: 'POST'
+    });
+    showStatus('Question dismissed from the queue.', 'success');
+    await loadRag();
+  } catch (err) {
+    showStatus('Could not dismiss question: ' + err.message, 'error');
+  }
+}
+
+/* Health */
+
+function healthRow(body, label, value, status) {
+  const tr = document.createElement('tr');
+  tr.appendChild(cell(label));
+  if (status) {
+    tr.appendChild(cell(tag(value, status)));
+  } else {
+    tr.appendChild(cell(value));
+  }
+  body.appendChild(tr);
+}
+
+async function loadHealth() {
+  const data = await api('/dodo/api/health');
+  const health = data.health || {};
+  const database = health.database || {};
+  const firebase = health.firebase || {};
+  const backups = health.backups || {};
+  const runtime = health.runtime || {};
+
+  const statsEl = $('healthStats');
+  statsEl.innerHTML = '';
+  statsEl.appendChild(
+    statCard(
+      'Database',
+      database.ok ? 'Online' : 'DOWN',
+      database.ok ? (database.latencyMs + ' ms ping') : database.error || 'Unavailable'
+    )
+  );
+  statsEl.appendChild(
+    statCard(
+      'Firebase Admin',
+      firebase.initialized ? 'Initialized' : 'Not initialized',
+      firebase.projectId || 'Check FIREBASE_SERVICE_ACCOUNT_JSON'
+    )
+  );
+  statsEl.appendChild(
+    statCard(
+      'Backups',
+      formatBytes(backups.totalBytes || 0),
+      (backups.count || 0) + ' files' + (backups.latestAt ? ' · newest ' + formatDate(backups.latestAt) : '')
+    )
+  );
+  statsEl.appendChild(
+    statCard(
+      'Running commit',
+      runtime.shortCommit || 'unknown',
+      (runtime.branch || 'no branch') + (runtime.dirty ? ' · dirty tree' : '')
+    )
+  );
+  statsEl.appendChild(
+    statCard('Uptime', formatDuration(runtime.uptimeSeconds), 'Node ' + (runtime.nodeVersion || '-'))
+  );
+
+  const envBody = $('healthEnvBody');
+  envBody.innerHTML = '';
+  (health.env || []).forEach(function (item) {
+    healthRow(envBody, item.key, item.configured ? 'configured' : 'missing', item.configured ? 'success' : 'error');
+  });
+
+  const runtimeBody = $('healthRuntimeBody');
+  runtimeBody.innerHTML = '';
+  healthRow(runtimeBody, 'Commit', runtime.commit || 'unknown');
+  healthRow(runtimeBody, 'Message', runtime.message || '-');
+  healthRow(runtimeBody, 'Branch', runtime.branch || '-');
+  healthRow(runtimeBody, 'Working tree', runtime.dirty === null ? 'unknown' : runtime.dirty ? 'uncommitted changes' : 'clean');
+  healthRow(runtimeBody, 'Node', runtime.nodeVersion || '-');
+  healthRow(runtimeBody, 'Environment', runtime.nodeEnv || '-');
+  healthRow(runtimeBody, 'PID', runtime.pid === undefined ? '-' : String(runtime.pid));
+  healthRow(runtimeBody, 'RSS memory', formatBytes(runtime.memoryRssBytes || 0));
+  healthRow(runtimeBody, 'Uptime', formatDuration(runtime.uptimeSeconds));
+  healthRow(runtimeBody, 'Missing env', (health.missingEnv || []).join(', ') || 'none');
 }
 
 /* Audit */
@@ -674,6 +1205,52 @@ $('refreshOwnersBtn').addEventListener('click', function () {
 $('refreshAiBtn').addEventListener('click', function () {
   loadAiUsage().catch(function (err) {
     showStatus('Failed to load AI usage: ' + err.message, 'error');
+  });
+});
+
+$('contentReloadBtn').addEventListener('click', function () {
+  loadContent().catch(function (err) {
+    showStatus('Failed to load portfolio content: ' + err.message, 'error');
+  });
+});
+
+$('contentFormatBtn').addEventListener('click', formatPortfolioJson);
+$('contentSaveBtn').addEventListener('click', saveContent);
+$('portfolioJson').addEventListener('input', function () {
+  try {
+    renderPortfolioPreview(JSON.parse($('portfolioJson').value));
+  } catch (err) {
+    // Keep the last valid preview while the JSON is being edited.
+  }
+});
+
+$('expenseForm').addEventListener('submit', saveExpense);
+$('cancelExpenseBtn').addEventListener('click', function () {
+  $('expenseDialog').close();
+});
+
+$('refreshRagBtn').addEventListener('click', function () {
+  loadRag().catch(function (err) {
+    showStatus('Failed to load chatbot monitoring: ' + err.message, 'error');
+  });
+});
+
+$('ragAddForm').addEventListener('submit', addRagKnowledgeEntry);
+$('cancelRagAddBtn').addEventListener('click', function () {
+  $('ragAddDialog').close();
+});
+
+$('ragKnowledgeReload').addEventListener('click', function () {
+  loadRag().catch(function (err) {
+    showStatus('Failed to reload knowledge base: ' + err.message, 'error');
+  });
+});
+
+$('ragKnowledgeSave').addEventListener('click', saveRagKnowledge);
+
+$('refreshHealthBtn').addEventListener('click', function () {
+  loadHealth().catch(function (err) {
+    showStatus('Failed to load health: ' + err.message, 'error');
   });
 });
 

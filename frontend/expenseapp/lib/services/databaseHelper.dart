@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'ApiService.dart';
@@ -144,6 +145,31 @@ class DatabaseHelp {
       'key': key,
       'value': value,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Stable per-install identifier used by the admin panel to show the last
+  /// sync time of each device.
+  static Future<String> getOrCreateDeviceId() async {
+    final existing = await getSetting('device_id');
+    if (existing != null && existing.isNotEmpty) return existing;
+
+    final random = Random.secure().nextInt(0x7fffffff).toRadixString(16);
+    final id =
+        '${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}-$random';
+    await setSetting('device_id', id);
+    return id;
+  }
+
+  static Future<int> getLocalExpenseCount() async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return 0;
+
+    final db = await initDB();
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS count FROM my_table WHERE ownerId = ?',
+      [userId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   static Future<void> cacheExchangeRate(String currency, double rate) async {

@@ -4,24 +4,24 @@ const {
   loadNotificationTemplate,
 } = require("../services/notificationContext");
 const {
+  connectDB,
+  getRagKnowledge: loadRagKnowledgeFromDb,
   loadNotificationReferenceItems,
   loadNotificationSummary,
-  connectDB,
+  recordRagChatEvent,
+  updateRagFeedback,
 } = require("../db");
 
 const groqApiKey = process.env.GROQ_API_KEY || "";
 const groqModel = process.env.GROQ_MODEL || "";
 
-let cachedRagKnowledge = null;
-function getRagKnowledge() {
-  if (cachedRagKnowledge) return cachedRagKnowledge;
+function readRagKnowledgeFile() {
   try {
     const fs = require("fs");
     const path = require("path");
     const filePath = path.join(__dirname, "../../public/asset/rag_knowledge.json");
     if (fs.existsSync(filePath)) {
-      cachedRagKnowledge = JSON.parse(fs.readFileSync(filePath, "utf-8"));
-      return cachedRagKnowledge;
+      return JSON.parse(fs.readFileSync(filePath, "utf-8"));
     }
   } catch (err) {
     console.error("Failed to load rag_knowledge.json:", err.message);
@@ -29,14 +29,25 @@ function getRagKnowledge() {
   return null;
 }
 
+async function getRagKnowledge() {
+  try {
+    await connectDB();
+    return await loadRagKnowledgeFromDb();
+  } catch (err) {
+    console.warn("Falling back to file RAG knowledge:", err.message);
+    return readRagKnowledgeFile();
+  }
+}
+
 async function ragChat(req, res) {
+  const startedAt = Date.now();
   try {
     const rawMessage = String(req.body?.message || "").trim();
     if (!rawMessage) {
       return res.status(400).json({ error: "Message is required" });
     }
     const message = rawMessage.slice(0, 500);
-    const knowledge = getRagKnowledge();
+    const knowledge = await getRagKnowledge();
 
     const lower = message.toLowerCase();
     const interestingKeywords = [
@@ -46,6 +57,10 @@ async function ragChat(req, res) {
       "ocr", "receipt", "backend", "fullstack", "expense", "teknologi", "tech"
     ];
     let isInteresting = interestingKeywords.some((k) => lower.includes(k));
+
+    let reply = "";
+    let provider = "local";
+    let answered = false;
 
     if (groqApiKey) {
       const modelToUse = groqModel || "llama-3.3-70b-versatile";
@@ -80,10 +95,13 @@ Return a valid JSON object strictly matching this format:
         if (responseText) {
           const parsed = JSON.parse(responseText || "{}");
           if (parsed.reply) {
-            return res.json({
-              reply: parsed.reply,
-              interested: typeof parsed.interested === "boolean" ? parsed.interested : isInteresting,
-            });
+            reply = parsed.reply;
+            provider = "groq";
+            answered = true;
+            isInteresting =
+              typeof parsed.interested === "boolean"
+                ? parsed.interested
+                : isInteresting;
           }
         }
       } catch (err) {
@@ -92,26 +110,65 @@ Return a valid JSON object strictly matching this format:
     }
 
     // Fallback: Smart local RAG response
-    let reply = "";
-    if (knowledge && Array.isArray(knowledge.faqs)) {
-      const match = knowledge.faqs.find((faq) =>
-        faq.keywords.some((kw) => lower.includes(kw))
-      );
-      if (match) {
-        reply = match.answer;
-      }
-    }
     if (!reply) {
-      if (lower.includes("halo") || lower.includes("hi") || lower.includes("hello")) {
-        reply = "Halo! Senang bertemu denganmu. Ada yang ingin kamu tanyakan seputar project, stack, atau pengalamanku?";
-      } else {
-        reply = "Terima kasih pertanyaannya! Saya Orlando, Fullstack Developer dengan fokus di Flutter dan arsitektur backend. Kamu bisa cek showcase Unmurce atau hubungi saya langsung lewat WhatsApp!";
+      if (knowledge && Array.isArray(knowledge.faqs)) {
+        const match = knowledge.faqs.find(
+          (faq) =>
+            Array.isArray(faq.keywords) &&
+            faq.keywords.some((kw) => lower.includes(String(kw).toLowerCase()))
+        );
+        if (match) {
+          reply = match.answer;
+          answered = true;
+        }
+      }
+      if (!reply) {
+        if (lower.includes("halo") || lower.includes("hi") || lower.includes("hello")) {
+          reply = "Halo! Senang bertemu denganmu. Ada yang ingin kamu tanyakan seputar project, stack, atau pengalamanku?";
+          answered = true;
+        } else {
+          reply = "Terima kasih pertanyaannya! Saya Orlando, Fullstack Developer dengan fokus di Flutter dan arsitektur backend. Kamu bisa cek showcase Unmurce atau hubungi saya langsung lewat WhatsApp!";
+        }
       }
     }
 
-    res.json({ reply, interested: isInteresting });
+    let eventId = null;
+    try {
+      eventId = await recordRagChatEvent({
+        question: message,
+        answer: reply,
+        provider,
+        latencyMs: Date.now() - startedAt,
+        interested: isInteresting,
+        answered,
+      });
+    } catch (logErr) {
+      console.warn("Could not record RAG chat event:", logErr.message);
+    }
+
+    res.json({ reply, interested: isInteresting, provider, eventId });
   } catch (err) {
     res.status(500).json({ error: "Failed to process chat" });
+  }
+}
+
+async function ragFeedback(req, res) {
+  const eventId = Number(req.body?.eventId);
+  const vote = String(req.body?.vote || "").toLowerCase();
+
+  if (!Number.isInteger(eventId) || eventId <= 0 || !["up", "down"].includes(vote)) {
+    return res.status(400).json({ error: "eventId and vote (up/down) are required" });
+  }
+
+  try {
+    await connectDB();
+    const updated = await updateRagFeedback(eventId, vote);
+    if (!updated) {
+      return res.status(404).json({ error: "Chat event not found" });
+    }
+    res.json({ success: true, id: Number(updated.id), feedback: updated.feedback });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 }
 
@@ -178,5 +235,6 @@ function normalizeParsedExpense(value) {
 
 module.exports = {
   ragChat,
+  ragFeedback,
   parseNotification,
 };

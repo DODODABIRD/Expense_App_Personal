@@ -16,6 +16,11 @@ const String wsUrl = String.fromEnvironment(
   defaultValue: 'wss://main.dododabird.us/ws',
 );
 
+const String appVersion = String.fromEnvironment(
+  'EXPENSE_APP_VERSION',
+  defaultValue: '1.7.5',
+);
+
 typedef ReceiptScanProgress =
     void Function(double progress, String message, {String status});
 
@@ -211,11 +216,36 @@ class Throw {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  static Future<int> updateAiNotificationReference() async {
+  static Future<Map<String, dynamic>> getAiNotificationReference() async {
     final response = await http
-        .post(
-          Uri.parse('$baseUrl/ai-notification-reference/refresh'),
+        .get(
+          Uri.parse('$baseUrl/ai-notification-reference'),
           headers: await _headers(),
+        )
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200) {
+      String message =
+          'Could not load AI notification context (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['error'] != null) message = body['error'].toString();
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Load AI reference error response');
+        // Keep the status-based message when the backend response is not JSON.
+      }
+      throw Exception(message);
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  static Future<int> saveAiNotificationReference(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl/ai-notification-reference'),
+          headers: await _headers(),
+          body: jsonEncode({'items': items}),
         )
         .timeout(const Duration(seconds: 30));
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -364,6 +394,34 @@ class Throw {
         captureAppError(error, stackTrace, 'Pending expense sync');
         print('Pending sync failed: $error');
       }
+    }
+
+    await reportDeviceSync();
+  }
+
+  /// Reports this device's last successful sync so the admin panel can show
+  /// per-device activity. Failures are logged and never block expense sync.
+  static Future<void> reportDeviceSync() async {
+    try {
+      final deviceId = await DatabaseHelp.getOrCreateDeviceId();
+      final expenseCount = await DatabaseHelp.getLocalExpenseCount();
+
+      await http
+          .post(
+            Uri.parse('$baseUrl/sync/beat'),
+            headers: await _headers(),
+            body: jsonEncode({
+              'deviceId': deviceId,
+              'deviceName':
+                  '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+              'platform': Platform.operatingSystem,
+              'appVersion': appVersion,
+              'expenseCount': expenseCount,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Device sync heartbeat');
     }
   }
 

@@ -1,0 +1,81 @@
+{
+  "profile": {
+    "name": "Orlando Diamond Prasetyo",
+    "handle": "@DODODABIRD",
+    "role": "Fullstack Developer & Product Builder",
+    "tagline": "Fullstack Developer based in Flutter and Django / Node.js",
+    "bio": "a software engineer and product builder from Indonesia. I build useful applications for everyday needs. My strong suite is Flutter application design and Native Database control.",
+    "about": "I'm making apps that I would actually use instead of making apps that are boring and too complicated. Currently I am making UNMURCE, an expense tracker tuned for lazy young adults. Every month I have to get my dad to reimburse my expenses, so I made an app that automatically saves my expenses, categorizes, sorts and views them as charts of data that could be exported into a PDF so my dad can see details.",
+    "location": "DKI Jakarta, Indonesia",
+    "specialty": "Web, Mobile & AI Systems",
+    "status": "Available for freelance projects, technical collaboration, and opportunities",
+    "contact_copy": "Have a project idea, feedback on Unmurce, or want to collaborate? Click any button below to connect with Orlando Diamond Prasetyo.",
+    "email": "orlandodiamondprasetyo@gmail.com",
+    "whatsapp": "+62 85810008115",
+    "whatsapp_link": "https://wa.me/6285810008115",
+    "linkedin": "https://www.linkedin.com/in/orlando-diamond-prasetyo-6b3bb5362/",
+    "instagram": "https://www.instagram.com/prasetyoorlando/",
+    "github": "https://github.com/DODODABIRD"
+  },
+  "featured": {
+    "name": "Unmurce Expense Tracker",
+    "description": "Private personal finance application with receipt scanning, Firebase auth, and instant monthly balance breakdowns.",
+    "showcase_url": "/projects/unmurce",
+    "app_url": "/expenses",
+    "docs_url": "/projects/docs"
+  },
+  "projects": [
+    {
+      "name": "dododabird.us Portfolio",
+      "description": "Personal software portfolio with custom Neo-Brutalist styling, glassmorphism, live GitHub telemetry, and an interactive AI chatbot.",
+      "url": "https://dododabird.us",
+      "repo": "https://github.com/DODODABIRD",
+      "status": "Live",
+      "tags": ["HTML", "CSS", "Vanilla JS"]
+    },
+    {
+      "name": "Expense-Tracker-API",
+      "description": "Serverless REST API powered by Express, PostgreSQL, and Groq/Gemini/Azure document processing pipelines.",
+      "url": "",
+      "repo": "https://github.com/DODODABIRD/Expense_App_Personal",
+      "status": "Active",
+      "tags": ["Node.js", "Express", "PostgreSQL"]
+    }
+  ],
+  "experience": [
+    {
+      "year": "2023",
+      "period": "2023 – 2025",
+      "role": "High School Foundation",
+      "title": "SMA di Gonzaga (2023 - 2025)",
+      "description": "Saya berfokus pada pelajaran-pelajaran yang mendukung saya masuk ke dalam jurusan computer science karena sejak kecil sudah ingin masuk jurusan tersebut. Belum ada project.",
+      "tags": ["Computer Science Prep", "Mathematics", "SMA Kolese Gonzaga"],
+      "accent": ""
+    },
+    {
+      "year": "2025",
+      "period": "2025 – 2029",
+      "role": "Undergraduate Student",
+      "title": "Undergraduate di Binus sbg Computer Scientist (2025 - 2029)",
+      "description": "Saat permulaan saya mempelajari konsep-konsep dasar cara komputer berpikir, saya mempelajari basics di programming C++/C.",
+      "tags": ["C / C++", "CS Fundamentals", "Computational Thinking", "Binus University"],
+      "accent": "aqua"
+    },
+    {
+      "year": "2026",
+      "period": "CURRENT FOCUS",
+      "role": "Product Engineer & Creator",
+      "title": "Unmurce & Portofolio Website",
+      "description": "Pada awal tahun 2026 saya memulai project Unmurce saya.",
+      "tags": ["Unmurce", "Portfolio Website", "Flutter", "Node.js / Express", "Firebase"],
+      "accent": "yellow"
+    }
+  ],
+  "apk": {
+    "version": "1.7.5",
+    "size_bytes": 26052981,
+    "url": "/asset/appdownload/app-arm64-v8a-release.apk",
+    "released_at": "2026-10-08",
+    "notes": "arm64-v8a release"
+  }
+}

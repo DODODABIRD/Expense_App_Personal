@@ -154,6 +154,7 @@ backend/
 ### Notification Reference (auth required)
 | Method | Path | Description |
 |--------|------|-------------|
+| GET | `/api/ai-notification-reference` | Read the stored summary template (per-category price ranges) |
 | PUT | `/api/ai-notification-reference` | Save expense reference items and regenerate the per-user summary template |
 | POST | `/api/ai-notification-reference/refresh` | Refresh from recent expenses and regenerate the per-user summary template |
 
@@ -299,7 +300,7 @@ Access at `/dodo/login`. Session-based auth (24hr expiry, in-memory store), logi
 
 The panel UI lives in `backend/admin-ui/` (`login.html`, `panel.html`, `static/admin.css`, `static/login.js`, `static/panel.js`) and is served by the routes, not by `express.static`, so the panel pages stay behind the session check.
 
-The Assets tab manages files under `public/asset`: list, replace, upload, delete, and restore. Replace, delete, and restore first copy the current file to `data/admin-backups/<timestamp>-<id>/<relative path>` (max 5 backups per file). Allowed extensions: images (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.svg`, `.ico`), `.apk`, `.json`, `.md`. Max upload size is 40 MB.
+The Assets tab manages files under `public/asset`: list, replace, upload, delete, and restore. Replace, delete, and restore first copy the current file to `data/admin-backups/<relative path>/<timestamp>-<id>` (max 5 backups per file; each file has its own backup directory, so pruning one file never touches another). The panel only exposes backups through the per-asset dialog — there is no global backups page and no time-based retention. Allowed extensions: images (`.png`, `.jpg`, `.jpeg`, `.webp`, `.gif`, `.svg`, `.ico`), `.apk`, `.json`, `.md`. Max upload size is 40 MB.
 
 Other tabs read from Postgres: overview totals, expense browser + CSV export, owners, and the audit log. AI usage reads `ai_provider_events`, which `receipts.js` writes on each Groq/Azure attempt.
 

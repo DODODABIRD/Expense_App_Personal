@@ -11,7 +11,7 @@
     <div class="header-row">
       <div>
         <h1>Admin Panel</h1>
-        <p class="subtitle">Assets, expenses, users and AI monitoring</p>
+        <p class="subtitle">Content, assets, expenses, users, chatbot feedback and ops</p>
       </div>
       <div class="header-right">
         <button class="btn btn-danger" id="logoutBtn">Logout</button>
@@ -20,10 +20,13 @@
 
     <nav class="tabs">
       <button class="tab active" data-tab="assets">Assets</button>
+      <button class="tab" data-tab="content">Content</button>
       <button class="tab" data-tab="overview">Overview</button>
       <button class="tab" data-tab="transactions">Transactions</button>
       <button class="tab" data-tab="users">Users</button>
       <button class="tab" data-tab="ai">AI Usage</button>
+      <button class="tab" data-tab="rag">Chatbot</button>
+      <button class="tab" data-tab="health">Health</button>
       <button class="tab" data-tab="audit">Audit Log</button>
     </nav>
 
@@ -45,6 +48,25 @@
       </div>
       <div class="grid" id="assetGrid"></div>
       <input class="hidden" id="fileInput" type="file">
+    </section>
+
+    <section class="section" id="section-content">
+      <div class="toolbar">
+        <span class="count grow">Profile, featured project, projects, experience and APK metadata. Saved to Postgres and rendered by /portfolio-cms.js.</span>
+        <button class="btn btn-ghost" id="contentReloadBtn">Reload</button>
+        <button class="btn btn-ghost" id="contentFormatBtn">Format JSON</button>
+        <button class="btn btn-primary" id="contentSaveBtn">Save content</button>
+      </div>
+      <div class="editor-layout">
+        <div class="panel-card editor-main">
+          <h2>portfolio.json</h2>
+          <textarea id="portfolioJson" class="json-editor" spellcheck="false"></textarea>
+        </div>
+        <div class="panel-card editor-side">
+          <h2>Preview</h2>
+          <div id="portfolioPreview" class="preview-list"></div>
+        </div>
+      </div>
     </section>
 
     <section class="section" id="section-overview">
@@ -71,6 +93,15 @@
           </table>
         </div>
       </div>
+      <div class="panel-card">
+        <h2>Monthly trend (12 months)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Month</th><th class="right">Transactions</th><th class="right">Total</th><th>Share</th></tr></thead>
+            <tbody id="monthlyBody"></tbody>
+          </table>
+        </div>
+      </div>
     </section>
 
     <section class="section" id="section-transactions">
@@ -94,6 +125,7 @@
                 <th>Type</th>
                 <th class="right">Amount</th>
                 <th>Owner</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="expensesBody"></tbody>
@@ -122,9 +154,28 @@
                 <th class="right">Transactions</th>
                 <th class="right">Total</th>
                 <th>Last expense</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody id="ownersBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel-card">
+        <h2>Device syncs</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Owner UID</th>
+                <th>Device</th>
+                <th>Platform</th>
+                <th>App version</th>
+                <th class="right">Local expenses</th>
+                <th>Last sync</th>
+              </tr>
+            </thead>
+            <tbody id="devicesBody"></tbody>
           </table>
         </div>
       </div>
@@ -187,6 +238,87 @@
       </div>
     </section>
 
+    <section class="section" id="section-rag">
+      <div class="toolbar">
+        <span class="count grow">Every chatbot answer is logged with provider, latency and visitor feedback.</span>
+        <button class="btn btn-ghost" id="refreshRagBtn">Refresh</button>
+      </div>
+      <div class="stat-grid" id="ragStats"></div>
+
+      <div class="panel-card">
+        <h2>Unanswered queue</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Question</th>
+                <th>Answer</th>
+                <th>Vote</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ragUnansweredBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <h2>Recent questions</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Question</th>
+                <th>Answer</th>
+                <th>Provider</th>
+                <th class="right">Latency</th>
+                <th>Vote</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="ragEventsBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel-card">
+        <h2>Knowledge base (rag_knowledge.json)</h2>
+        <textarea id="ragKnowledgeJson" class="json-editor short" spellcheck="false"></textarea>
+        <div class="editor-actions">
+          <button class="btn btn-ghost" id="ragKnowledgeReload">Reload</button>
+          <button class="btn btn-primary" id="ragKnowledgeSave">Save knowledge</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="section-health">
+      <div class="toolbar">
+        <span class="count grow">Database, Firebase, environment, backups and the commit this process is running.</span>
+        <button class="btn btn-ghost" id="refreshHealthBtn">Refresh</button>
+      </div>
+      <div class="stat-grid" id="healthStats"></div>
+      <div class="panel-card">
+        <h2>Environment</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Variable</th><th>Status</th></tr></thead>
+            <tbody id="healthEnvBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="panel-card">
+        <h2>Runtime</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Field</th><th>Value</th></tr></thead>
+            <tbody id="healthRuntimeBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
     <section class="section" id="section-audit">
       <div class="toolbar">
         <span class="count">Most recent 100 admin actions.</span>
@@ -232,10 +364,70 @@
 
   <dialog id="backupsDialog">
     <h2 id="backupsTitle">Backups</h2>
+    <p class="backups-note">Only the 5 most recent backups for this file are kept.</p>
     <div class="backups-list" id="backupsList"></div>
     <div class="actions">
       <button type="button" class="btn btn-ghost" id="closeBackupsBtn">Close</button>
     </div>
+  </dialog>
+
+  <dialog id="expenseDialog">
+    <form id="expenseForm">
+      <h2>Edit expense (support)</h2>
+      <input type="hidden" id="expenseOwner">
+      <input type="hidden" id="expenseLocalId">
+      <div class="field">
+        <label for="expenseName">Name</label>
+        <input type="text" id="expenseName" required>
+      </div>
+      <div class="field">
+        <label for="expenseAmount">Amount (IDR)</label>
+        <input type="number" id="expenseAmount" min="0" step="1" required>
+      </div>
+      <div class="field">
+        <label for="expenseCategory">Category</label>
+        <input type="text" id="expenseCategory" required>
+      </div>
+      <div class="field">
+        <label for="expenseType">Type</label>
+        <select id="expenseType">
+          <option value="expected">expected</option>
+          <option value="unexpected">unexpected</option>
+          <option value="others">others</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="expenseDate">Date</label>
+        <input type="date" id="expenseDate" required>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" id="cancelExpenseBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save changes</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="ragAddDialog">
+    <form id="ragAddForm">
+      <h2>Add unanswered question to knowledge base</h2>
+      <input type="hidden" id="ragAddEventId">
+      <div class="field">
+        <label for="ragAddQuestion">Question</label>
+        <input type="text" id="ragAddQuestion" required>
+      </div>
+      <div class="field">
+        <label for="ragAddAnswer">Answer</label>
+        <textarea id="ragAddAnswer" rows="4" required></textarea>
+      </div>
+      <div class="field">
+        <label for="ragAddKeywords">Keywords (comma separated)</label>
+        <input type="text" id="ragAddKeywords" placeholder="unmurce, expense, tracker" required>
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" id="cancelRagAddBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Add to knowledge base</button>
+      </div>
+    </form>
   </dialog>
 
   <script src="/dodo/static/panel.js"></script>

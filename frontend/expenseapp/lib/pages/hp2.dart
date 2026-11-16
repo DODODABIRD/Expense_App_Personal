@@ -119,6 +119,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _loadPendingNotificationCount();
+      _startNotificationParser();
     }
   }
 

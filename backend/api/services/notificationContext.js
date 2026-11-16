@@ -127,6 +127,7 @@ async function loadNotificationTemplate({ query, ownerId }) {
 module.exports = {
   MAX_NOTIFICATION_CONTEXT_ITEMS,
   buildNotificationTemplate,
+  isNotificationTemplate,
   loadNotificationContext,
   loadNotificationTemplate,
   refreshNotificationContext,

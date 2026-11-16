@@ -1313,6 +1313,7 @@
         })();
     </script>
     <script src="/model-status.js" defer></script>
+    <script src="/portfolio-cms.js" defer></script>
 </head>
 
 <body id="top">
@@ -2297,13 +2298,14 @@
                     </a>
 
                     <a class="contact-btn-card btn-email" href="/asset/appdownload/app-arm64-v8a-release.apk"
-                        download="Unmurce-Android.apk">
+                        download="Unmurce-Android.apk" data-apk-link>
                         <div class="contact-icon" style="background: var(--card-yellow); color: #000;">
                             📱
                         </div>
                         <div class="contact-detail">
-                            <span>ANDROID RELEASE</span>
+                            <span>ANDROID RELEASE · <span data-apk-version>v1.7.5</span> · <span data-apk-size>24.8 MB</span></span>
                             <strong>Download APK (arm64-v8a)</strong>
+                            <small><span data-apk-date></span> · <span data-apk-notes></span></small>
                         </div>
                         <span class="btn-arrow">↓</span>
                     </a>

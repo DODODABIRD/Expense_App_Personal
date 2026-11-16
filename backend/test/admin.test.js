@@ -297,6 +297,46 @@ test("Admin panel: auth, asset CRUD, data endpoints", async (t) => {
     assert.equal(fs.readFileSync(path.join(assetRoot, "nested", "docs.md"), "utf8"), "# docs");
   });
 
+  await t.test("keeps five backups per asset without touching other assets", async () => {
+    const replace = async (file, body) => {
+      const res = await fetch(
+        `${baseUrl}/dodo/api/assets/replace?file=${encodeURIComponent(file)}`,
+        {
+          method: "POST",
+          headers: { Cookie: sessionCookie, "Content-Type": "application/octet-stream" },
+          body: Buffer.from(body),
+        }
+      );
+      assert.equal(res.status, 200);
+    };
+
+    const backupsFor = async (file) => {
+      const res = await fetch(
+        `${baseUrl}/dodo/api/assets/backups?file=${encodeURIComponent(file)}`,
+        { headers: { Cookie: sessionCookie } }
+      );
+      assert.equal(res.status, 200);
+      return (await res.json()).backups;
+    };
+
+    await replace("nested/new.json", '{"version":1}');
+    assert.equal((await backupsFor("nested/new.json")).length, 1);
+
+    for (let i = 0; i < 6; i += 1) {
+      await replace("logo.png", `logo-v${i}`);
+    }
+
+    const logoBackups = await backupsFor("logo.png");
+    assert.equal(logoBackups.length, 5);
+    assert.equal(new Set(logoBackups.map((backup) => backup.id)).size, 5);
+
+    const otherBackups = await backupsFor("nested/new.json");
+    assert.equal(otherBackups.length, 1);
+
+    assert.equal(fs.statSync(path.join(backupRoot, "logo.png")).isDirectory(), true);
+    assert.equal(fs.readdirSync(path.join(backupRoot, "logo.png")).length, 5);
+  });
+
   await t.test("reports aggregate overview data", async () => {
     const res = await fetch(`${baseUrl}/dodo/api/overview`, {
       headers: { Cookie: sessionCookie },

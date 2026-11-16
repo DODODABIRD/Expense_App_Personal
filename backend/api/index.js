@@ -3,6 +3,9 @@ const path = require("path");
 const admin = require("firebase-admin");
 const cors = require("cors");
 const { requireAuth } = require("./middleware/auth");
+const db = require("./db");
+const PORTFOLIO_SEED = require("../content/portfolio.json");
+const RAG_KNOWLEDGE_SEED = require("../public/asset/rag_knowledge.json");
 
 // Simple cookie parser middleware
 function cookieParser() {
@@ -77,6 +80,7 @@ const exchangeRoutes = require("./routes/exchange");
 const eventsRoutes = require("./routes/events");
 const adminRoutes = require("./routes/admin");
 const { router: adminLoginRouter } = require("./routes/adminLogin");
+const syncRoutes = require("./routes/sync");
 
 function createApp() {
   const app = express();
@@ -110,10 +114,37 @@ function createApp() {
     });
   });
 
+  // Public portfolio content used by portfolio-cms.js
+  app.get("/api/portfolio", async (_req, res) => {
+    res.set("Cache-Control", "no-store, max-age=0");
+    try {
+      await db.connectDB();
+      res.json({ success: true, content: await db.getPortfolioContent() });
+    } catch (err) {
+      res.json({ success: true, content: PORTFOLIO_SEED, source: "file" });
+    }
+  });
+
+  // Public RAG knowledge used by the client-side fallback bot
+  app.get("/api/rag-knowledge", async (_req, res) => {
+    res.set("Cache-Control", "no-store, max-age=0");
+    try {
+      await db.connectDB();
+      res.json({ success: true, knowledge: await db.getRagKnowledge() });
+    } catch (err) {
+      res.json({ success: true, knowledge: RAG_KNOWLEDGE_SEED, source: "file" });
+    }
+  });
+
   // RAG Chat route
   app.post("/api/rag-chat", parsingRoutes.ragChat);
+  app.post("/api/rag-feedback", parsingRoutes.ragFeedback);
+
+  // Device sync heartbeat
+  app.post("/api/sync/beat", requireAuth, syncRoutes.deviceSyncBeat);
 
   // Notification reference routes
+  app.get("/api/ai-notification-reference", requireAuth, notificationsRoutes.getNotificationReference);
   app.put("/api/ai-notification-reference", requireAuth, notificationsRoutes.putNotificationReference);
   app.post("/api/ai-notification-reference/refresh", requireAuth, notificationsRoutes.refreshNotificationRef);
 

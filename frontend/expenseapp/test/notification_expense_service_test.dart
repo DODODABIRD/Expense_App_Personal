@@ -49,5 +49,49 @@ void main() {
         everyElement({'expenseitem': 'Coffee', 'expenseprice': 25000}),
       );
     });
+
+    test('keeps local expense details for the AI template', () {
+      final items =
+          NotificationExpenseService.buildAiNotificationReferenceItems(
+            localExpenses: [
+              {
+                'id': 1,
+                'name': 'Kopi',
+                'amount': 25000,
+                'category': 'makanan',
+                'type': 'expected',
+                'date': '2026-11-16',
+              },
+            ],
+            onlineExpenses: const [],
+          );
+
+      expect(items, [
+        {
+          'expenseitem': 'Kopi',
+          'expenseprice': 25000,
+          'category': 'makanan',
+          'type': 'expected',
+          'date': '2026-11-16',
+        },
+      ]);
+    });
+  });
+
+  group('supported notification apps', () {
+    test('includes every BCA app package variant', () {
+      expect(
+        NotificationExpenseService.supportedApps.keys,
+        containsAll([
+          'com.bca',
+          'com.mybca',
+          'com.bca.mybca.omni.android',
+        ]),
+      );
+      expect(
+        NotificationExpenseService.supportedApps.containsKey('mybca'),
+        isFalse,
+      );
+    });
   });
 }

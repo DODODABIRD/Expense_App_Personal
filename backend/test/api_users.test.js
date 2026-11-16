@@ -149,6 +149,22 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
         return { rows: [{ summary: aiSummaryStore.get(ownerId) || {} }] };
       }
 
+      // loadNotificationReference
+      if (trimmed.startsWith("SELECT items, summary, updated_at FROM ai_notification_references")) {
+        const [ownerId] = params;
+        const items = aiRefStore.get(ownerId);
+        if (!items) return { rows: [] };
+        return {
+          rows: [
+            {
+              items,
+              summary: aiSummaryStore.get(ownerId) || {},
+              updated_at: new Date("2026-10-08T02:00:00Z"),
+            },
+          ],
+        };
+      }
+
       // loadNotificationReferenceItems
       if (trimmed.startsWith("SELECT items FROM ai_notification_references")) {
         const [ownerId] = params;
@@ -262,7 +278,23 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
       max: 35000,
     });
 
-    // 7. DELETE /api/users/:localId
+    // 7. GET the stored notification context template
+    const contextRes = await fetch(
+      `${baseUrl}/api/ai-notification-reference`,
+      { headers: authHeaders }
+    );
+    assert.equal(contextRes.status, 200);
+    const contextData = await contextRes.json();
+    assert.equal(contextData.itemCount, 1);
+    assert.equal(contextData.template.sampleSize, 1);
+    assert.deepEqual(contextData.template.categories[0].priceRange, {
+      min: 35000,
+      max: 35000,
+    });
+    assert.equal(contextData.template.categories[0].category, "makanan");
+    assert.ok(contextData.updatedAt);
+
+    // 8. DELETE /api/users/:localId
     const deleteRes = await fetch(`${baseUrl}/api/users/${created.localId}`, {
       method: "DELETE",
       headers: authHeaders,
@@ -271,7 +303,7 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
     const deleteData = await deleteRes.json();
     assert.equal(deleteData.message, "Deleted");
 
-    // 8. Re-insert and test POST /api/users/delete-all
+    // 9. Re-insert and test POST /api/users/delete-all
     await fetch(`${baseUrl}/api/users`, {
       method: "POST",
       headers: authHeaders,

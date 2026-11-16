@@ -6,6 +6,7 @@ import '../services/databaseHelper.dart';
 import '../services/notification_expense_service.dart';
 import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
+import 'ai_context_page.dart';
 
 class SettingsPage extends StatefulWidget {
   final Future<void> Function() onDeleteAll;
@@ -116,6 +117,9 @@ class _SettingsPageState extends State<SettingsPage> {
     }
     final service = NotificationExpenseService.instance;
     await service.setParserEnabled(true);
+    // Save the selection before opening Android settings; the listener service
+    // reads these preferences when it is first bound.
+    await service.setAllowedApps(await service.getAllowedApps());
     if (!await service.isEnabled()) await service.openAccessSettings();
     if (await service.isEnabled()) {
       await service.start(
@@ -157,6 +161,12 @@ class _SettingsPageState extends State<SettingsPage> {
         SnackBar(content: Text('Could not re-sync expenses: $error')),
       );
     }
+  }
+
+  Future<void> _openAiContext() async {
+    await Navigator.of(context).push<void>(
+      SmoothPageRoute(page: const AiContextPage()),
+    );
   }
 
   Future<void> _updateAiNotificationReference() async {
@@ -226,6 +236,14 @@ class _SettingsPageState extends State<SettingsPage> {
               : 'Refresh expense examples used by notification AI.',
           color: const Color(0xFFE5E7EB),
           onTap: _updateAiNotificationReference,
+        ),
+        const SizedBox(height: 16),
+        _SettingsAction(
+          icon: Icons.insights_outlined,
+          title: 'View AI notification context',
+          subtitle: 'See the price range the AI learned for each category.',
+          color: const Color(0xFFFFD166),
+          onTap: _openAiContext,
         ),
         const SizedBox(height: 16),
         _SettingsAction(

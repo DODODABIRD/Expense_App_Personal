@@ -1,6 +1,0 @@
-cd ~/Expense_App_Personal && git pull origin VPS_Test && cd backend && docker build -t expense-backend . && docker stop expense-backend-app && docker rm expense-backend-app && docker run -d --name expense-backend-app --network expense-net --restart unless-stopped --env-file .env.local -p 3000:3000 expense-backend && docker image prune -f
-
-
-
-Commands:
-update-backend

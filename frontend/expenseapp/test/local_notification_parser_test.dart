@@ -214,6 +214,24 @@ void main() {
       expect(transferRes.name, contains('BUDI SETIAWAN'));
     });
 
+    test('BCA package variants (BCA mobile & myBCA) parse the same way', () {
+      for (final packageName in const [
+        'com.bca',
+        'com.mybca',
+        'com.bca.mybca.omni.android',
+      ]) {
+        final res = LocalNotificationParser.parse(
+          title: 'BCA mobile',
+          message:
+              'Pembayaran QRIS sebesar Rp 50.000 di Kopi Kenangan berhasil',
+          packageName: packageName,
+        );
+        expect(res, isNotNull, reason: packageName);
+        expect(res!.amount, 50000, reason: packageName);
+        expect(res.name, contains('Kopi Kenangan'), reason: packageName);
+      }
+    });
+
     test('Mandiri Livin notification parsing', () {
       final res = LocalNotificationParser.parse(
         title: 'Livin by Mandiri',

@@ -214,6 +214,7 @@ dialog label { display: block; font-size: 12px; color: var(--text-secondary); ma
 dialog input[type="text"] { width: 100%; font-family: var(--mono); }
 dialog .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
 
+.backups-note { margin-top: -8px; margin-bottom: 12px; font-size: 12px; color: var(--text-secondary); }
 .backups-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }
 .backup-row {
   display: flex;
@@ -228,6 +229,50 @@ dialog .actions { display: flex; justify-content: flex-end; gap: 10px; margin-to
 .backup-row .meta { color: var(--text-secondary); }
 
 .hidden { display: none !important; }
+
+/* Content editor */
+.editor-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+.editor-main, .editor-side { margin-bottom: 0; }
+.json-editor {
+  width: 100%;
+  min-height: 560px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.55;
+  resize: vertical;
+  white-space: pre;
+}
+.json-editor.short { min-height: 300px; }
+.editor-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.preview-list { display: flex; flex-direction: column; gap: 10px; }
+.preview-row { display: flex; flex-direction: column; gap: 2px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+.preview-label { color: var(--text-secondary); font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+.preview-row strong { font-size: 13px; word-break: break-word; }
+.preview-note { font-size: 12px; line-height: 1.5; }
+
+/* Table helpers */
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+tr.clickable { cursor: pointer; }
+.bar { display: block; height: 8px; background: var(--bg-secondary); border-radius: 999px; overflow: hidden; min-width: 80px; }
+.bar span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+
+dialog textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+}
+dialog select, dialog input[type="number"], dialog input[type="date"] { width: 100%; }
+
+@media (max-width: 860px) {
+  .editor-layout { grid-template-columns: 1fr; }
+  .json-editor { min-height: 380px; }
+}
 
 /* Login screen */
 .login-body {

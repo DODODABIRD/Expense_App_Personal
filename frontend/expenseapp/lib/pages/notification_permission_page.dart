@@ -170,6 +170,9 @@ class NotificationPermissionPage extends StatelessWidget {
                 onTap: () async {
                   final service = NotificationExpenseService.instance;
                   await service.setParserEnabled(true);
+                  // Persist the allowed packages before the listener service
+                  // starts, so the first notifications are not filtered out.
+                  await service.setAllowedApps(await service.getAllowedApps());
                   await service.openAccessSettings();
                   if (context.mounted) {
                     Navigator.of(context).pop();

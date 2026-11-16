@@ -4281,3 +4281,47 @@ h1 {
 .dropdown-menu a {
     padding: 8px 12px;
 }
+/* CMS-rendered project cards */
+.project-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 14px;
+}
+.project-card-actions .button {
+    padding: 7px 16px;
+    font-size: 0.82rem;
+}
+#cms-project-grid[hidden],
+#cms-projects-heading[hidden] {
+    display: none;
+}
+
+/* RAG chat feedback */
+.chat-feedback {
+    display: flex;
+    gap: 6px;
+    margin-top: 8px;
+    align-items: center;
+}
+.chat-feedback[hidden] {
+    display: none;
+}
+.chat-feedback button {
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    background: rgba(255, 255, 255, 0.55);
+    border-radius: 999px;
+    padding: 2px 10px;
+    font-size: 0.95rem;
+    cursor: pointer;
+    line-height: 1.4;
+}
+.chat-feedback button:hover {
+    background: rgba(255, 255, 255, 0.85);
+}
+.chat-feedback span {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}

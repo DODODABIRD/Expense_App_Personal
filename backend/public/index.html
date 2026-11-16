@@ -245,10 +245,10 @@
                     and
                     <strong class="hero-express">Express</strong>
                 </h1>
-                <p class="hero-lede">Hello there, my name is <strong class="my-name">Orlando Diamond Prasetyo</strong>, a software engineer and product
+                <p class="hero-lede">Hello there, my name is <strong class="my-name" data-cms="profile.name">Orlando Diamond Prasetyo</strong>, <span data-cms="profile.bio">a software engineer and product
                     builder from
                     Indonesia. I build useful applications for everyday needs. My strong suite is Flutter application
-                    design and Native Database control.</p>
+                    design and Native Database control.</span></p>
 
                 <div class="hero-actions">
                     <a class="button button-aqua" href="#projects">Featured projects <span
@@ -315,6 +315,11 @@
                     <div class="chat-bubble-content" id="chat-bubble-text">
                         "Hi! I'm Orlando. Click my face or the bar below to ask me anything!"
                     </div>
+                    <div class="chat-feedback" id="chat-feedback" hidden>
+                        <button type="button" data-vote="up" aria-label="Helpful answer">👍</button>
+                        <button type="button" data-vote="down" aria-label="Not helpful answer">👎</button>
+                        <span id="chat-feedback-status" hidden></span>
+                    </div>
                     <div class="chat-bubble-tail"></div>
                 </div>
 
@@ -376,7 +381,7 @@
 
                 <div>
                     <h2>Making apps that are actually useful.</h2>
-                    <p>I'm making apps that i would actually use instead of making apps that is boring and too complicated.
+                    <p data-cms="profile.about">I'm making apps that i would actually use instead of making apps that is boring and too complicated.
                         Currently i am making UNMURCE, a expense tracker tuned for lazy young adults. Every month i have
                         to get my dad to reimburse my expenses, so i made an app that automatically saves my expenses, catagorize,
                         sort and view them as charts of data that could be exported into a pdf so my dad can see details. 
@@ -384,8 +389,8 @@
                 </div>
 
                 <div class="about-facts">
-                    <div class="fact-box"><span>LOCATION</span><strong>DKI Jakarta, Indonesia</strong></div>
-                    <div class="fact-box"><span>PRIMARY SPECIALTY</span><strong>Web, Mobile & AI Systems</strong></div>
+                    <div class="fact-box"><span>LOCATION</span><strong data-cms="profile.location">DKI Jakarta, Indonesia</strong></div>
+                    <div class="fact-box"><span>PRIMARY SPECIALTY</span><strong data-cms="profile.specialty">Web, Mobile & AI Systems</strong></div>
                     <div class="fact-box"><span>FLAGSHIP PROJECT</span><a href="/projects/unmurce"
                             style="text-decoration: underline; font-weight: 800;">Unmurce Expense Tracker</a></div>
                     <div class="fact-box"><span>DOCUMENTATION</span><a href="/projects/docs"
@@ -601,19 +606,22 @@
                     <div class="project-info">
                         <div>
                             <p class="project-number">01</p>
-                            <h3>Unmurce Expense Tracker</h3>
-                            <p>Private personal finance application with receipt scanning, Firebase auth, and instant
+                            <h3 data-cms="featured.name">Unmurce Expense Tracker</h3>
+                            <p data-cms="featured.description">Private personal finance application with receipt scanning, Firebase auth, and instant
                                 monthly balance breakdowns.</p>
+                            <p class="project-apk-line" style="margin-top: 6px; font-size: 0.82rem; font-weight: 700; opacity: 0.75;">
+                                <span data-apk-version>v1.7.5</span> · <span data-apk-size>24.8 MB</span> · Android
+                            </p>
                             <div style="display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px;">
                                 <a class="button button-aqua" style="padding: 7px 16px; font-size: 0.82rem;"
-                                    href="/projects/unmurce">Explore Showcase ↗</a>
+                                    href="/projects/unmurce" data-cms-href="featured.showcase_url">Explore Showcase ↗</a>
                                 <a class="button button-yellow" style="padding: 7px 16px; font-size: 0.82rem;"
-                                    href="/expenses">Launch App ↗</a>
+                                    href="/expenses" data-cms-href="featured.app_url">Launch App ↗</a>
                                 <a class="button button-white" style="padding: 7px 16px; font-size: 0.82rem;"
-                                    href="/projects/docs">Tech Specs ↗</a>
+                                    href="/projects/docs" data-cms-href="featured.docs_url">Tech Specs ↗</a>
                             </div>
                         </div>
-                        <a class="project-arrow" href="/projects/unmurce" aria-label="View Unmurce Showcase">↗</a>
+                        <a class="project-arrow" href="/projects/unmurce" aria-label="View Unmurce Showcase" data-cms-href="featured.showcase_url">↗</a>
                     </div>
                 </div>
 
@@ -837,6 +845,16 @@
                     </div>
                 </a>
             </div>
+
+            <!-- Additional projects rendered from the admin panel -->
+            <div class="section-heading" id="cms-projects-heading" hidden>
+                <div>
+                    <p class="section-index">MORE PROJECTS</p>
+                    <h2>Other things I build</h2>
+                </div>
+                <p class="section-note">Managed from the admin panel, no HTML edits needed.</p>
+            </div>
+            <div class="project-grid" id="cms-project-grid" hidden></div>
         </section>
 
         <!-- Journey & Milestones Section -->
@@ -849,7 +867,7 @@
                 <p class="section-note">Gonzaga &rarr; Binus</p>
             </div>
 
-            <div class="timeline-container">
+            <div class="timeline-container" id="cms-timeline">
                 <!-- Milestone 1: 2023 - 2025 -->
                 <div class="timeline-item">
                     <div class="timeline-badge-wrapper">
@@ -924,7 +942,7 @@
                 <div class="contact-layout">
                     <div>
                         <h2>Let's build something great together.</h2>
-                        <p class="contact-copy">Have a project idea, feedback on Unmurce, or want to collaborate? Click
+                        <p class="contact-copy" data-cms="profile.contact_copy">Have a project idea, feedback on Unmurce, or want to collaborate? Click
                             any button below to connect with <strong>Orlando Diamond Prasetyo</strong>.</p>
                     </div>
 
@@ -1550,6 +1568,61 @@
                 const spotlightInput = document.getElementById('macos-chat-input');
                 const spotlightForm = document.getElementById('macos-chat-form');
                 const spotlightCloseBtn = document.getElementById('spotlight-close-btn');
+                const chatFeedback = document.getElementById('chat-feedback');
+                const chatFeedbackStatus = document.getElementById('chat-feedback-status');
+
+                let lastRagEventId = null;
+
+                function resetChatFeedback() {
+                    lastRagEventId = null;
+                    if (!chatFeedback) return;
+                    chatFeedback.hidden = true;
+                    chatFeedback.querySelectorAll('button[data-vote]').forEach((button) => {
+                        button.disabled = false;
+                    });
+                    if (chatFeedbackStatus) {
+                        chatFeedbackStatus.hidden = true;
+                        chatFeedbackStatus.textContent = '';
+                    }
+                }
+
+                function showChatFeedback(eventId) {
+                    if (!chatFeedback) return;
+                    lastRagEventId = eventId;
+                    chatFeedback.hidden = false;
+                }
+
+                async function sendChatFeedback(vote) {
+                    if (!lastRagEventId) return;
+                    if (chatFeedback) {
+                        chatFeedback.querySelectorAll('button[data-vote]').forEach((button) => {
+                            button.disabled = true;
+                        });
+                    }
+                    if (chatFeedbackStatus) {
+                        chatFeedbackStatus.hidden = false;
+                        chatFeedbackStatus.textContent = vote === 'up' ? 'Thanks!' : "Thanks, I'll learn from it.";
+                    }
+
+                    try {
+                        await fetch('/api/rag-feedback', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ eventId: lastRagEventId, vote })
+                        });
+                    } catch (err) {
+                        console.warn('Could not send chat feedback', err);
+                    }
+                }
+
+                if (chatFeedback) {
+                    chatFeedback.addEventListener('click', (event) => {
+                        const button = event.target.closest('button[data-vote]');
+                        if (!button || button.disabled) return;
+                        event.stopPropagation();
+                        sendChatFeedback(button.dataset.vote);
+                    });
+                }
 
                 if (!faceViewport) {
                     console.warn('Orlando face viewport element not found.');
@@ -1598,9 +1671,20 @@
                 // Load RAG Knowledge Base from asset folder
                 async function loadKnowledgeBase() {
                     try {
-                        const res = await fetch('asset/rag_knowledge.json');
+                        const res = await fetch('/api/rag-knowledge', { cache: 'no-store' });
                         if (res.ok) {
-                            cachedKnowledge = await res.json();
+                            const payload = await res.json();
+                            cachedKnowledge = payload.knowledge || payload;
+                            return;
+                        }
+                    } catch (e) {
+                        console.warn('Could not load knowledge base from API', e);
+                    }
+
+                    try {
+                        const fallback = await fetch('asset/rag_knowledge.json');
+                        if (fallback.ok) {
+                            cachedKnowledge = await fallback.json();
                         }
                     } catch (e) {
                         console.warn('Could not load local rag_knowledge.json', e);
@@ -1915,6 +1999,7 @@
                 async function handleChatQuery(rawQuery) {
                     const query = String(rawQuery || '').trim();
                     if (!query) return;
+                    resetChatFeedback();
                     unlockDialogueAudio();
 
                     // Scroll hero into view if user is further down
@@ -1947,6 +2032,8 @@
 
                     if (!result || !result.reply) {
                         result = clientSideRagAnswer(query);
+                    } else if (result.eventId) {
+                        showChatFeedback(result.eventId);
                     }
 
                     // Handle "Interested" Reaction
@@ -1988,6 +2075,8 @@
             })();
         });
     </script>
+
+    <script src="/portfolio-cms.js" defer></script>
 
     <!-- Floating Toast Notification -->
     <div id="toast-notify" class="toast-notification neo-card" role="status" aria-live="polite">
