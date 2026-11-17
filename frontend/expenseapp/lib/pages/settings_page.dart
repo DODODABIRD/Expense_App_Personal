@@ -352,7 +352,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 style: GoogleFonts.itim(fontWeight: FontWeight.bold),
               ),
               subtitle: Text(
-                'Version 1.7.5',
+                'Version 2.0.0',
                 style: GoogleFonts.itim(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),

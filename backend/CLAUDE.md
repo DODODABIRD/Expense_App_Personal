@@ -304,6 +304,8 @@ The Assets tab manages files under `public/asset`: list, replace, upload, delete
 
 Other tabs read from Postgres: overview totals, expense browser + CSV export, owners, and the audit log. AI usage reads `ai_provider_events`, which `receipts.js` writes on each Groq/Azure attempt.
 
+The Downloads tab manages `download_apps` and `download_releases`: create apps, add releases (version, URL, size, date, notes), and the highest version per app becomes the default download automatically. Public pages read `GET /api/downloads` and `GET /api/downloads/:slug`; `/downloads` and `/downloads/:slug` render the catalog. Point release URLs at any public object-storage URL (R2/S3/Supabase/etc.) — no redeploy or new env var is needed. The first read seeds the `unmurce` app from the legacy `portfolio_content.apk`, so existing data is preserved.
+
 Note: the asset writes require a writable filesystem (Docker deployment). On Vercel serverless the filesystem is read-only, so asset mutations fail there.
 
 ### Admin route mounting order

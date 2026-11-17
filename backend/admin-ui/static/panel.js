@@ -11,6 +11,9 @@ const state = {
   backupsAsset: null,
   activeTab: 'assets',
   portfolio: null,
+  downloads: [],
+  downloadAppSlug: null,
+  downloadAppMode: 'edit',
   ragEvents: [],
   ragUnanswered: []
 };
@@ -118,6 +121,7 @@ async function api(url, options) {
 const loaders = {
   assets: loadAssets,
   content: loadContent,
+  downloads: loadDownloads,
   overview: loadOverview,
   transactions: loadTransactions,
   users: loadUsers,
@@ -726,7 +730,6 @@ function renderPortfolioPreview(content) {
   const list = $('portfolioPreview');
   list.innerHTML = '';
   const profile = content.profile || {};
-  const apk = content.apk || {};
   const projects = Array.isArray(content.projects) ? content.projects : [];
   const experience = Array.isArray(content.experience) ? content.experience : [];
 
@@ -749,9 +752,6 @@ function renderPortfolioPreview(content) {
   line('Status', profile.status);
   line('Projects', projects.length + ' in the extra grid');
   line('Experience', experience.length + ' timeline entries');
-  line('APK', apk.version ? 'v' + apk.version : 'not set');
-  line('APK size', apk.size_bytes ? formatBytes(apk.size_bytes) : 'not set');
-  line('APK file', apk.url);
 
   const note = document.createElement('p');
   note.className = 'muted preview-note';
@@ -798,6 +798,272 @@ async function saveContent() {
     showStatus('Portfolio content saved. Public pages now render this data.', 'success');
   } catch (err) {
     showStatus('Save failed: ' + err.message, 'error');
+  }
+}
+
+/* Downloads */
+
+function currentDownloadApp() {
+  return state.downloads.find(function (app) {
+    return app.slug === state.downloadAppSlug;
+  }) || null;
+}
+
+function bytesToMb(bytes) {
+  const mb = Number(bytes) / (1024 * 1024);
+  return Number.isFinite(mb) && mb > 0 ? mb.toFixed(1) : '';
+}
+
+function mbToBytes(value) {
+  const mb = Number(value);
+  return Number.isFinite(mb) && mb > 0 ? Math.round(mb * 1024 * 1024) : 0;
+}
+
+function renderDownloadAppSelect() {
+  const select = $('downloadAppSelect');
+  const creating = state.downloadAppMode === 'create';
+  select.innerHTML = '';
+
+  if (creating) {
+    const option = document.createElement('option');
+    option.value = '__new__';
+    option.textContent = 'New app (unsaved)';
+    select.appendChild(option);
+  }
+
+  state.downloads.forEach(function (app) {
+    const option = document.createElement('option');
+    option.value = app.slug;
+    option.textContent = app.name + ' (' + app.slug + (app.active ? '' : ', hidden') + ')';
+    select.appendChild(option);
+  });
+
+  if (state.downloads.length === 0 && !creating) {
+    const option = document.createElement('option');
+    option.value = '';
+    option.textContent = 'No apps yet';
+    select.appendChild(option);
+  }
+
+  select.disabled = state.downloads.length === 0 && !creating;
+  select.value = creating ? '__new__' : (state.downloadAppSlug || '');
+  $('downloadAppCount').textContent =
+    state.downloads.length + ' app' + (state.downloads.length === 1 ? '' : 's');
+}
+
+function renderDownloadAppForm() {
+  const app = state.downloadAppMode === 'create' ? null : currentDownloadApp();
+  const editing = Boolean(app);
+
+  $('downloadAppFormTitle').textContent = state.downloadAppMode === 'create'
+    ? 'New app'
+    : editing
+      ? 'Edit: ' + app.name
+      : 'App details';
+  $('downloadAppSlug').disabled = editing;
+  $('downloadAppDeleteBtn').disabled = !editing;
+
+  if (!app) {
+    $('downloadAppSlug').value = '';
+    $('downloadAppName').value = '';
+    $('downloadAppIcon').value = '';
+    $('downloadAppAccent').value = '';
+    $('downloadAppOrder').value = '0';
+    $('downloadAppActive').value = 'true';
+    $('downloadAppTagline').value = '';
+    $('downloadAppDescription').value = '';
+    return;
+  }
+
+  $('downloadAppSlug').value = app.slug;
+  $('downloadAppName').value = app.name || '';
+  $('downloadAppIcon').value = app.icon_url || '';
+  $('downloadAppAccent').value = app.accent || '';
+  $('downloadAppOrder').value = String(app.sort_order || 0);
+  $('downloadAppActive').value = app.active ? 'true' : 'false';
+  $('downloadAppTagline').value = app.tagline || '';
+  $('downloadAppDescription').value = app.description || '';
+}
+
+function renderDownloadReleases() {
+  const body = $('downloadReleasesBody');
+  body.innerHTML = '';
+
+  const app = state.downloadAppMode === 'create' ? null : currentDownloadApp();
+  $('downloadNewReleaseBtn').disabled = !app;
+
+  if (!app) {
+    emptyRow(body, 7, 'Create or select an app first.');
+    return;
+  }
+
+  if (app.releases.length === 0) {
+    emptyRow(body, 7, 'No releases yet. Add the first version.');
+    return;
+  }
+
+  app.releases.forEach(function (release) {
+    const tr = document.createElement('tr');
+
+    tr.appendChild(cell('v' + release.version, 'mono'));
+    tr.appendChild(cell(shortText(release.url, 48), 'mono'));
+    tr.appendChild(cell(release.size_bytes ? formatBytes(release.size_bytes) : '-', 'right'));
+    tr.appendChild(cell(formatDay(release.released_at)));
+    tr.appendChild(cell(release.notes || '-'));
+
+    const isLatest = app.latest && app.latest.id === release.id;
+    tr.appendChild(cell(tag(isLatest ? 'Latest' : 'Older', isLatest ? 'success' : '')));
+
+    const actions = document.createElement('div');
+    actions.className = 'row-actions';
+    actions.appendChild(actionButton('Edit', 'btn-small btn-ghost', function () {
+      openReleaseDialog(release);
+    }));
+    actions.appendChild(actionButton('Delete', 'btn-small btn-danger', function () {
+      deleteRelease(release);
+    }));
+    tr.appendChild(cell(actions));
+
+    body.appendChild(tr);
+  });
+}
+
+async function loadDownloads() {
+  const data = await api('/dodo/api/downloads');
+  state.downloads = Array.isArray(data.apps) ? data.apps : [];
+
+  if (state.downloadAppMode !== 'create') {
+    const exists = state.downloads.some(function (app) {
+      return app.slug === state.downloadAppSlug;
+    });
+    if (!exists) state.downloadAppSlug = state.downloads[0]?.slug || null;
+  }
+
+  renderDownloadAppSelect();
+  renderDownloadAppForm();
+  renderDownloadReleases();
+}
+
+async function saveDownloadApp(event) {
+  event.preventDefault();
+
+  const existing = currentDownloadApp();
+  const isCreate = state.downloadAppMode === 'create' || !existing;
+  const payload = {
+    slug: $('downloadAppSlug').value.trim().toLowerCase(),
+    name: $('downloadAppName').value.trim(),
+    tagline: $('downloadAppTagline').value.trim(),
+    description: $('downloadAppDescription').value.trim(),
+    icon_url: $('downloadAppIcon').value.trim(),
+    accent: $('downloadAppAccent').value.trim(),
+    sort_order: Number($('downloadAppOrder').value) || 0,
+    active: $('downloadAppActive').value === 'true'
+  };
+
+  try {
+    const data = await api(
+      isCreate
+        ? '/dodo/api/downloads/apps'
+        : '/dodo/api/downloads/apps/' + encodeURIComponent(existing.slug),
+      {
+        method: isCreate ? 'POST' : 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ app: payload })
+      }
+    );
+    state.downloadAppMode = 'edit';
+    state.downloadAppSlug = data.app.slug;
+    await loadDownloads();
+    showStatus(isCreate ? 'App created.' : 'App details saved.', 'success');
+  } catch (err) {
+    showStatus('Save failed: ' + err.message, 'error');
+  }
+}
+
+async function deleteDownloadApp() {
+  const app = currentDownloadApp();
+  if (!app) return;
+  if (!confirm('Delete "' + app.name + '" and all of its releases?')) return;
+
+  try {
+    await api('/dodo/api/downloads/apps/' + encodeURIComponent(app.slug), {
+      method: 'DELETE'
+    });
+    state.downloadAppSlug = null;
+    state.downloadAppMode = 'edit';
+    await loadDownloads();
+    showStatus('App deleted.', 'success');
+  } catch (err) {
+    showStatus('Delete failed: ' + err.message, 'error');
+  }
+}
+
+function openReleaseDialog(release) {
+  $('releaseDialogTitle').textContent = release ? 'Edit release' : 'New release';
+  $('releaseId').value = release ? release.id : '';
+  $('releaseVersion').value = release ? release.version : '';
+  $('releaseUrl').value = release ? release.url : '';
+  $('releaseSizeMb').value = release ? bytesToMb(release.size_bytes) : '';
+  $('releaseDate').value = release && release.released_at
+    ? String(release.released_at).slice(0, 10)
+    : '';
+  $('releaseNotes').value = release ? release.notes || '' : '';
+  $('releaseDialog').showModal();
+}
+
+async function saveRelease(event) {
+  event.preventDefault();
+
+  const app = currentDownloadApp();
+  if (!app) {
+    showStatus('Create or select an app first.', 'error');
+    return;
+  }
+
+  const id = $('releaseId').value;
+  const payload = {
+    version: $('releaseVersion').value.trim(),
+    url: $('releaseUrl').value.trim(),
+    size_bytes: mbToBytes($('releaseSizeMb').value),
+    released_at: $('releaseDate').value,
+    notes: $('releaseNotes').value.trim()
+  };
+
+  try {
+    await api(
+      id
+        ? '/dodo/api/downloads/releases/' + encodeURIComponent(id)
+        : '/dodo/api/downloads/apps/' + encodeURIComponent(app.slug) + '/releases',
+      {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ release: payload })
+      }
+    );
+    $('releaseDialog').close();
+    await loadDownloads();
+    showStatus(
+      id
+        ? 'Release updated.'
+        : 'Release added. The highest version is now the default download.',
+      'success'
+    );
+  } catch (err) {
+    showStatus('Save failed: ' + err.message, 'error');
+  }
+}
+
+async function deleteRelease(release) {
+  if (!confirm('Delete v' + release.version + '?')) return;
+
+  try {
+    await api('/dodo/api/downloads/releases/' + encodeURIComponent(release.id), {
+      method: 'DELETE'
+    });
+    await loadDownloads();
+    showStatus('Release deleted. The next highest version is now the default.', 'success');
+  } catch (err) {
+    showStatus('Delete failed: ' + err.message, 'error');
   }
 }
 
@@ -1222,6 +1488,39 @@ $('portfolioJson').addEventListener('input', function () {
   } catch (err) {
     // Keep the last valid preview while the JSON is being edited.
   }
+});
+
+$('downloadRefreshBtn').addEventListener('click', function () {
+  loadDownloads().catch(function (err) {
+    showStatus('Failed to load downloads: ' + err.message, 'error');
+  });
+});
+
+$('downloadNewAppBtn').addEventListener('click', function () {
+  state.downloadAppMode = 'create';
+  renderDownloadAppSelect();
+  renderDownloadAppForm();
+  renderDownloadReleases();
+  $('downloadAppName').focus();
+});
+
+$('downloadAppSelect').addEventListener('change', function () {
+  const value = $('downloadAppSelect').value;
+  if (!value || value === '__new__') return;
+  state.downloadAppMode = 'edit';
+  state.downloadAppSlug = value;
+  renderDownloadAppForm();
+  renderDownloadReleases();
+});
+
+$('downloadAppForm').addEventListener('submit', saveDownloadApp);
+$('downloadAppDeleteBtn').addEventListener('click', deleteDownloadApp);
+$('downloadNewReleaseBtn').addEventListener('click', function () {
+  openReleaseDialog(null);
+});
+$('releaseForm').addEventListener('submit', saveRelease);
+$('cancelReleaseBtn').addEventListener('click', function () {
+  $('releaseDialog').close();
 });
 
 $('expenseForm').addEventListener('submit', saveExpense);

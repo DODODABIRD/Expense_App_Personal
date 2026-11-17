@@ -43,8 +43,8 @@
     });
   }
 
-  function applyApk(content) {
-    var apk = content.apk || {};
+  function applyApk(apk) {
+    apk = apk || {};
 
     document.querySelectorAll("[data-apk-version]").forEach(function (element) {
       element.textContent = apk.version ? "v" + apk.version : "";
@@ -256,9 +256,23 @@
     if (!content) return;
 
     applyProfile(content);
-    applyApk(content);
+    applyApk(content.apk);
     renderProjects(content.projects);
     renderTimeline(content.experience);
+
+    var appSlug = (document.body && document.body.dataset.downloadApp) || "unmurce";
+    try {
+      var downloadResponse = await fetch(
+        "/api/downloads/" + encodeURIComponent(appSlug),
+        { cache: "no-store" }
+      );
+      if (!downloadResponse.ok) return;
+      var downloadPayload = await downloadResponse.json();
+      var latest = downloadPayload && downloadPayload.app && downloadPayload.app.latest;
+      if (latest) applyApk(latest);
+    } catch (error) {
+      // Keep the portfolio APK fallback when the downloads endpoint is unavailable.
+    }
   }
 
   if (document.readyState === "loading") {

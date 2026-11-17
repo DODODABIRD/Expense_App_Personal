@@ -7,30 +7,82 @@
   <link rel="stylesheet" href="/dodo/static/admin.css">
 </head>
 <body>
-  <div class="container">
-    <div class="header-row">
-      <div>
-        <h1>Admin Panel</h1>
-        <p class="subtitle">Content, assets, expenses, users, chatbot feedback and ops</p>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1>Unmurce</h1>
+          <p>Admin Console</p>
+        </div>
       </div>
-      <div class="header-right">
-        <button class="btn btn-danger" id="logoutBtn">Logout</button>
+
+      <nav class="side-nav" aria-label="Admin sections">
+        <button class="tab active" data-tab="assets">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-assets"/></svg>
+          <span>Assets</span>
+        </button>
+        <button class="tab" data-tab="content">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-content"/></svg>
+          <span>Content</span>
+        </button>
+        <button class="tab" data-tab="downloads">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-download"/></svg>
+          <span>Downloads</span>
+        </button>
+        <button class="tab" data-tab="overview">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-overview"/></svg>
+          <span>Overview</span>
+        </button>
+        <button class="tab" data-tab="transactions">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-transactions"/></svg>
+          <span>Transactions</span>
+        </button>
+        <button class="tab" data-tab="users">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-users"/></svg>
+          <span>Users</span>
+        </button>
+        <button class="tab" data-tab="ai">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-ai"/></svg>
+          <span>AI Usage</span>
+        </button>
+        <button class="tab" data-tab="rag">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-chat"/></svg>
+          <span>Chatbot</span>
+        </button>
+        <button class="tab" data-tab="health">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-health"/></svg>
+          <span>Health</span>
+        </button>
+        <button class="tab" data-tab="audit">
+          <svg class="tab-icon" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-audit"/></svg>
+          <span>Audit Log</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="env-chip"><span class="dot"></span> Session auth · 24h</div>
+        <p>&copy; 2026 Unmurce</p>
       </div>
-    </div>
+    </aside>
 
-    <nav class="tabs">
-      <button class="tab active" data-tab="assets">Assets</button>
-      <button class="tab" data-tab="content">Content</button>
-      <button class="tab" data-tab="overview">Overview</button>
-      <button class="tab" data-tab="transactions">Transactions</button>
-      <button class="tab" data-tab="users">Users</button>
-      <button class="tab" data-tab="ai">AI Usage</button>
-      <button class="tab" data-tab="rag">Chatbot</button>
-      <button class="tab" data-tab="health">Health</button>
-      <button class="tab" data-tab="audit">Audit Log</button>
-    </nav>
+    <main class="main">
+      <div class="container">
+        <div class="header-row">
+          <div>
+            <h1>Admin Panel</h1>
+            <p class="subtitle">Content, assets, expenses, users, chatbot feedback and ops</p>
+          </div>
+          <div class="header-right">
+            <button class="btn btn-danger" id="logoutBtn">Logout</button>
+          </div>
+        </div>
 
-    <div class="status" id="status"></div>
+        <div class="status" id="status"></div>
 
     <section class="section active" id="section-assets">
       <div class="toolbar">
@@ -52,7 +104,7 @@
 
     <section class="section" id="section-content">
       <div class="toolbar">
-        <span class="count grow">Profile, featured project, projects, experience and APK metadata. Saved to Postgres and rendered by /portfolio-cms.js.</span>
+        <span class="count grow">Profile, featured project, projects and experience. Saved to Postgres and rendered by /portfolio-cms.js. Download links live in the Downloads tab.</span>
         <button class="btn btn-ghost" id="contentReloadBtn">Reload</button>
         <button class="btn btn-ghost" id="contentFormatBtn">Format JSON</button>
         <button class="btn btn-primary" id="contentSaveBtn">Save content</button>
@@ -65,6 +117,83 @@
         <div class="panel-card editor-side">
           <h2>Preview</h2>
           <div id="portfolioPreview" class="preview-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section" id="section-downloads">
+      <div class="toolbar">
+        <select id="downloadAppSelect" class="grow" aria-label="Select app"></select>
+        <span class="count" id="downloadAppCount"></span>
+        <button class="btn btn-ghost" id="downloadRefreshBtn">Refresh</button>
+        <button class="btn btn-primary" id="downloadNewAppBtn">New app</button>
+      </div>
+
+      <div class="panel-card">
+        <h2 id="downloadAppFormTitle">App details</h2>
+        <form id="downloadAppForm" class="download-form">
+          <label class="field">
+            <span>Slug</span>
+            <input id="downloadAppSlug" type="text" placeholder="unmurce" required>
+          </label>
+          <label class="field">
+            <span>Name</span>
+            <input id="downloadAppName" type="text" placeholder="Unmurce Expense Tracker" required>
+          </label>
+          <label class="field">
+            <span>Icon URL</span>
+            <input id="downloadAppIcon" type="text" placeholder="/asset/unmurce/unmurce-app-icon.png">
+          </label>
+          <label class="field">
+            <span>Accent</span>
+            <input id="downloadAppAccent" type="text" placeholder="yellow">
+          </label>
+          <label class="field">
+            <span>Sort order</span>
+            <input id="downloadAppOrder" type="number" step="1" value="0">
+          </label>
+          <label class="field">
+            <span>Visibility</span>
+            <select id="downloadAppActive">
+              <option value="true">Active</option>
+              <option value="false">Hidden</option>
+            </select>
+          </label>
+          <label class="field grow">
+            <span>Tagline</span>
+            <input id="downloadAppTagline" type="text" placeholder="Short one-liner shown on the downloads page">
+          </label>
+          <label class="field grow">
+            <span>Description</span>
+            <textarea id="downloadAppDescription" rows="3"></textarea>
+          </label>
+          <div class="download-actions">
+            <button type="button" class="btn btn-danger" id="downloadAppDeleteBtn">Delete app</button>
+            <button type="submit" class="btn btn-primary" id="downloadAppSaveBtn">Save app</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel-card">
+        <div class="toolbar">
+          <span class="count grow">The highest version becomes the default download. Deleting it promotes the next highest version.</span>
+          <button class="btn btn-primary" id="downloadNewReleaseBtn">New release</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Version</th>
+                <th>URL</th>
+                <th class="right">Size</th>
+                <th>Released</th>
+                <th>Notes</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="downloadReleasesBody"></tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -342,6 +471,8 @@
         </div>
       </div>
     </section>
+      </div>
+    </main>
   </div>
 
   <dialog id="uploadDialog">
@@ -429,6 +560,85 @@
       </div>
     </form>
   </dialog>
+
+  <dialog id="releaseDialog">
+    <form id="releaseForm">
+      <h2 id="releaseDialogTitle">New release</h2>
+      <input type="hidden" id="releaseId">
+      <div class="field">
+        <label for="releaseVersion">Version</label>
+        <input type="text" id="releaseVersion" placeholder="1.8.0" required>
+      </div>
+      <div class="field">
+        <label for="releaseUrl">Download URL</label>
+        <input type="text" id="releaseUrl" placeholder="https://cdn.example.com/unmurce/app-release.apk" required>
+      </div>
+      <div class="field">
+        <label for="releaseSizeMb">Size (MB)</label>
+        <input type="number" id="releaseSizeMb" min="0" step="0.1">
+      </div>
+      <div class="field">
+        <label for="releaseDate">Released</label>
+        <input type="date" id="releaseDate">
+      </div>
+      <div class="field">
+        <label for="releaseNotes">Notes</label>
+        <input type="text" id="releaseNotes" placeholder="arm64-v8a release">
+      </div>
+      <div class="actions">
+        <button type="button" class="btn btn-ghost" id="cancelReleaseBtn">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save release</button>
+      </div>
+    </form>
+  </dialog>
+
+  <svg xmlns="http://www.w3.org/2000/svg" class="icon-sprite" aria-hidden="true">
+    <defs>
+      <g id="i-assets" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+      </g>
+      <g id="i-content" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/>
+        <path d="M14 3v5h5"/>
+        <path d="M9 13h6M9 17h4"/>
+      </g>
+      <g id="i-download" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3v12"/>
+        <path d="m7 10 5 5 5-5"/>
+        <path d="M4 21h16"/>
+      </g>
+      <g id="i-overview" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 20h18"/>
+        <path d="M6 20v-6M11 20V6M16 20v-9M21 20v-4"/>
+      </g>
+      <g id="i-transactions" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 6h12M9 12h12M9 18h8"/>
+        <path d="M4 6h.01M4 12h.01M4 18h.01"/>
+      </g>
+      <g id="i-users" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+        <circle cx="9" cy="7" r="3.2"/>
+        <path d="M22 20v-2a4 4 0 0 0-3-3.87"/>
+        <path d="M16.5 3.6a4 4 0 0 1 0 7.75"/>
+      </g>
+      <g id="i-ai" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="7" y="7" width="10" height="10" rx="2.5"/>
+        <path d="M10 2.5v3M14 2.5v3M10 18.5v3M14 18.5v3M2.5 10h3M2.5 14h3M18.5 10h3M18.5 14h3"/>
+      </g>
+      <g id="i-chat" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 12a7.5 7.5 0 0 1-7.5 7.5H8L4 22v-4.4A7.5 7.5 0 0 1 4 12V9.5a7.5 7.5 0 0 1 7.5-7.5h1A7.5 7.5 0 0 1 20 9.5z"/>
+        <path d="M9 11h6M9 14.5h4"/>
+      </g>
+      <g id="i-health" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 12h-4l-3 8L9 4l-3 8H2"/>
+      </g>
+      <g id="i-audit" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3.5 12a8.5 8.5 0 1 0 2.6-6.1L3 8.5"/>
+        <path d="M3 3.5v5h5"/>
+        <path d="M12 7.5V12l3 1.8"/>
+      </g>
+    </defs>
+  </svg>
 
   <script src="/dodo/static/panel.js"></script>
 </body>

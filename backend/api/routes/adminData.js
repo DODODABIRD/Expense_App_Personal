@@ -9,8 +9,97 @@ const router = express.Router();
 
 const CSV_MAX_ROWS = 5000;
 
+const DOWNLOAD_URL_PATTERN = /^(https?:\/\/|\/(?!\/))/i;
+const APP_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
 function sendDbError(res, err) {
   res.status(500).json({ success: false, error: err.message });
+}
+
+function isUniqueViolation(err) {
+  return Boolean(err && err.code === "23505");
+}
+
+function normalizeDownloadApp(input) {
+  const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const slug = String(source.slug || "").trim().toLowerCase();
+  if (!APP_SLUG_PATTERN.test(slug)) {
+    return { error: "slug must use lowercase letters, numbers and dashes" };
+  }
+  if (slug.length > 40) return { error: "slug is too long" };
+
+  const name = String(source.name || "").trim();
+  if (!name) return { error: "name is required" };
+
+  const iconUrl = String(source.icon_url || "").trim();
+  if (iconUrl && !DOWNLOAD_URL_PATTERN.test(iconUrl)) {
+    return { error: "icon_url must start with / or http(s)://" };
+  }
+
+  let sortOrder = 0;
+  if (source.sort_order !== undefined && source.sort_order !== null && source.sort_order !== "") {
+    sortOrder = Number(source.sort_order);
+    if (!Number.isFinite(sortOrder)) {
+      return { error: "sort_order must be a number" };
+    }
+  }
+
+  return {
+    app: {
+      slug,
+      name: name.slice(0, 120),
+      tagline: String(source.tagline || "").trim().slice(0, 300),
+      description: String(source.description || "").trim().slice(0, 2000),
+      icon_url: iconUrl,
+      accent: String(source.accent || "").trim().slice(0, 20),
+      sort_order: Math.round(sortOrder),
+      active:
+        source.active === undefined
+          ? true
+          : source.active === true || source.active === "true",
+    },
+  };
+}
+
+function normalizeDownloadRelease(input) {
+  const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const version = String(source.version || "").trim().replace(/^v/i, "");
+  if (!version) return { error: "version is required" };
+  if (version.length > 40) return { error: "version is too long" };
+
+  const url = String(source.url || "").trim();
+  if (!url) return { error: "url is required" };
+  if (!DOWNLOAD_URL_PATTERN.test(url)) {
+    return { error: "url must start with / or http(s)://" };
+  }
+  if (url.length > 2048) return { error: "url is too long" };
+
+  const releasedAt = String(source.released_at || "").trim();
+  if (releasedAt && !/^\d{4}-\d{2}-\d{2}$/.test(releasedAt)) {
+    return { error: "released_at must be in YYYY-MM-DD format" };
+  }
+
+  let sizeBytes = 0;
+  if (
+    source.size_bytes !== undefined &&
+    source.size_bytes !== null &&
+    source.size_bytes !== ""
+  ) {
+    sizeBytes = Number(source.size_bytes);
+    if (!Number.isFinite(sizeBytes) || sizeBytes < 0) {
+      return { error: "size_bytes must be a non-negative number" };
+    }
+  }
+
+  return {
+    release: {
+      version,
+      url,
+      size_bytes: Math.round(sizeBytes),
+      released_at: releasedAt,
+      notes: String(source.notes || "").trim().slice(0, 300),
+    },
+  };
 }
 
 function recordAdminAudit(req, action, target, detail) {
@@ -310,6 +399,177 @@ router.put("/api/portfolio", async (req, res) => {
       apkVersion: content.apk?.version || null,
     });
     res.json({ success: true, content });
+  } catch (err) {
+    sendDbError(res, err);
+  }
+});
+
+// GET /api/downloads - App download catalog for the admin panel
+router.get("/api/downloads", async (req, res) => {
+  try {
+    await db.connectDB();
+    res.json({
+      success: true,
+      apps: await db.listDownloadApps({ includeInactive: true }),
+    });
+  } catch (err) {
+    sendDbError(res, err);
+  }
+});
+
+// POST /api/downloads/apps - Create an app in the download catalog
+router.post("/api/downloads/apps", async (req, res) => {
+  const normalized = normalizeDownloadApp(req.body?.app || req.body);
+  if (normalized.error) {
+    return res.status(400).json({ success: false, error: normalized.error });
+  }
+
+  try {
+    await db.connectDB();
+    const app = await db.createDownloadApp(normalized.app);
+    recordAdminAudit(req, "download_app_created", `download_app:${app.slug}`, {
+      name: app.name,
+    });
+    res.status(201).json({ success: true, app });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return res.status(409).json({ success: false, error: "Slug already exists" });
+    }
+    sendDbError(res, err);
+  }
+});
+
+// PUT /api/downloads/apps/:slug - Update app metadata
+router.put("/api/downloads/apps/:slug", async (req, res) => {
+  const slug = String(req.params.slug || "").trim().toLowerCase();
+  const input = req.body?.app || req.body;
+  const normalized = normalizeDownloadApp({
+    ...(input && typeof input === "object" && !Array.isArray(input) ? input : {}),
+    slug,
+  });
+  if (normalized.error) {
+    return res.status(400).json({ success: false, error: normalized.error });
+  }
+
+  try {
+    await db.connectDB();
+    const app = await db.updateDownloadApp(slug, normalized.app);
+    if (!app) {
+      return res.status(404).json({ success: false, error: "App not found" });
+    }
+    recordAdminAudit(req, "download_app_updated", `download_app:${slug}`, {
+      name: app.name,
+      active: app.active,
+    });
+    res.json({ success: true, app });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return res.status(409).json({ success: false, error: "Slug already exists" });
+    }
+    sendDbError(res, err);
+  }
+});
+
+// DELETE /api/downloads/apps/:slug - Remove an app and its releases
+router.delete("/api/downloads/apps/:slug", async (req, res) => {
+  const slug = String(req.params.slug || "").trim().toLowerCase();
+  try {
+    await db.connectDB();
+    const deleted = await db.deleteDownloadApp(slug);
+    if (!deleted) {
+      return res.status(404).json({ success: false, error: "App not found" });
+    }
+    recordAdminAudit(req, "download_app_deleted", `download_app:${slug}`, {});
+    res.json({ success: true });
+  } catch (err) {
+    sendDbError(res, err);
+  }
+});
+
+// POST /api/downloads/apps/:slug/releases - Add a release
+router.post("/api/downloads/apps/:slug/releases", async (req, res) => {
+  const slug = String(req.params.slug || "").trim().toLowerCase();
+  const normalized = normalizeDownloadRelease(req.body?.release || req.body);
+  if (normalized.error) {
+    return res.status(400).json({ success: false, error: normalized.error });
+  }
+
+  try {
+    await db.connectDB();
+    const app = await db.getDownloadApp(slug, { includeInactive: true });
+    if (!app) {
+      return res.status(404).json({ success: false, error: "App not found" });
+    }
+    const release = await db.createDownloadRelease(slug, normalized.release);
+    recordAdminAudit(
+      req,
+      "download_release_created",
+      `download_app:${slug}`,
+      { version: release.version }
+    );
+    res.status(201).json({ success: true, release });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return res
+        .status(409)
+        .json({ success: false, error: "That version already exists for this app" });
+    }
+    sendDbError(res, err);
+  }
+});
+
+// PUT /api/downloads/releases/:id - Update a release
+router.put("/api/downloads/releases/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ success: false, error: "Invalid release id" });
+  }
+
+  const normalized = normalizeDownloadRelease(req.body?.release || req.body);
+  if (normalized.error) {
+    return res.status(400).json({ success: false, error: normalized.error });
+  }
+
+  try {
+    await db.connectDB();
+    const release = await db.updateDownloadRelease(id, normalized.release);
+    if (!release) {
+      return res.status(404).json({ success: false, error: "Release not found" });
+    }
+    recordAdminAudit(
+      req,
+      "download_release_updated",
+      `download_app:${release.app_slug}`,
+      { version: release.version }
+    );
+    res.json({ success: true, release });
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      return res
+        .status(409)
+        .json({ success: false, error: "That version already exists for this app" });
+    }
+    sendDbError(res, err);
+  }
+});
+
+// DELETE /api/downloads/releases/:id - Delete a release
+router.delete("/api/downloads/releases/:id", async (req, res) => {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id) || id <= 0) {
+    return res.status(400).json({ success: false, error: "Invalid release id" });
+  }
+
+  try {
+    await db.connectDB();
+    const appSlug = await db.deleteDownloadRelease(id);
+    if (!appSlug) {
+      return res.status(404).json({ success: false, error: "Release not found" });
+    }
+    recordAdminAudit(req, "download_release_deleted", `download_app:${appSlug}`, {
+      releaseId: id,
+    });
+    res.json({ success: true });
   } catch (err) {
     sendDbError(res, err);
   }

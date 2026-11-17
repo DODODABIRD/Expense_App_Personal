@@ -1,0 +1,270 @@
+.downloads-main {
+    width: min(980px, calc(100% - 32px));
+    margin: 48px auto 72px;
+}
+
+.downloads-hero {
+    display: grid;
+    justify-items: start;
+    gap: 14px;
+    margin-bottom: 40px;
+}
+
+.downloads-hero h1 {
+    font-family: var(--font-heading);
+    font-size: clamp(2.2rem, 5vw, 3.6rem);
+    line-height: 1.05;
+    letter-spacing: -0.04em;
+}
+
+.downloads-hero p {
+    max-width: 620px;
+    color: var(--muted);
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.downloads-list {
+    display: grid;
+    gap: 24px;
+}
+
+.downloads-loading,
+.downloads-empty {
+    padding: 28px;
+    border: var(--border-thin);
+    border-radius: var(--radius-lg);
+    background: var(--card-white);
+    box-shadow: var(--shadow-sm);
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.download-card {
+    padding: 26px;
+    display: grid;
+    gap: 22px;
+}
+
+.download-card:hover {
+    transform: none;
+    box-shadow: var(--shadow);
+}
+
+.download-card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 18px;
+}
+
+.download-identity {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-width: 0;
+}
+
+.download-icon {
+    width: 74px;
+    height: 74px;
+    flex-shrink: 0;
+    object-fit: cover;
+    border: var(--border-thin);
+    border-radius: 18px;
+    background: var(--card-aqua);
+    box-shadow: var(--shadow-sm);
+}
+
+.download-eyebrow {
+    display: block;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+
+.download-identity h2 {
+    font-size: clamp(1.25rem, 3vw, 1.7rem);
+    line-height: 1.15;
+    letter-spacing: -0.03em;
+}
+
+.download-tagline {
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 0.92rem;
+    font-weight: 500;
+}
+
+.download-latest-box {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    padding: 18px 20px;
+    border: var(--border-thin);
+    border-radius: var(--radius-md);
+    background: var(--card-yellow);
+    box-shadow: var(--shadow-sm);
+}
+
+.download-latest-meta {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+
+.download-latest-meta strong {
+    font-size: 1.25rem;
+    letter-spacing: -0.02em;
+}
+
+.download-latest-meta span,
+.download-latest-meta small {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: rgba(0, 0, 0, 0.72);
+}
+
+.download-cta {
+    flex-shrink: 0;
+}
+
+.download-card-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.download-permalink {
+    font-size: 0.82rem;
+    font-weight: 800;
+    text-decoration: underline;
+}
+
+.release-history {
+    border-top: var(--border-thin);
+    padding-top: 16px;
+}
+
+.release-history summary {
+    cursor: pointer;
+    font-size: 0.86rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    list-style: none;
+}
+
+.release-history summary::-webkit-details-marker {
+    display: none;
+}
+
+.release-history summary::before {
+    content: '▸';
+    display: inline-block;
+    margin-right: 8px;
+    transition: transform 0.15s ease;
+}
+
+.release-history[open] summary::before {
+    transform: rotate(90deg);
+}
+
+.release-list {
+    list-style: none;
+    margin-top: 12px;
+    display: grid;
+    gap: 8px;
+}
+
+.release-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px 12px;
+    border: 2px solid #000;
+    border-radius: 12px;
+    background: var(--bg);
+}
+
+.release-row-main {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+    min-width: 0;
+}
+
+.release-version {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.release-meta {
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.release-link {
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-decoration: underline;
+    white-space: nowrap;
+}
+
+.downloads-footer {
+    width: min(980px, calc(100% - 32px));
+    margin: 0 auto 40px;
+    padding-top: 18px;
+    border-top: var(--border-thin);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-size: 0.82rem;
+    font-weight: 700;
+}
+
+.downloads-footer-links {
+    display: flex;
+    gap: 16px;
+}
+
+.downloads-footer-links a {
+    text-decoration: underline;
+}
+
+@media (max-width: 720px) {
+    body {
+        padding-top: 84px;
+    }
+
+    .site-nav {
+        gap: 10px;
+        font-size: 0.8rem;
+    }
+
+    .download-card-top,
+    .download-latest-box {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .download-cta {
+        width: 100%;
+    }
+
+    .release-row {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+}

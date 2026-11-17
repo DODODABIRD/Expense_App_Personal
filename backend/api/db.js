@@ -7,6 +7,7 @@ const RAG_KNOWLEDGE_SEED = require("../public/asset/rag_knowledge.json");
 
 let pool = null;
 let schemaReady = false;
+let downloadsSeeded = false;
 
 function sslFromDatabaseUrl(databaseUrl) {
   if (!databaseUrl) return false;
@@ -114,6 +115,32 @@ async function ensureSchema() {
     );
     CREATE INDEX IF NOT EXISTS device_syncs_last_sync_idx
       ON device_syncs (last_sync_at DESC);
+    CREATE TABLE IF NOT EXISTS download_apps (
+      slug TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      tagline TEXT NOT NULL DEFAULT '',
+      description TEXT NOT NULL DEFAULT '',
+      icon_url TEXT NOT NULL DEFAULT '',
+      accent TEXT NOT NULL DEFAULT '',
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      active BOOLEAN NOT NULL DEFAULT true,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+    CREATE TABLE IF NOT EXISTS download_releases (
+      id BIGSERIAL PRIMARY KEY,
+      app_slug TEXT NOT NULL REFERENCES download_apps (slug) ON DELETE CASCADE,
+      version TEXT NOT NULL,
+      url TEXT NOT NULL,
+      size_bytes BIGINT NOT NULL DEFAULT 0,
+      released_at DATE,
+      notes TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (app_slug, version)
+    );
+    CREATE INDEX IF NOT EXISTS download_releases_app_idx
+      ON download_releases (app_slug, released_at DESC, id DESC);
   `);
   schemaReady = true;
 }
@@ -294,6 +321,7 @@ async function loadNotificationReferenceItems(ownerId) {
 function setPool(customPool) {
   pool = customPool;
   schemaReady = false;
+  downloadsSeeded = false;
 }
 
 async function insertAdminAudit({ actor, action, target, detail, ip }) {
@@ -745,13 +773,293 @@ async function listDeviceSyncs(ownerId) {
   }));
 }
 
+function parseVersion(version) {
+  const raw = String(version || "").trim().replace(/^v/i, "");
+  const match = raw.match(/^(\d+(?:\.\d+)*)(?:-([0-9A-Za-z.-]+))?$/);
+  if (!match) return null;
+  return {
+    numbers: match[1].split(".").map(Number),
+    prerelease: match[2] || "",
+  };
+}
+
+function compareVersions(left, right) {
+  const a = parseVersion(left);
+  const b = parseVersion(right);
+  if (!a || !b) return 0;
+
+  const length = Math.max(a.numbers.length, b.numbers.length);
+  for (let index = 0; index < length; index += 1) {
+    const diff = (a.numbers[index] || 0) - (b.numbers[index] || 0);
+    if (diff !== 0) return diff;
+  }
+
+  if (a.prerelease === b.prerelease) return 0;
+  if (!a.prerelease) return 1;
+  if (!b.prerelease) return -1;
+  return a.prerelease.localeCompare(b.prerelease);
+}
+
+function releaseTimestamp(release) {
+  if (!release?.released_at) return 0;
+  const parsed = Date.parse(release.released_at);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}
+
+function sortReleasesDesc(releases) {
+  return releases.slice().sort((left, right) => {
+    const byVersion = compareVersions(right.version, left.version);
+    if (byVersion !== 0) return byVersion;
+    const byDate = releaseTimestamp(right) - releaseTimestamp(left);
+    if (byDate !== 0) return byDate;
+    return Number(right.id) - Number(left.id);
+  });
+}
+
+function pickLatestRelease(releases) {
+  if (!releases.length) return null;
+  return releases.slice().sort((left, right) => {
+    const byVersion = compareVersions(left.version, right.version);
+    if (byVersion !== 0) return byVersion;
+    const byDate = releaseTimestamp(left) - releaseTimestamp(right);
+    if (byDate !== 0) return byDate;
+    return Number(left.id) - Number(right.id);
+  }).pop();
+}
+
+function toDownloadAppJson(row) {
+  return {
+    slug: row.slug,
+    name: row.name,
+    tagline: row.tagline || "",
+    description: row.description || "",
+    icon_url: row.icon_url || "",
+    accent: row.accent || "",
+    sort_order: Number(row.sort_order) || 0,
+    active: row.active !== false,
+  };
+}
+
+function toDownloadReleaseJson(row) {
+  let releasedAt = row.released_at;
+  if (releasedAt instanceof Date) {
+    releasedAt = releasedAt.toISOString().slice(0, 10);
+  } else if (releasedAt) {
+    releasedAt = String(releasedAt).slice(0, 10);
+  } else {
+    releasedAt = null;
+  }
+
+  return {
+    id: Number(row.id),
+    app_slug: row.app_slug,
+    version: row.version,
+    url: row.url,
+    size_bytes: row.size_bytes === null ? 0 : Number(row.size_bytes),
+    released_at: releasedAt,
+    notes: row.notes || "",
+  };
+}
+
+async function ensureDownloadSeed() {
+  if (downloadsSeeded) return;
+  await ensureSchema();
+
+  const existing = await getPool().query(
+    `SELECT slug FROM download_apps LIMIT 1`
+  );
+  if (existing.rows.length === 0) {
+    const content = await getPortfolioContent();
+    const featured = content.featured || {};
+
+    await getPool().query(
+      `INSERT INTO download_apps (slug, name, tagline, icon_url, accent, sort_order)
+       VALUES ('unmurce', $1, $2, '/asset/unmurce/unmurce-app-icon.png', 'yellow', 0)
+       ON CONFLICT (slug) DO NOTHING`,
+      [featured.name || "Unmurce Expense Tracker", featured.description || ""]
+    );
+
+    const apk = content.apk || {};
+    if (apk.url) {
+      await getPool().query(
+        `INSERT INTO download_releases (app_slug, version, url, size_bytes, released_at, notes)
+         VALUES ('unmurce', $1, $2, $3, $4, $5)
+         ON CONFLICT (app_slug, version) DO NOTHING`,
+        [
+          String(apk.version || "1.0.0").replace(/^v/i, ""),
+          apk.url,
+          Number.isFinite(Number(apk.size_bytes)) ? Math.round(Number(apk.size_bytes)) : 0,
+          apk.released_at || null,
+          apk.notes || "",
+        ]
+      );
+    }
+  }
+
+  downloadsSeeded = true;
+}
+
+async function listDownloadApps({ includeInactive = false } = {}) {
+  await ensureDownloadSeed();
+
+  const appResult = await getPool().query(
+    `SELECT * FROM download_apps
+     ${includeInactive ? "" : "WHERE active = true"}
+     ORDER BY sort_order ASC, name ASC`
+  );
+  const releaseResult = await getPool().query(
+    `SELECT id, app_slug, version, url, size_bytes,
+            released_at::text AS released_at, notes, created_at, updated_at
+     FROM download_releases
+     ORDER BY id ASC`
+  );
+
+  const releasesByApp = new Map();
+  for (const row of releaseResult.rows) {
+    if (!releasesByApp.has(row.app_slug)) releasesByApp.set(row.app_slug, []);
+    releasesByApp.get(row.app_slug).push(toDownloadReleaseJson(row));
+  }
+
+  return appResult.rows.map((row) => {
+    const releases = sortReleasesDesc(releasesByApp.get(row.slug) || []);
+    return {
+      ...toDownloadAppJson(row),
+      latest: pickLatestRelease(releases),
+      releases,
+    };
+  });
+}
+
+async function getDownloadApp(slug, { includeInactive = false } = {}) {
+  const apps = await listDownloadApps({ includeInactive });
+  return apps.find((app) => app.slug === slug) || null;
+}
+
+async function createDownloadApp(fields) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `INSERT INTO download_apps
+       (slug, name, tagline, description, icon_url, accent, sort_order, active)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     RETURNING *`,
+    [
+      fields.slug,
+      fields.name,
+      fields.tagline || "",
+      fields.description || "",
+      fields.icon_url || "",
+      fields.accent || "",
+      Number(fields.sort_order) || 0,
+      fields.active !== false,
+    ]
+  );
+  return { ...toDownloadAppJson(result.rows[0]), latest: null, releases: [] };
+}
+
+async function updateDownloadApp(slug, fields) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `UPDATE download_apps
+     SET name = $2,
+         tagline = $3,
+         description = $4,
+         icon_url = $5,
+         accent = $6,
+         sort_order = $7,
+         active = $8,
+         updated_at = now()
+     WHERE slug = $1
+     RETURNING *`,
+    [
+      slug,
+      fields.name,
+      fields.tagline || "",
+      fields.description || "",
+      fields.icon_url || "",
+      fields.accent || "",
+      Number(fields.sort_order) || 0,
+      fields.active !== false,
+    ]
+  );
+  return result.rows[0] ? toDownloadAppJson(result.rows[0]) : null;
+}
+
+async function deleteDownloadApp(slug) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `DELETE FROM download_apps WHERE slug = $1 RETURNING slug`,
+    [slug]
+  );
+  return Boolean(result.rows[0]);
+}
+
+async function createDownloadRelease(appSlug, fields) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `INSERT INTO download_releases
+       (app_slug, version, url, size_bytes, released_at, notes)
+     VALUES ($1, $2, $3, $4, $5, $6)
+     RETURNING id, app_slug, version, url, size_bytes,
+               released_at::text AS released_at, notes, created_at, updated_at`,
+    [
+      appSlug,
+      fields.version,
+      fields.url,
+      Number(fields.size_bytes) || 0,
+      fields.released_at || null,
+      fields.notes || "",
+    ]
+  );
+  return toDownloadReleaseJson(result.rows[0]);
+}
+
+async function updateDownloadRelease(id, fields) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `UPDATE download_releases
+     SET version = $2,
+         url = $3,
+         size_bytes = $4,
+         released_at = $5,
+         notes = $6,
+         updated_at = now()
+     WHERE id = $1
+     RETURNING id, app_slug, version, url, size_bytes,
+               released_at::text AS released_at, notes, created_at, updated_at`,
+    [
+      Number(id),
+      fields.version,
+      fields.url,
+      Number(fields.size_bytes) || 0,
+      fields.released_at || null,
+      fields.notes || "",
+    ]
+  );
+  return result.rows[0] ? toDownloadReleaseJson(result.rows[0]) : null;
+}
+
+async function deleteDownloadRelease(id) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `DELETE FROM download_releases WHERE id = $1 RETURNING app_slug`,
+    [Number(id)]
+  );
+  return result.rows[0]?.app_slug || null;
+}
+
 module.exports = {
+  compareVersions,
   connectDB,
+  createDownloadApp,
+  createDownloadRelease,
   deleteAllExpenses,
+  deleteDownloadApp,
+  deleteDownloadRelease,
   deleteExpenseByLocalId,
   ensureSchema,
   getAdminOverview,
   getAiProviderStats,
+  getDownloadApp,
   getExpenseByLocalId,
   getMonthlyTrend,
   getPool,
@@ -762,6 +1070,7 @@ module.exports = {
   listAdminAuditLogs,
   listAdminExpenses,
   listDeviceSyncs,
+  listDownloadApps,
   listExpenseOwners,
   listExpenses,
   listRagEvents,
@@ -777,6 +1086,8 @@ module.exports = {
   setPool,
   sslFromDatabaseUrl,
   toExpenseJson,
+  updateDownloadApp,
+  updateDownloadRelease,
   updateExpenseByLocalId,
   updateRagFeedback,
   upsertDeviceSync,

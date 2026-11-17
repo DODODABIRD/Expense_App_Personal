@@ -104,6 +104,12 @@ function createApp() {
   app.get("/projects/docs", (req, res) => {
     res.sendFile(path.join(publicDir, "projects/unmurce/docs.html"));
   });
+  app.get("/downloads", (req, res) => {
+    res.sendFile(path.join(publicDir, "downloads.html"));
+  });
+  app.get("/downloads/:slug", (req, res) => {
+    res.sendFile(path.join(publicDir, "downloads.html"));
+  });
 
   // Public config endpoint
   app.get("/api/public-config", (_req, res) => {
@@ -122,6 +128,31 @@ function createApp() {
       res.json({ success: true, content: await db.getPortfolioContent() });
     } catch (err) {
       res.json({ success: true, content: PORTFOLIO_SEED, source: "file" });
+    }
+  });
+
+  // Public app download catalog (latest release per app)
+  app.get("/api/downloads", async (_req, res) => {
+    res.set("Cache-Control", "no-store, max-age=0");
+    try {
+      await db.connectDB();
+      res.json({ success: true, apps: await db.listDownloadApps() });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  app.get("/api/downloads/:slug", async (req, res) => {
+    res.set("Cache-Control", "no-store, max-age=0");
+    try {
+      await db.connectDB();
+      const app = await db.getDownloadApp(String(req.params.slug || ""));
+      if (!app) {
+        return res.status(404).json({ success: false, error: "App not found" });
+      }
+      res.json({ success: true, app });
+    } catch (err) {
+      res.status(500).json({ success: false, error: err.message });
     }
   });
 
