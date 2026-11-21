@@ -8,17 +8,17 @@ import 'error_log_service.dart';
 
 const String baseUrl = String.fromEnvironment(
   'EXPENSE_API_BASE_URL',
-  defaultValue: 'https://main.dododabird.us/api',
+  defaultValue: 'https://dododabird.us/api',
 );
 
 const String wsUrl = String.fromEnvironment(
   'EXPENSE_WS_URL',
-  defaultValue: 'wss://main.dododabird.us/ws',
+  defaultValue: 'wss://dododabird.us/ws',
 );
 
 const String appVersion = String.fromEnvironment(
   'EXPENSE_APP_VERSION',
-  defaultValue: '1.7.5',
+  defaultValue: '2.0.0',
 );
 
 typedef ReceiptScanProgress =

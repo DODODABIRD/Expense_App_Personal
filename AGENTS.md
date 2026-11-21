@@ -191,6 +191,8 @@ When the user corrects your approach, append a one-line rule here before ending 
 
 - (empty)
 
+- Re-read a file right before writing it: this repo carries concurrent uncommitted work (e.g. an in-progress Downloads feature in `backend/admin-ui`), so a full-file overwrite can destroy changes made since the last read.
+
 ---
 
 ## 12. How this file was built
