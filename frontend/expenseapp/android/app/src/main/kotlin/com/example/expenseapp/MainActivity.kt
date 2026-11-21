@@ -34,6 +34,12 @@ class MainActivity : FlutterActivity() {
 						NotificationListener.parserActive = call.argument<Boolean>("active") == true
 						result.success(null)
 					}
+					"takePending" -> result.success(NotificationListener.takePending())
+					"ack" -> {
+						val keys = (call.argument<List<String>>("keys") ?: emptyList()).toSet()
+						NotificationListener.ack(keys)
+						result.success(null)
+					}
 					"start" -> result.success(null)
 					else -> result.notImplemented()
 				}

@@ -26,14 +26,25 @@ class _PendingNotificationDraft {
   DateTime date;
   String category;
   String type;
+  // Drafts the parser could not read an amount from: the user fills it in.
+  final bool needsInput;
+  final bool aiPending;
+  final String rawText;
 
   _PendingNotificationDraft(Map<String, dynamic> row)
     : id = row['id'] as int,
+      needsInput = row['status'] == 'needs_input',
+      aiPending = row['aiStatus'] == 'pending',
+      rawText = row['rawText']?.toString() ?? '',
       nameController = TextEditingController(
-        text: row['name']?.toString() ?? '',
+        text: row['status'] == 'needs_input'
+            ? ''
+            : row['name']?.toString() ?? '',
       ),
       amountController = TextEditingController(
-        text: row['amount']?.toString() ?? '',
+        text: row['status'] == 'needs_input'
+            ? ''
+            : row['amount']?.toString() ?? '',
       ),
       sourceApp = row['sourceApp']?.toString() ?? '',
       receivedAt =
@@ -579,6 +590,46 @@ class _PendingNotificationReviewPageState
               ),
             ],
           ),
+          if (item.needsInput || item.aiPending) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: item.needsInput
+                    ? const Color(0xFFF9EB5D)
+                    : colors.surface,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.black, width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.needsInput
+                        ? 'NEEDS INPUT - no amount could be read'
+                        : 'AI is still refining this draft',
+                    style: GoogleFonts.itim(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: item.needsInput ? Colors.black : colors.onSurface,
+                    ),
+                  ),
+                  if (item.needsInput && item.rawText.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      item.rawText,
+                      maxLines: 6,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.itim(
+                        fontSize: 13,
+                        color: Colors.black,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           TextField(
             controller: item.nameController,

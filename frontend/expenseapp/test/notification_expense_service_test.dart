@@ -78,6 +78,59 @@ void main() {
     });
   });
 
+  group('notificationKeyFor', () {
+    final time = DateTime.fromMillisecondsSinceEpoch(1700000000000);
+
+    test('is stable for the same notification', () {
+      String key() => NotificationExpenseService.notificationKeyFor(
+        packageName: 'com.bca',
+        title: 'BCA',
+        message: 'Pembayaran Rp 25.000',
+        postTime: time,
+      );
+      expect(key(), key());
+    });
+
+    test('differs when the text or time differs', () {
+      final base = NotificationExpenseService.notificationKeyFor(
+        packageName: 'com.bca',
+        title: 'BCA',
+        message: 'Pembayaran Rp 25.000',
+        postTime: time,
+      );
+      expect(
+        NotificationExpenseService.notificationKeyFor(
+          packageName: 'com.bca',
+          title: 'BCA',
+          message: 'Pembayaran Rp 30.000',
+          postTime: time,
+        ),
+        isNot(base),
+      );
+      expect(
+        NotificationExpenseService.notificationKeyFor(
+          packageName: 'com.bca',
+          title: 'BCA',
+          message: 'Pembayaran Rp 25.000',
+          postTime: time.add(const Duration(seconds: 1)),
+        ),
+        isNot(base),
+      );
+    });
+  });
+
+  group('isPlaceholderName', () {
+    test('treats empty and backend fallback names as placeholders', () {
+      expect(NotificationExpenseService.isPlaceholderName(''), isTrue);
+      expect(NotificationExpenseService.isPlaceholderName('  '), isTrue);
+      expect(
+        NotificationExpenseService.isPlaceholderName('Unknown expense'),
+        isTrue,
+      );
+      expect(NotificationExpenseService.isPlaceholderName('Kopi'), isFalse);
+    });
+  });
+
   group('supported notification apps', () {
     test('includes every BCA app package variant', () {
       expect(

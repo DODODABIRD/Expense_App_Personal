@@ -27,7 +27,7 @@ class DatabaseHelp {
     ); // Basically, join itu menggabungkan dua string jadi satu. kayak naro di ujung gitu kayak print gitu
     _db = await openDatabase(
       path,
-      version: 6,
+      version: 7,
       onCreate: (db, version) async {
         await db.execute('''
               CREATE TABLE my_table (
@@ -71,6 +71,23 @@ class DatabaseHelp {
         if (oldVersion < 6) {
           await _createPendingNotificationTable(db);
         }
+        if (oldVersion < 7) {
+          for (final column in const [
+            'rawTitle TEXT',
+            'rawText TEXT',
+            'notificationKey TEXT',
+            "status TEXT NOT NULL DEFAULT 'ready'",
+            "aiStatus TEXT NOT NULL DEFAULT 'done'",
+            'aiAttempts INTEGER NOT NULL DEFAULT 0',
+            'aiNextRetryAt INTEGER NOT NULL DEFAULT 0',
+            'userEdited INTEGER NOT NULL DEFAULT 0',
+          ]) {
+            await db.execute(
+              'ALTER TABLE $_pendingNotificationsTable ADD COLUMN $column',
+            );
+          }
+          await _createPendingNotificationIndex(db);
+        }
       },
     );
 
@@ -100,8 +117,28 @@ class DatabaseHelp {
         category TEXT NOT NULL,
         type TEXT NOT NULL,
         sourceApp TEXT NOT NULL,
-        receivedAt TEXT NOT NULL
+        receivedAt TEXT NOT NULL,
+        rawTitle TEXT,
+        rawText TEXT,
+        notificationKey TEXT,
+        status TEXT NOT NULL DEFAULT 'ready',
+        aiStatus TEXT NOT NULL DEFAULT 'done',
+        aiAttempts INTEGER NOT NULL DEFAULT 0,
+        aiNextRetryAt INTEGER NOT NULL DEFAULT 0,
+        userEdited INTEGER NOT NULL DEFAULT 0
       )
+    ''');
+    await _createPendingNotificationIndex(db);
+  }
+
+  // Persistent de-duplication: the native queue may redeliver a notification
+  // after a crash, and the same key must never create a second draft.
+  static Future<void> _createPendingNotificationIndex(
+    DatabaseExecutor db,
+  ) async {
+    await db.execute('''
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_notification_key
+      ON $_pendingNotificationsTable (ownerId, notificationKey)
     ''');
   }
 
@@ -211,24 +248,112 @@ class DatabaseHelp {
     required String type,
     required String sourceApp,
     required DateTime receivedAt,
+    String? rawTitle,
+    String? rawText,
+    String? notificationKey,
+    String status = 'ready',
+    String aiStatus = 'done',
   }) async {
     final userId = AuthService.currentUser?.uid;
     if (userId == null) throw StateError('You must be signed in');
-    if (name.trim().isEmpty || amount <= 0) {
+    final needsInput = status == 'needs_input';
+    if (name.trim().isEmpty || (amount <= 0 && !needsInput)) {
       throw ArgumentError('A pending expense requires a name and amount');
     }
 
     final db = await initDB();
+    // Returns 0 when this notificationKey already has a draft.
     return db.insert(_pendingNotificationsTable, {
       'ownerId': userId,
       'name': name.trim(),
-      'amount': amount,
+      'amount': amount < 0 ? 0 : amount,
       'date': date,
       'category': category,
       'type': type,
       'sourceApp': sourceApp,
       'receivedAt': receivedAt.toIso8601String(),
-    });
+      'rawTitle': rawTitle,
+      'rawText': rawText,
+      'notificationKey': notificationKey,
+      'status': status,
+      'aiStatus': aiStatus,
+    }, conflictAlgorithm: ConflictAlgorithm.ignore);
+  }
+
+  /// Drafts still waiting for AI enrichment whose retry time has come.
+  static Future<List<Map<String, dynamic>>> getPendingAiEnrichment(
+    int nowMs,
+  ) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return [];
+
+    final db = await initDB();
+    return db.query(
+      _pendingNotificationsTable,
+      where: "ownerId = ? AND aiStatus = 'pending' AND aiNextRetryAt <= ?",
+      whereArgs: [userId, nowMs],
+      orderBy: 'id ASC',
+    );
+  }
+
+  /// Applies an AI result to a draft. Never touches a draft the user edited,
+  /// and only fills the amount while the draft still needs input.
+  static Future<bool> applyAiEnrichment({
+    required int id,
+    required String name,
+    required int amount,
+    required String category,
+    required String type,
+  }) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return false;
+
+    final db = await initDB();
+    final updated = await db.rawUpdate(
+      '''
+      UPDATE $_pendingNotificationsTable SET
+        name = ?,
+        category = ?,
+        type = ?,
+        amount = CASE WHEN status = 'needs_input' THEN ? ELSE amount END,
+        status = 'ready',
+        aiStatus = 'done'
+      WHERE id = ? AND ownerId = ? AND userEdited = 0
+      ''',
+      [name, category, type, amount, id, userId],
+    );
+    if (updated == 0) {
+      // Edited by the user (or discarded): stop asking the AI.
+      await db.update(
+        _pendingNotificationsTable,
+        {'aiStatus': 'done'},
+        where: 'id = ? AND ownerId = ?',
+        whereArgs: [id, userId],
+      );
+    }
+    return updated > 0;
+  }
+
+  static Future<void> markPendingAiAttemptFailed({
+    required int id,
+    required int attempts,
+    required int nextRetryAtMs,
+    required bool giveUp,
+  }) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return;
+
+    final db = await initDB();
+    await db.update(
+      _pendingNotificationsTable,
+      {
+        'aiAttempts': attempts,
+        'aiNextRetryAt': nextRetryAtMs,
+        'aiStatus': giveUp ? 'failed' : 'pending',
+      },
+      where: 'id = ? AND ownerId = ?',
+      whereArgs: [id, userId],
+    );
   }
 
   static Future<List<Map<String, dynamic>>>
@@ -280,6 +405,8 @@ class DatabaseHelp {
         'date': date,
         'category': category,
         'type': type,
+        'status': 'ready',
+        'userEdited': 1,
       },
       where: 'id = ? AND ownerId = ?',
       whereArgs: [id, userId],
@@ -316,6 +443,7 @@ class DatabaseHelp {
       final pending = rows.first;
       final name = pending['name'] as String;
       final amount = pending['amount'] as int;
+      if (amount <= 0) return;
       final date = pending['date'] as String;
       final category = pending['category'] as String;
       final type = pending['type'] as String;

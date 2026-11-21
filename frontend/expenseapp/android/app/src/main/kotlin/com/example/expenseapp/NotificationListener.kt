@@ -88,60 +88,83 @@ class NotificationListener : NotificationListenerService() {
             recentSignatures[signature] = now
         }
 
+        // 5. Always persist first. The queue is only emptied by ack() once Dart has
+        // stored a draft, so a dead engine or a crash mid-parse cannot lose it.
+        val key = "${sbn.packageName}|${sbn.postTime}|${(title + "\u0000" + fullText).hashCode()}"
         val payload = JSONObject().apply {
+            put("key", key)
             put("title", title)
             put("text", fullText)
             put("packageName", sbn.packageName)
             put("postTime", sbn.postTime)
-        }.toString()
-
-        synchronized(this) {
-            if (eventSink != null) {
-                eventSink?.success(payloadToMap(payload))
-            } else {
-                // Store in ordered FIFO queue
-                val rawQueue = preferences.getString(PENDING_QUEUE, "[]") ?: "[]"
-                val jsonArray = try {
-                    JSONArray(rawQueue)
-                } catch (_: Exception) {
-                    JSONArray()
-                }
-
-                // Prevent unbounded growth (keep latest 100)
-                if (jsonArray.length() >= 100) {
-                    jsonArray.remove(0)
-                }
-                jsonArray.put(payload)
-                preferences.edit().putString(PENDING_QUEUE, jsonArray.toString()).apply()
-            }
         }
-    }
+        enqueue(payload)
 
-    private fun payloadToMap(payload: String): Map<String, Any> {
-        val json = JSONObject(payload)
-        return mapOf(
-            "title" to json.optString("title", ""),
-            "text" to json.optString("text", ""),
-            "packageName" to json.optString("packageName", ""),
-            "postTime" to json.optLong("postTime", System.currentTimeMillis()),
-        )
-    }
-
-    private fun drainPendingNotifications() {
-        val rawQueue = preferences.getString(PENDING_QUEUE, null) ?: return
-        preferences.edit().remove(PENDING_QUEUE).apply()
+        // 6. Wake Dart up. This is only a hint; a failed or stale sink is harmless.
         try {
-            val jsonArray = JSONArray(rawQueue)
-            for (i in 0 until jsonArray.length()) {
-                val payload = jsonArray.getString(i)
-                eventSink?.success(payloadToMap(payload))
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
+            eventSink?.success("new")
+        } catch (_: Exception) {
         }
     }
 
     companion object {
+        private const val MAX_QUEUE = 500
+        private val queueLock = Any()
+
+        private fun readQueue(): JSONArray {
+            val raw = sharedPreferences()?.getString(PENDING_QUEUE, "[]") ?: "[]"
+            return try {
+                JSONArray(raw)
+            } catch (_: Exception) {
+                JSONArray()
+            }
+        }
+
+        private fun enqueue(payload: JSONObject) {
+            synchronized(queueLock) {
+                val queue = readQueue()
+                // Keep the newest MAX_QUEUE entries (drop the oldest).
+                val trimmed = JSONArray()
+                val start = maxOf(0, queue.length() - (MAX_QUEUE - 1))
+                for (i in start until queue.length()) trimmed.put(queue.get(i))
+                trimmed.put(payload)
+                sharedPreferences()?.edit()?.putString(PENDING_QUEUE, trimmed.toString())?.commit()
+            }
+        }
+
+        /** Everything not yet acknowledged, oldest first. Does not remove anything. */
+        fun takePending(): List<Map<String, Any>> = synchronized(queueLock) {
+            val queue = readQueue()
+            val items = ArrayList<Map<String, Any>>()
+            for (i in 0 until queue.length()) {
+                val json = queue.optJSONObject(i) ?: continue
+                items.add(
+                    mapOf(
+                        "key" to json.optString("key", ""),
+                        "title" to json.optString("title", ""),
+                        "text" to json.optString("text", ""),
+                        "packageName" to json.optString("packageName", ""),
+                        "postTime" to json.optLong("postTime", System.currentTimeMillis()),
+                    )
+                )
+            }
+            items
+        }
+
+        /** Removes entries Dart has stored (or deliberately filtered out). */
+        fun ack(keys: Set<String>) {
+            if (keys.isEmpty()) return
+            synchronized(queueLock) {
+                val queue = readQueue()
+                val kept = JSONArray()
+                for (i in 0 until queue.length()) {
+                    val json = queue.optJSONObject(i) ?: continue
+                    if (!keys.contains(json.optString("key", ""))) kept.put(json)
+                }
+                sharedPreferences()?.edit()?.putString(PENDING_QUEUE, kept.toString())?.commit()
+            }
+        }
+
         private const val PREFERENCES = "notification_parser"
         private const val ALLOWED_PACKAGES = "allowed_packages"
         private const val ALLOW_ALL_NOTIFICATIONS = "allow_all_notifications"
@@ -184,7 +207,6 @@ class NotificationListener : NotificationListenerService() {
         val eventStreamHandler = object : EventChannel.StreamHandler {
             override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
                 eventSink = events
-                instance?.drainPendingNotifications()
             }
 
             override fun onCancel(arguments: Any?) {

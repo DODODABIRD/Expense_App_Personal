@@ -150,7 +150,7 @@ On app resume it reloads the pending count and restarts the parser.
 | `ExpenseEdit.dart` | Loads with `getDataById`. Quick adjust buttons (+10k/+50k/+100k/-10k/-50k). Save → `updateTs`; delete → `deleteTs`. |
 | `ExpenseSumarry.dart` | "Expense Analytics", described below. |
 | `ReceiptScanPage.dart` | See §2.8. |
-| `PendingNotificationReviewPage.dart` | Edit, approve or discard notification-parsed drafts. Approve moves the row into `my_table`. |
+| `PendingNotificationReviewPage.dart` | Edit, approve or discard notification-parsed drafts. Approve moves the row into `my_table`. `needs_input` drafts show the raw notification text and an empty name/amount; approving needs a name and an amount > 0. The list is loaded once when the page opens. |
 | `notification_permission_page.dart` | Indonesian onboarding. "Izinkan Akses Notifikasi" enables the parser and opens Android listener settings; "Nanti Saja" closes it. |
 | `settings_page.dart` | Sections listed below. |
 | `ai_context_page.dart` | "AI memory": shows the server's per-category notification template, with refresh. See §2.10. |
@@ -180,13 +180,13 @@ On app resume it reloads the pending count and restarts the parser.
 
 ### 2.4 Local database (SQLite)
 
-File `my_db.db`, **version 6** (`lib/services/databaseHelper.dart`, class `DatabaseHelp`). `_ensureSettingsTable` runs on every open.
+File `my_db.db`, **version 7** (`lib/services/databaseHelper.dart`, class `DatabaseHelp`). `_ensureSettingsTable` runs on every open.
 
 | Table | Columns |
 |---|---|
 | `my_table` (expenses) | `id INTEGER PK AUTOINCREMENT`, `mongoId TEXT`, `ownerId TEXT NOT NULL`, `name TEXT NOT NULL`, `amount INTEGER NOT NULL`, `date TEXT NOT NULL`, `category TEXT NOT NULL`, `type TEXT NOT NULL`, `synced INTEGER DEFAULT 0` |
 | `app_settings` | `key TEXT PK`, `value TEXT NOT NULL` |
-| `pending_notification_expenses` | `id INTEGER PK AUTOINCREMENT`, `ownerId`, `name`, `amount INTEGER`, `date`, `category`, `type`, `sourceApp`, `receivedAt` (all NOT NULL) |
+| `pending_notification_expenses` | `id INTEGER PK AUTOINCREMENT`, `ownerId`, `name`, `amount INTEGER`, `date`, `category`, `type`, `sourceApp`, `receivedAt` (all NOT NULL); since v7 also `rawTitle TEXT`, `rawText TEXT`, `notificationKey TEXT` (unique with `ownerId`), `status TEXT` (`ready` / `needs_input`, default `ready`), `aiStatus TEXT` (`pending` / `done` / `failed`, default `done`), `aiAttempts INTEGER`, `aiNextRetryAt INTEGER` (ms), `userEdited INTEGER` |
 
 **Migrations (`onUpgrade`):**
 
@@ -196,6 +196,7 @@ File `my_db.db`, **version 6** (`lib/services/databaseHelper.dart`, class `Datab
 | < 4 | Add `ownerId` |
 | < 5 | Create `app_settings` |
 | < 6 | Create `pending_notification_expenses` |
+| < 7 | Add the raw-text, key, `status`, AI-retry and `userEdited` columns to `pending_notification_expenses`, plus the unique index on `(ownerId, notificationKey)` |
 
 **Legacy rows.** `assignLegacyExpensesToCurrentUser` adopts rows with `ownerId IS NULL` on every list load.
 
@@ -211,7 +212,7 @@ File `my_db.db`, **version 6** (`lib/services/databaseHelper.dart`, class `Datab
 | `expense_reminders` | Stored only |
 | `auto_expense_parser` | Anything except `'false'` means enabled |
 | `notification_allowed_apps` | JSON list of packages, or `__all_notifications__` |
-| `pending_cloud_notifications` | JSON retry queue |
+| `pending_cloud_notifications` | Legacy JSON retry queue. No longer written; leftover entries are converted into drafts once and the value becomes `[]` |
 
 ### 2.5 Backend client (`lib/services/ApiService.dart`, class `Throw`)
 
@@ -319,35 +320,27 @@ The server upserts on `(owner_id, local_id)`, so re-sending is safe.
 | Channel | Type | Methods / data |
 |---|---|---|
 | `expense_app/platform` | MethodChannel | `isAndroid` |
-| `expense_app/notifications` | MethodChannel | `openSettings`, `isEnabled`, `setAllowedPackages{packages, allowAll}`, `setParserActive{active}`, `start` |
-| `expense_app/notification_events` | EventChannel | Notification payloads |
+| `expense_app/notifications` | MethodChannel | `openSettings`, `isEnabled`, `setAllowedPackages{packages, allowAll}`, `setParserActive{active}`, `takePending` (returns the unacknowledged queue, removes nothing), `ack{keys}` (removes those entries), `start` |
+| `expense_app/notification_events` | EventChannel | A "new notification" hint only; the payload is not used |
 
 `NotificationListener.kt` handles incoming notifications:
 - **Drops** them when the parser is inactive, the package is not allowed, or the notification is ongoing.
 - **Text** is BIG_TEXT (else TEXT), plus SUB_TEXT and TEXT_LINES.
 - **Dedup** uses the signature `package_title_text` within 60 s.
-- **Payload** is `{title, text, packageName, postTime}`, sent to the event sink.
-- **Queueing:** when no event sink is listening, payloads go to a SharedPreferences queue (newest 100), drained when Flutter subscribes.
+- **Payload** is `{key, title, text, packageName, postTime}`, with `key = package|postTime|hash(title+text)`.
+- **Durable queue:** every payload is first appended to a SharedPreferences queue (newest 500), then a hint is sent to the event sink. Entries leave the queue only through `ack`, so a dead engine or a crash cannot lose a notification. Entries in the pre-v7 queue format (plain strings) are dropped.
 
 **Dart pipeline** (`notification_expense_service.dart`)
-1. Noise filter, then income filter.
-2. In-memory 5-minute dedup.
-3. `_processNotification`, which tries the **cloud first**:
-   1. `POST /parse-notification`. The result is accepted if amount > 0 and the name is non-empty. Category is normalised to the 8 valid categories (else `lainnya`); type to `expected`/`unexpected` (else `unexpected`).
-   2. If the cloud fails, `LocalNotificationParser.parse` runs.
-   3. If the result is ambiguous and has a local amount, it is still stored. Ambiguous with no amount → `AiRequiredNotificationException`.
-   4. Otherwise: if the cloud call failed (offline, 5xx, 503), the error is rethrown and the notification goes to the retry queue; if the cloud answered with no usable result, it is unparseable and dropped.
-4. Every successful parse becomes a row in `pending_notification_expenses`, for the user to approve.
+`processPending()` runs on start, on every native hint and every 1 minute. It does two things in order:
 
-**Retry queue** (`pending_cloud_notifications`)
+1. **Drain** (`_drainNativeQueue`, single-flight): `takePending` → for each entry, skip noise and income (these are acked and dropped), run `LocalNotificationParser.parse`, and insert a row in `pending_notification_expenses`, then `ack` the keys. A row is never lost for parsing reasons:
+   - local parser found an amount → `status = 'ready'` with its name/category/type;
+   - no amount → `status = 'needs_input'`, `amount = 0`, name `Perlu dilengkapi`, category `lainnya`, type `unexpected`; the review page shows the raw text and the user types the amount.
+   - both set `aiStatus = 'pending'` and keep `rawTitle` / `rawText`.
+   - Duplicates are rejected by the unique `(ownerId, notificationKey)` index. With no signed-in user nothing is acked, so entries wait in the native queue until login. An entry whose insert throws is not acked and is retried on the next drain.
+2. **Enrich** (`_enrichPendingWithAi`, single-flight): for rows with `aiStatus = 'pending'` and `aiNextRetryAt` due, `POST /parse-notification`. A result needs amount > 0 (a `Unknown expense` / empty name is treated as no name). `applyAiEnrichment` then updates name, category and type, and the amount only while the draft is `needs_input`; it never touches a draft the user already edited (`userEdited = 1`). If the AI finds no amount, `aiStatus` becomes `failed` and the local draft stays. On network/server errors the row backs off `2^(n-1)` minutes (cap 1 hour) and becomes `failed` after 6 attempts. A failed AI call never removes a draft.
 
-| Rule | Value |
-|---|---|
-| Max entries | 50; non-AI entries are evicted first |
-| When retried | On start and every 1 minute |
-| Backoff | `2^(n-1)` minutes, capped at 1 hour |
-| Max attempts | 3, except AI-required entries, which are kept indefinitely |
-| Scope | Entries of other owners are skipped |
+`pending_cloud_notifications` (the old JSON retry queue) is migrated into drafts once by `_migrateLegacyQueue`; entries of other owners are kept.
 
 **Local parser** (`local_notification_parser.dart`)
 - **Tier 1:** per-app parsers chosen by package substring: gojek/gopay, dana, ovo, bca, mandiri/livin, bri, bni, jago, jenius/btpn, seabank, bsi, cimb/octo, shopee, grab, tokopedia.

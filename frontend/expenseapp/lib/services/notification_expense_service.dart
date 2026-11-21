@@ -8,17 +8,6 @@ import 'databaseHelper.dart';
 import 'error_log_service.dart';
 import 'local_notification_parser.dart';
 
-class UnparseableNotificationException implements Exception {
-  const UnparseableNotificationException();
-}
-
-class AiRequiredNotificationException implements Exception {
-  const AiRequiredNotificationException();
-
-  @override
-  String toString() => 'Ambiguous transfer queued until AI can parse it';
-}
-
 class NotificationExpenseService {
   NotificationExpenseService._();
   static final instance = NotificationExpenseService._();
@@ -70,16 +59,18 @@ class NotificationExpenseService {
     'lainnya',
   };
 
-  final Map<String, DateTime> _recentDeduplication = {};
-  static const Duration _dedupDuration = Duration(minutes: 5);
-  static const _maxCloudRetryAttempts = 3;
+  static const needsInputName = 'Perlu dilengkapi';
+  static const _legacyQueueKey = 'pending_cloud_notifications';
+  static const _maxAiAttempts = 6;
   static const _pendingRetryInterval = Duration(minutes: 1);
 
   Future<void> Function(String)? _onError;
   Future<void> Function()? _onPendingNotificationAdded;
   StreamSubscription<dynamic>? _subscription;
   Timer? _pendingRetryTimer;
-  bool _isRetryingPendingNotifications = false;
+  bool _isDraining = false;
+  bool _drainAgain = false;
+  bool _isEnriching = false;
   bool _started = false;
 
   Future<bool> isEnabled() async {
@@ -201,19 +192,22 @@ class NotificationExpenseService {
     if (!enabled) await stop();
   }
 
-  bool _isDuplicate(String packageName, String title, String text) {
-    final now = DateTime.now();
-    _recentDeduplication.removeWhere(
-      (_, time) => now.difference(time) > _dedupDuration,
-    );
+  /// Stable identity of a notification, so a redelivery never creates a
+  /// second draft (the DB has a unique index on it).
+  static String notificationKeyFor({
+    required String packageName,
+    required String title,
+    required String message,
+    required DateTime postTime,
+  }) {
+    return '$packageName|${postTime.millisecondsSinceEpoch}|'
+        '${'$title\u0000$message'.hashCode}';
+  }
 
-    final key =
-        '$packageName|${title.trim().toLowerCase()}|${text.trim().toLowerCase()}';
-    if (_recentDeduplication.containsKey(key)) {
-      return true;
-    }
-    _recentDeduplication[key] = now;
-    return false;
+  /// A name the backend uses when the AI found none; never worth showing.
+  static bool isPlaceholderName(String name) {
+    final lower = name.trim().toLowerCase();
+    return lower.isEmpty || lower == 'unknown expense';
   }
 
   Future<void> start(
@@ -232,195 +226,211 @@ class NotificationExpenseService {
     await _methods.invokeMethod<void>('setParserActive', {'active': true});
     await setAllowedApps(await getAllowedApps());
 
-    if (_started) return;
+    if (_started) {
+      unawaited(processPending());
+      return;
+    }
     _started = true;
 
-    // Retry any notifications that were queued when offline
-    unawaited(retryPendingCloudNotifications());
     _pendingRetryTimer?.cancel();
     _pendingRetryTimer = Timer.periodic(_pendingRetryInterval, (_) {
-      unawaited(retryPendingCloudNotifications());
+      unawaited(processPending());
     });
 
-    _subscription = _events.receiveBroadcastStream().listen((event) async {
-      final data = Map<String, dynamic>.from(event as Map);
+    // Events are only a "something arrived" hint. The durable source of truth
+    // is the native queue, drained below.
+    _subscription = _events.receiveBroadcastStream().listen((_) {
+      unawaited(processPending());
+    });
+
+    await _methods.invokeMethod<void>('start');
+    unawaited(processPending());
+  }
+
+  /// Moves native notifications into drafts, then lets the AI improve them.
+  Future<void> processPending() async {
+    await _drainNativeQueue();
+    await _enrichPendingWithAi();
+  }
+
+  Future<void> _drainNativeQueue() async {
+    if (_isDraining) {
+      _drainAgain = true;
+      return;
+    }
+    _isDraining = true;
+    try {
+      do {
+        _drainAgain = false;
+        await _migrateLegacyQueue();
+        await _drainNativeQueueOnce();
+      } while (_drainAgain);
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Drain notification queue');
+      await _onError?.call(error.toString());
+    } finally {
+      _isDraining = false;
+    }
+  }
+
+  Future<void> _drainNativeQueueOnce() async {
+    // Without a signed-in user there is nowhere to store a draft: leave the
+    // notifications in the native queue until login.
+    if (AuthService.currentUser == null || !Platform.isAndroid) return;
+
+    final raw =
+        await _methods.invokeMethod<List<dynamic>>('takePending') ?? const [];
+    if (raw.isEmpty) return;
+
+    final ackKeys = <String>[];
+    var added = false;
+    for (final entry in raw) {
+      final data = Map<String, dynamic>.from(entry as Map);
       final title = data['title']?.toString() ?? '';
       final message = data['text']?.toString() ?? '';
       final packageName = data['packageName']?.toString() ?? '';
       final postTimeRaw = data['postTime'];
-      final postTime = postTimeRaw is int
-          ? DateTime.fromMillisecondsSinceEpoch(postTimeRaw)
+      final postTime = postTimeRaw is num
+          ? DateTime.fromMillisecondsSinceEpoch(postTimeRaw.toInt())
           : DateTime.now();
-
-      // 1. Noise check
-      if (LocalNotificationParser.isIgnoredNoise(title, message)) {
-        return;
-      }
-
-      // 2. Income / top-up filter
-      if (LocalNotificationParser.isIncomeTransaction(title, message)) {
-        return;
-      }
-
-      // 3. Deduplication check
-      if (_isDuplicate(packageName, title, message)) {
-        return;
+      var key = data['key']?.toString() ?? '';
+      if (key.isEmpty) {
+        key = notificationKeyFor(
+          packageName: packageName,
+          title: title,
+          message: message,
+          postTime: postTime,
+        );
       }
 
       try {
-        await _processNotification(
+        final inserted = await _storeNotification(
           title: title,
           message: message,
           packageName: packageName,
           postTime: postTime,
+          key: key,
         );
+        added = added || inserted;
+        ackKeys.add(key);
       } catch (error, stackTrace) {
-        if (error is UnparseableNotificationException) {
-          _logUnparsedNotification(
-            title: title,
-            message: message,
-            packageName: packageName,
-            reason: 'no local or cloud result',
-          );
-        } else if (error is AiRequiredNotificationException) {
-          _logUnparsedNotification(
-            title: title,
-            message: message,
-            packageName: packageName,
-            reason: 'queued for AI',
-          );
-        } else {
-          captureAppError(error, stackTrace, 'Process payment notification');
-        }
-
-        if (error is! UnparseableNotificationException) {
-          await _enqueuePendingCloudNotification({
-            'title': title,
-            'message': message,
-            'packageName': packageName,
-            'postTime': postTime.millisecondsSinceEpoch,
-            'retryCount': 0,
-            'aiRequired': error is AiRequiredNotificationException,
-            'ownerId': AuthService.currentUser?.uid,
-          });
-        }
+        // Not acked: it stays in the native queue and is retried next drain.
+        captureAppError(error, stackTrace, 'Store payment notification');
         await _onError?.call(error.toString());
       }
-    });
+    }
 
-    await _methods.invokeMethod<void>('start');
+    if (ackKeys.isNotEmpty) {
+      await _methods.invokeMethod<void>('ack', {'keys': ackKeys});
+    }
+    if (added) await _onPendingNotificationAdded?.call();
   }
 
-  Future<void> _processNotification({
+  /// Saves one notification as a pending draft. Returns true when a new draft
+  /// was created. Noise and income are dropped on purpose (returns false).
+  Future<bool> _storeNotification({
     required String title,
     required String message,
     required String packageName,
     required DateTime postTime,
+    required String key,
   }) async {
-    Map<String, dynamic>? cloudParsed;
-    Object? cloudError;
-    try {
-      cloudParsed = await _parseWithCloudParser(
-        title: title,
-        message: message,
-        packageName: packageName,
-      );
-    } catch (error, stackTrace) {
-      captureAppError(error, stackTrace, 'Cloud notification parsing');
-      cloudError = error;
+    if (LocalNotificationParser.isIgnoredNoise(title, message)) return false;
+    if (LocalNotificationParser.isIncomeTransaction(title, message)) {
+      return false;
     }
 
-    if (cloudParsed != null) {
-      await _insertPendingParsed(
-        parsed: cloudParsed,
-        packageName: packageName,
-        postTime: postTime,
-      );
-      return;
-    }
-
-    final localParsed = LocalNotificationParser.parse(
+    final local = LocalNotificationParser.parse(
       title: title,
       message: message,
       packageName: packageName,
       timestamp: postTime,
     );
+    final hasAmount = local != null && local.amount > 0;
 
-    if (LocalNotificationParser.isAmbiguousNotification(
-      title,
-      message,
-      localParsed,
-    )) {
-      // Show what the local parser found instead of hiding it in the retry
-      // queue. The review page lets the user fix the merchant/category.
-      if (localParsed != null && localParsed.amount > 0) {
-        await _insertPendingParsed(
-          parsed: {
-            'name': localParsed.name,
-            'amount': localParsed.amount,
-            'category': localParsed.category,
-            'type': localParsed.type,
-          },
-          packageName: packageName,
-          postTime: postTime,
-          date: localParsed.date,
-        );
-        return;
-      }
-      throw const AiRequiredNotificationException();
-    }
-
-    if (localParsed != null && localParsed.amount > 0) {
-      await _insertPendingParsed(
-        parsed: {
-          'name': localParsed.name,
-          'amount': localParsed.amount,
-          'category': localParsed.category,
-          'type': localParsed.type,
-        },
-        packageName: packageName,
-        postTime: postTime,
-        date: localParsed.date,
-      );
-      return;
-    }
-
-    if (cloudError != null) throw cloudError;
-    throw const UnparseableNotificationException();
-  }
-
-  Future<void> _insertPendingParsed({
-    required Map<String, dynamic> parsed,
-    required String packageName,
-    required DateTime postTime,
-    String? date,
-  }) async {
-    await DatabaseHelp.insertPendingNotificationExpense(
-      name: parsed['name'] as String,
-      amount: parsed['amount'] as int,
-      date: date ?? postTime.toIso8601String().substring(0, 10),
-      category: parsed['category'] as String,
-      type: parsed['type'] as String,
+    final id = await DatabaseHelp.insertPendingNotificationExpense(
+      name: hasAmount ? local.name : needsInputName,
+      amount: hasAmount ? local.amount : 0,
+      date:
+          (hasAmount ? local.date : null) ??
+          postTime.toIso8601String().substring(0, 10),
+      category: hasAmount ? local.category : 'lainnya',
+      type: hasAmount ? local.type : 'unexpected',
       sourceApp: packageName,
       receivedAt: postTime,
+      rawTitle: title,
+      rawText: message,
+      notificationKey: key,
+      status: hasAmount ? 'ready' : 'needs_input',
+      aiStatus: 'pending',
     );
-    await _onPendingNotificationAdded?.call();
+    return id > 0;
   }
 
-  void _logUnparsedNotification({
-    required String title,
-    required String message,
-    required String packageName,
-    required String reason,
-  }) {
-    captureAppError(
-      'Notification could not be parsed ($reason). '
-      'title="$title" text="$message"',
-      StackTrace.current,
-      'Unparsed notification from $packageName',
-    );
+  /// Improves name/category/type (and the amount of "needs input" drafts)
+  /// with the cloud parser. A failure never removes the draft.
+  Future<void> _enrichPendingWithAi() async {
+    if (_isEnriching || AuthService.currentUser == null) return;
+    _isEnriching = true;
+    try {
+      final now = DateTime.now().millisecondsSinceEpoch;
+      final rows = await DatabaseHelp.getPendingAiEnrichment(now);
+      var changed = false;
+
+      for (final row in rows) {
+        final id = row['id'] as int;
+        final attempts = (row['aiAttempts'] as num?)?.toInt() ?? 0;
+        try {
+          final parsed = await _parseWithCloudParser(
+            title: row['rawTitle']?.toString() ?? '',
+            message: row['rawText']?.toString() ?? '',
+            packageName: row['sourceApp']?.toString() ?? '',
+          );
+          if (parsed == null) {
+            // The AI answered but found no amount: keep the local draft as is.
+            await DatabaseHelp.markPendingAiAttemptFailed(
+              id: id,
+              attempts: attempts + 1,
+              nextRetryAtMs: 0,
+              giveUp: true,
+            );
+            continue;
+          }
+          final aiName = parsed['name'] as String;
+          final applied = await DatabaseHelp.applyAiEnrichment(
+            id: id,
+            name: isPlaceholderName(aiName)
+                ? (row['name']?.toString() ?? needsInputName)
+                : aiName,
+            amount: parsed['amount'] as int,
+            category: parsed['category'] as String,
+            type: parsed['type'] as String,
+          );
+          changed = changed || applied;
+        } catch (error, stackTrace) {
+          captureAppError(error, stackTrace, 'Cloud notification parsing');
+          final next = attempts + 1;
+          await DatabaseHelp.markPendingAiAttemptFailed(
+            id: id,
+            attempts: next,
+            nextRetryAtMs: DateTime.now()
+                .add(_pendingRetryDelay(next))
+                .millisecondsSinceEpoch,
+            giveUp: next >= _maxAiAttempts,
+          );
+        }
+      }
+
+      if (changed) await _onPendingNotificationAdded?.call();
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Enrich pending notifications');
+    } finally {
+      _isEnriching = false;
+    }
   }
 
+  /// Returns null when the AI found no usable amount. A placeholder name is
+  /// returned as an empty string so callers keep the local one.
   Future<Map<String, dynamic>?> _parseWithCloudParser({
     required String title,
     required String message,
@@ -435,9 +445,10 @@ class NotificationExpenseService {
     final amount = rawAmount is num
         ? rawAmount.round()
         : int.tryParse(rawAmount?.toString() ?? '') ?? 0;
-    final name = (cloudParsed['name']?.toString() ?? '').trim();
-    if (amount <= 0 || name.isEmpty) return null;
+    if (amount <= 0) return null;
 
+    final rawName = (cloudParsed['name']?.toString() ?? '').trim();
+    final name = isPlaceholderName(rawName) ? '' : rawName;
     final rawCategory =
         cloudParsed['category']?.toString().toLowerCase() ?? 'lainnya';
     final category = _validCategories.contains(rawCategory)
@@ -451,118 +462,57 @@ class NotificationExpenseService {
     return {'name': name, 'amount': amount, 'category': category, 'type': type};
   }
 
-  Future<void> _enqueuePendingCloudNotification(
-    Map<String, dynamic> item,
-  ) async {
+  /// One-time move of the old JSON retry queue (`pending_cloud_notifications`)
+  /// into drafts, so nothing queued by an older version is lost.
+  Future<void> _migrateLegacyQueue() async {
+    final uid = AuthService.currentUser?.uid;
+    if (uid == null) return;
     try {
-      final stored = await DatabaseHelp.getSetting(
-        'pending_cloud_notifications',
-      );
-      List<dynamic> queue = [];
-      if (stored != null) {
-        try {
-          queue = jsonDecode(stored) as List<dynamic>;
-        } catch (error, stackTrace) {
-          captureAppError(error, stackTrace, 'Read pending notification queue');
-        }
-      }
-      // Keep ordinary transient failures bounded without evicting AI-required entries.
-      if (queue.length >= 50) {
-        final evictableIndex = queue.indexWhere(
-          (queued) => queued is Map && queued['aiRequired'] != true,
-        );
-        if (evictableIndex >= 0) {
-          queue.removeAt(evictableIndex);
-        } else if (item['aiRequired'] != true) {
-          return;
-        }
-      }
-      queue.add(item);
-      await DatabaseHelp.setSetting(
-        'pending_cloud_notifications',
-        jsonEncode(queue),
-      );
-    } catch (error, stackTrace) {
-      captureAppError(error, stackTrace, 'Store pending notification');
-    }
-  }
-
-  /// Retries parsing any notifications that were queued while offline.
-  Future<void> retryPendingCloudNotifications() async {
-    if (_isRetryingPendingNotifications) return;
-    _isRetryingPendingNotifications = true;
-    try {
-      final stored = await DatabaseHelp.getSetting(
-        'pending_cloud_notifications',
-      );
-      if (stored == null) return;
+      final stored = await DatabaseHelp.getSetting(_legacyQueueKey);
+      if (stored == null || stored == '[]') return;
       final queue = (jsonDecode(stored) as List<dynamic>)
           .cast<Map<String, dynamic>>();
-      if (queue.isEmpty) return;
 
       final remaining = <Map<String, dynamic>>[];
-
+      var added = false;
       for (final item in queue) {
-        final pendingOwnerId = item['ownerId']?.toString();
-        final currentOwnerId = AuthService.currentUser?.uid;
-        if (pendingOwnerId != null && pendingOwnerId != currentOwnerId) {
+        final ownerId = item['ownerId']?.toString();
+        if (ownerId != null && ownerId != uid) {
           remaining.add(item);
           continue;
         }
-
-        final nextRetryAt = (item['nextRetryAt'] as num?)?.toInt() ?? 0;
-        if (nextRetryAt > DateTime.now().millisecondsSinceEpoch) {
-          remaining.add(item);
-          continue;
-        }
-
+        final title = item['title']?.toString() ?? '';
+        final message = item['message']?.toString() ?? '';
+        final packageName = item['packageName']?.toString() ?? '';
+        final postTimeRaw = item['postTime'];
+        final postTime = postTimeRaw is num
+            ? DateTime.fromMillisecondsSinceEpoch(postTimeRaw.toInt())
+            : DateTime.now();
         try {
-          final title = item['title']?.toString() ?? '';
-          final message = item['message']?.toString() ?? '';
-          final packageName = item['packageName']?.toString() ?? '';
-          final postTimeRaw = item['postTime'];
-          final postTime = postTimeRaw is int
-              ? DateTime.fromMillisecondsSinceEpoch(postTimeRaw)
-              : DateTime.now();
-
-          await _processNotification(
-            title: title,
-            message: message,
-            packageName: packageName,
-            postTime: postTime,
-          );
-        } on UnparseableNotificationException {
-          // The notification was not an expense; it cannot succeed on retry.
+          added =
+              await _storeNotification(
+                title: title,
+                message: message,
+                packageName: packageName,
+                postTime: postTime,
+                key: notificationKeyFor(
+                  packageName: packageName,
+                  title: title,
+                  message: message,
+                  postTime: postTime,
+                ),
+              ) ||
+              added;
         } catch (error, stackTrace) {
-          if (error is! AiRequiredNotificationException) {
-            captureAppError(error, stackTrace, 'Retry payment notification');
-          }
-          final retryCount = (item['retryCount'] as num?)?.toInt() ?? 0;
-          final nextRetryCount = retryCount + 1;
-          final mustKeepForAi =
-              item['aiRequired'] == true ||
-              error is AiRequiredNotificationException;
-          if (mustKeepForAi || nextRetryCount < _maxCloudRetryAttempts) {
-            remaining.add({
-              ...item,
-              'retryCount': nextRetryCount,
-              'nextRetryAt': DateTime.now()
-                  .add(_pendingRetryDelay(nextRetryCount))
-                  .millisecondsSinceEpoch,
-              if (mustKeepForAi) 'aiRequired': true,
-            });
-          }
+          captureAppError(error, stackTrace, 'Migrate pending notification');
+          remaining.add(item);
         }
       }
 
-      await DatabaseHelp.setSetting(
-        'pending_cloud_notifications',
-        jsonEncode(remaining),
-      );
+      await DatabaseHelp.setSetting(_legacyQueueKey, jsonEncode(remaining));
+      if (added) await _onPendingNotificationAdded?.call();
     } catch (error, stackTrace) {
-      captureAppError(error, stackTrace, 'Read pending notification queue');
-    } finally {
-      _isRetryingPendingNotifications = false;
+      captureAppError(error, stackTrace, 'Read legacy notification queue');
     }
   }
 
