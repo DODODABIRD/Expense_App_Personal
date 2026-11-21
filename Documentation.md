@@ -921,6 +921,10 @@ For local runs, put them in `backend/.env.local`, starting from `.env.example`. 
 | Docker network | `expense-net` |
 | Env file | `backend/.env.local` |
 | DB backups | `~/expense-backups` |
+| Postgres | container `expense-postgres`, image `postgres:16-alpine`, volume `pgdata`, on `expense-net` |
+| Reverse proxy | Caddy (systemd, on the host) → `127.0.0.1:3000`; config `/etc/caddy/Caddyfile` |
+| OS | Ubuntu 24.04, logged in as `root` (so `~` is `/root`) |
+| Checkout | sparse: only `backend/` (plus root files) |
 
 These names come from the ops script below; they are not enforced by code.
 
@@ -954,6 +958,8 @@ If an older copy of the functions was pasted into `~/.bashrc` (between `# >>> ex
 | `disk-check` | Host and Docker disk usage |
 | `docker-cleanup` | Removes dangling images and build cache older than 7 days |
 | `first-setup-backend` | One time: creates the network, builds, runs |
+| `first-setup-db` | One time: creates `expense-postgres` with the `pgdata` volume, using user/password/db from `DATABASE_URL` (password must not be URL-encoded) |
+| `restore-db <file.sql.gz>` | Restores a `backup-db` file. Refuses if the `expenses` table already exists, so run it before `first-setup-backend` |
 
 **Without the helpers: update by hand**
 
@@ -963,7 +969,7 @@ cd ~/Expense_App_Personal && git pull origin VPS_Test && cd backend \
   docker build -t expense-backend:latest . \
   && docker rm -f expense-backend-app 2>/dev/null; \
   docker run -d --name expense-backend-app --network expense-net \
-     --restart unless-stopped --env-file .env.local -p 3000:3000 expense-backend:latest \
+     --restart unless-stopped --env-file .env.local -p 127.0.0.1:3000:3000 expense-backend:latest \
   && sleep 5 && docker logs --tail 30 expense-backend-app
 ```
 
@@ -983,7 +989,44 @@ curl -fsS http://127.0.0.1:3000/api/public-config && echo
 - **Testing:** run `npm test` locally before pushing to `VPS_Test`.
 - **Local changes on the VPS:** if `git pull` fails, inspect with `git-info-backend` first; do not `reset --hard`.
 - **State lost on restart:** admin sessions and WS/SSE registries are in memory and reset on every restart.
-- **Out of repo:** the reverse proxy/TLS in front of port 3000 and the Postgres container are not defined in this repo.
+- **Port 3000 is published on `127.0.0.1` only.** Docker-published ports bypass `ufw`, so binding to all interfaces would expose the backend directly, around the proxy. Caddy must therefore proxy to `127.0.0.1:3000` (or `localhost:3000`), not the public IP.
+- **Out of repo:** the Caddyfile itself is not in the repo; the template is in "New server setup" below.
+
+**New server setup (moving providers)**
+
+Order matters: the database is restored before the backend starts, because the backend creates empty tables on its first request and `restore-db` then refuses.
+
+1. **Old server — freeze and back up.** `stop-backend` (no more writes), then `backup-db`. Copy the backup and the env file to your computer, from PowerShell:
+   ```powershell
+   scp root@OLD_IP:~/expense-backups/unmurce-YYYY-MM-DD-HHMM.sql.gz .
+   scp root@OLD_IP:~/Expense_App_Personal/backend/.env.local .
+   ```
+   Keep the old server running (stopped backend) until step 9 is verified.
+2. **New server — base packages and firewall** (Ubuntu):
+   ```bash
+   apt update && apt upgrade -y && apt install -y git curl
+   curl -fsSL https://get.docker.com | sh
+   ufw allow OpenSSH && ufw allow 80,443/tcp && ufw enable
+   ```
+   Install Caddy from its official apt repository: https://caddyserver.com/docs/install#debian-ubuntu-raspbian
+3. **Sparse clone of the backend only** (a private repo needs a deploy key or token):
+   ```bash
+   cd ~ && git clone --filter=blob:none --sparse --branch VPS_Test https://github.com/DODODABIRD/Expense_App_Personal.git
+   cd ~/Expense_App_Personal && git sparse-checkout set backend
+   ```
+4. **Env file and helpers.** From PowerShell: `scp .env.local root@NEW_IP:~/Expense_App_Personal/backend/.env.local`. Then on the server, install the helpers (see "One-time install" above).
+5. **Database:** `first-setup-db`.
+6. **Restore:** from PowerShell `scp unmurce-....sql.gz root@NEW_IP:~/`, then on the server `restore-db ~/unmurce-....sql.gz`. It prints the restored expense count; compare it with the old server.
+7. **Backend:** `first-setup-backend`, then `status-backend` (health must be OK).
+8. **Caddy.** `/etc/caddy/Caddyfile`:
+   ```
+   dododabird.us {
+       reverse_proxy 127.0.0.1:3000
+   }
+   ```
+   Add any other hostnames the old Caddyfile served, then `systemctl reload caddy`. WebSocket (`/ws`) needs no extra config.
+9. **DNS.** Point the A record to the new IP. If the domain is proxied by Cloudflare, set the record to "DNS only" until Caddy has obtained its certificate (`journalctl -u caddy`), then turn the proxy back on with SSL mode "Full (strict)". Check the website, `/dodo`, and a sync from the app.
+10. **Afterwards:** keep the old server a few days, then cancel it. Keep at least one recent `backup-db` file off the server (step 1's `scp`), not only in `~/expense-backups`.
 
 **Vercel.** `vercel.json` is legacy and non-functional:
 - `api/index.js` exports `{createApp}`, not a handler;

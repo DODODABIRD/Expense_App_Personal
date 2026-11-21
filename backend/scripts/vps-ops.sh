@@ -11,6 +11,9 @@ EXP_NETWORK="expense-net"
 EXP_BACKUP_DIR="$HOME/expense-backups"
 EXP_HEALTH_URL="http://127.0.0.1:3000/api/public-config"
 EXP_DB_CONTAINER=""   # set manually if postgres container auto-detection fails
+EXP_PG_CONTAINER="expense-postgres"   # created by first-setup-db
+EXP_PG_IMAGE="postgres:16-alpine"
+EXP_PG_VOLUME="pgdata"
 
 _exp_healthy() { curl -fsS -m 3 "$EXP_HEALTH_URL" >/dev/null 2>&1; }
 
@@ -25,7 +28,7 @@ _exp_wait_healthy() {
 _exp_run() {
   docker run -d --name "$EXP_CONTAINER" --network "$EXP_NETWORK" \
     --restart unless-stopped --env-file "$EXP_BACKEND_DIR/.env.local" \
-    -p 3000:3000 "$EXP_IMAGE:latest"
+    -p 127.0.0.1:3000:3000 "$EXP_IMAGE:latest"
 }
 
 _exp_db_container() {
@@ -166,4 +169,61 @@ first-setup-backend() {
   cd "$EXP_BACKEND_DIR" || return 1
   docker build -t "$EXP_IMAGE:latest" . || { echo "FAILED: docker build"; return 1; }
   recreate-backend
+}
+
+# Parts of DATABASE_URL (postgresql://user:password@host:port/db). The password
+# must not contain URL-encoded characters, since it is passed to Postgres as is.
+_exp_db_url_part() {
+  case "$1" in
+    user) _exp_db_url | sed -E 's#^[a-z]+://([^:]+):.*#\1#' ;;
+    pass) _exp_db_url | sed -E 's#^[a-z]+://[^:]+:([^@]*)@.*#\1#' ;;
+    db)   _exp_db_url | sed -E 's#.*/([^/?]+)(\?.*)?$#\1#' ;;
+  esac
+}
+
+first-setup-db() {
+  local user pass db
+  user=$(_exp_db_url_part user); pass=$(_exp_db_url_part pass); db=$(_exp_db_url_part db)
+  [ -n "$user" ] && [ -n "$pass" ] && [ -n "$db" ] \
+    || { echo "FAILED: could not read user/password/db from DATABASE_URL"; return 1; }
+  if docker container inspect "$EXP_PG_CONTAINER" >/dev/null 2>&1; then
+    echo "FAILED: container $EXP_PG_CONTAINER already exists"; return 1
+  fi
+  docker network inspect "$EXP_NETWORK" >/dev/null 2>&1 \
+    || docker network create "$EXP_NETWORK" || return 1
+  docker run -d --name "$EXP_PG_CONTAINER" --network "$EXP_NETWORK" \
+    --restart unless-stopped \
+    -e POSTGRES_USER="$user" -e POSTGRES_PASSWORD="$pass" -e POSTGRES_DB="$db" \
+    -v "$EXP_PG_VOLUME":/var/lib/postgresql/data "$EXP_PG_IMAGE" \
+    || { echo "FAILED: docker run postgres"; return 1; }
+  for _ in $(seq 1 30); do
+    if docker exec "$EXP_PG_CONTAINER" pg_isready -U "$user" -d "$db" >/dev/null 2>&1; then
+      echo "OK: $EXP_PG_CONTAINER ready (db $db, volume $EXP_PG_VOLUME)"
+      return 0
+    fi
+    sleep 2
+  done
+  echo "FAILED: postgres not ready"
+  docker logs --tail 30 "$EXP_PG_CONTAINER"
+  return 1
+}
+
+# Restores a backup-db file into an EMPTY database. Run before first-setup-backend,
+# because the backend creates the tables on its first request.
+restore-db() {
+  local file="$1" db url existing
+  [ -f "$file" ] || { echo "usage: restore-db <backup.sql.gz>"; return 1; }
+  db=$(_exp_db_container)
+  [ -n "$db" ] || { echo "FAILED: postgres container not found"; return 1; }
+  url=$(_exp_db_url)
+  [ -n "$url" ] || { echo "FAILED: DATABASE_URL missing from .env.local"; return 1; }
+  existing=$(docker exec "$db" psql "$url" -tAc "SELECT to_regclass('public.expenses')") \
+    || { echo "FAILED: cannot connect to the database"; return 1; }
+  if [ -n "$existing" ]; then
+    echo "FAILED: database already has tables; restore only into an empty database"
+    return 1
+  fi
+  gunzip -c "$file" | docker exec -i "$db" psql -q -v ON_ERROR_STOP=1 "$url" >/dev/null \
+    || { echo "FAILED: restore stopped on an error (see above)"; return 1; }
+  echo "OK: restored $file ($(docker exec "$db" psql "$url" -tAc 'SELECT count(*) FROM expenses') expenses)"
 }
