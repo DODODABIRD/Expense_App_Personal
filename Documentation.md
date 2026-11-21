@@ -1014,7 +1014,12 @@ Order matters: the database is restored before the backend starts, because the b
    cd ~ && git clone --filter=blob:none --sparse --branch VPS_Test https://github.com/DODODABIRD/Expense_App_Personal.git
    cd ~/Expense_App_Personal && git sparse-checkout set backend
    ```
-4. **Env file and helpers.** From PowerShell: `scp .env.local root@NEW_IP:~/Expense_App_Personal/backend/.env.local`. Then on the server, install the helpers (see "One-time install" above).
+4. **Env file and helpers.** From PowerShell: `scp .env.local root@NEW_IP:~/Expense_App_Personal/backend/.env.local`. Then on the server, load the helper functions now and on every login:
+   ```bash
+   echo '[ -f ~/Expense_App_Personal/backend/scripts/vps-ops.sh ] && . ~/Expense_App_Personal/backend/scripts/vps-ops.sh' >> ~/.bashrc && . ~/.bashrc
+   type first-setup-db
+   ```
+   `type` must print a function; if it says "not found", the clone in step 3 is missing `backend/scripts/`.
 5. **Database:** `first-setup-db`.
 6. **Restore:** from PowerShell `scp unmurce-....sql.gz root@NEW_IP:~/`, then on the server `restore-db ~/unmurce-....sql.gz`. It prints the restored expense count; compare it with the old server.
 7. **Backend:** `first-setup-backend`, then `status-backend` (health must be OK).
