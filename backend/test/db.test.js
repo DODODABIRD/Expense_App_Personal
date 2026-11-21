@@ -4,6 +4,7 @@ const {
   deleteAllExpenses,
   deleteExpenseByLocalId,
   ensureSchema,
+  getPool,
   getExpenseByLocalId,
   listExpenses,
   listRecentExpensesForContext,
@@ -293,4 +294,22 @@ test("upsertNotificationReference and loadNotificationReferenceItems handle JSON
   const loadedSummary = await loadNotificationSummary("user-1");
   assert.ok(selectSql.includes("SELECT summary"));
   assert.deepEqual(loadedSummary, summary);
+});
+
+test("getPool sets a connection timeout and handles idle client errors", async () => {
+  const previousUrl = process.env.DATABASE_URL;
+  process.env.DATABASE_URL = "postgres://user:pass@127.0.0.1:1/test";
+  setPool(null);
+  try {
+    const pool = getPool();
+    assert.equal(pool.options.connectionTimeoutMillis, 5000);
+    assert.ok(pool.listenerCount("error") > 0);
+    // Emitting an idle-client error must not throw (and so must not crash the process).
+    pool.emit("error", new Error("Connection terminated unexpectedly"));
+    await pool.end();
+  } finally {
+    setPool(null);
+    if (previousUrl === undefined) delete process.env.DATABASE_URL;
+    else process.env.DATABASE_URL = previousUrl;
+  }
 });

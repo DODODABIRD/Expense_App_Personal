@@ -24,6 +24,12 @@ function getPool() {
     ssl: sslFromDatabaseUrl(process.env.DATABASE_URL)
       ? { rejectUnauthorized: false }
       : false,
+    // Fail fast instead of hanging requests when Postgres is unreachable.
+    connectionTimeoutMillis: 5000,
+  });
+  // Without a listener, an idle client dropped by Postgres crashes the process.
+  pool.on("error", (err) => {
+    console.error("Postgres idle client error:", err.message);
   });
   return pool;
 }

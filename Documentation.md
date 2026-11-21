@@ -655,6 +655,7 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
 
 **Other behaviour**
 - **SSL:** used (with `rejectUnauthorized:false`) only when `DATABASE_URL` contains `sslmode=require`.
+- **Pool resilience:** acquiring a connection times out after 5 s (`connectionTimeoutMillis`), so an unreachable Postgres fails the request instead of hanging it. Idle-client errors (e.g. Postgres restarting) are logged via `pool.on("error")` instead of crashing the process.
 - **Download seeding:** if `download_apps` is empty, the app `unmurce` is created from the portfolio's `featured`. A release is created from `portfolio.apk` when present.
 - **Latest release:** chosen by semver-like comparison, then `released_at`, then `id`.
 
