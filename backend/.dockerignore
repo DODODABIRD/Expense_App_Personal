@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+firebase-service-account*.json
+firebase-adminsdk-*.json
+ignore
+nul
+.git
+.github
+.vercel
+test
+Dockerfile
+.dockerignore

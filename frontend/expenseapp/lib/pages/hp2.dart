@@ -1,31 +1,29 @@
 import 'dart:async';
-import 'dart:io';
-import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:android_intent_plus/android_intent.dart';
-import 'package:android_intent_plus/flag.dart';
-import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:media_store_plus/media_store_plus.dart';
-import 'package:open_filex/open_filex.dart';
-import 'package:pdf/pdf.dart' as pdf;
-import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
-import '../main.dart';
-import 'ExpenseAddPage.dart';
 import 'package:intl/intl.dart';
+
+import '../main.dart';
+import '../models/expense_model.dart';
 import '../services/databaseHelper.dart';
 import '../services/ApiService.dart';
 import '../services/error_log_service.dart';
-import 'ExpenseEdit.dart';
-import 'ExpenseSumarry.dart';
+import '../services/pdf_export_service.dart';
+import '../services/pdf_import_service.dart';
 import '../services/auth_service.dart';
 import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
+import '../widgets/neo_brutalist_calendar.dart';
+import 'ExpenseAddPage.dart';
+import 'ExpenseEdit.dart';
+import 'ExpenseSumarry.dart';
 import 'developer_logs_page.dart';
 import 'notification_permission_page.dart';
 import 'PendingNotificationReviewPage.dart';
+import 'settings_page.dart';
 
 class HomePage2 extends StatefulWidget {
   const HomePage2({super.key});
@@ -44,7 +42,31 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   DateTime? _settingsTapStartedAt;
   bool _isChangingCurrency = false;
   bool _isLoadingOnlineExpenses = false;
+  bool _isImportingPdf = false;
   int _pendingNotificationCount = 0;
+
+  // Filter state
+  String? _selectedCategory;
+  String? _selectedType;
+  DateTimeRange? _dateRange;
+  ExpenseSort _selectedSort = ExpenseSort.dateNewest;
+  final _filterPanelKey = GlobalKey<_FilterPanelState>();
+
+  bool get _hasActiveFilters {
+    return _selectedCategory != null ||
+        _selectedType != null ||
+        _dateRange != null ||
+        _selectedSort != ExpenseSort.dateNewest;
+  }
+
+  int get _activeFilterCount {
+    int count = 0;
+    if (_selectedCategory != null) count++;
+    if (_selectedType != null) count++;
+    if (_dateRange != null) count++;
+    if (_selectedSort != ExpenseSort.dateNewest) count++;
+    return count;
+  }
 
   @override
   void initState() {
@@ -77,7 +99,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   Future<void> _handlePendingNotificationAdded() async {
     await _loadPendingNotificationCount();
     if (mounted) {
-      _showNotificationSnackBar(
+      showNotificationSnackBar(
         context,
         'A parsed notification is ready for review.',
       );
@@ -97,6 +119,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _loadPendingNotificationCount();
+      _startNotificationParser();
     }
   }
 
@@ -115,7 +138,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
 
   Future<void> _showNotificationParserError(String error) async {
     if (!mounted) return;
-    _showNotificationSnackBar(
+    showNotificationSnackBar(
       context,
       'Could not parse notification: $error',
       isError: true,
@@ -197,6 +220,8 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
             const _LoadingOverlay(message: 'Getting newest exchange rate...'),
           if (_isLoadingOnlineExpenses)
             const _LoadingOverlay(message: 'Loading online expenses...'),
+          if (_isImportingPdf)
+            const _LoadingOverlay(message: 'Reading expense report...'),
         ],
       ),
     );
@@ -223,46 +248,49 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Tooltip(
-                      message: 'Review parsed notifications',
-                      child: NeoBouncy(
-                        onTap: _openPendingNotificationReview,
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainer,
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: Colors.black, width: 2),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Colors.black,
-                                offset: Offset(2, 2),
-                                blurRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: Center(
-                            child: Badge(
-                              isLabelVisible: _pendingNotificationCount > 0,
-                              label: Text(
-                                _pendingNotificationCount > 99
-                                    ? '99+'
-                                    : '$_pendingNotificationCount',
-                              ),
-                              child: Icon(
-                                Icons.receipt_long_outlined,
-                                color: Theme.of(context).colorScheme.onSurface,
-                                size: 21,
+                    _buildFiltersButton(),
+                    const SizedBox(width: 8),
+                    if (_pendingNotificationCount >= 0)
+                      Tooltip(
+                        message: 'Review parsed notifications',
+                        child: NeoBouncy(
+                          onTap: _openPendingNotificationReview,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainer,
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: Colors.black, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Colors.black,
+                                  offset: Offset(2, 2),
+                                  blurRadius: 0,
+                                ),
+                              ],
+                            ),
+                            child: Center(
+                              child: Badge(
+                                isLabelVisible: _pendingNotificationCount > 0,
+                                label: Text(
+                                  _pendingNotificationCount > 99
+                                      ? '99+'
+                                      : '$_pendingNotificationCount',
+                                  style: const TextStyle(fontSize: 9),
+                                ),
+                                child: Icon(
+                                  Icons.receipt_long_outlined,
+                                  color: Theme.of(context).colorScheme.onSurface,
+                                  size: 18,
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
-                    ),
-                    _buildSortDropdown(),
                   ],
                 ),
               ],
@@ -321,9 +349,11 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     return SettingsPage(
       onDeleteAll: _deleteAllExpenses,
       onExportPdf: _exportExpenses,
+      onImportPdf: _importExpensesFromPdf,
       onDeleteAccount: _deleteAccount,
       onChangePassword: _changePassword,
       onRetrySync: _retrySync,
+      onForceResyncAll: _forceResyncAll,
       onCurrencyChanged: _changeCurrency,
       onLoadOnlineExpenses: _loadOnlineExpenses,
       onPendingNotificationAdded: _handlePendingNotificationAdded,
@@ -352,73 +382,91 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     );
   }
 
-  Widget _buildSortDropdown() {
+  Widget _buildFiltersButton() {
     return NeoBouncy(
+      onTap: _showFilterPanel,
       child: Container(
         height: 34,
-        padding: const EdgeInsets.symmetric(horizontal: 7),
+        padding: const EdgeInsets.symmetric(horizontal: 12),
         decoration: BoxDecoration(
-          color: const Color(0xFF5DF9FF),
+          color: _hasActiveFilters ? const Color(0xFF5DF9FF) : Theme.of(context).colorScheme.surfaceContainer,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(color: Colors.black, width: 2),
           boxShadow: const [
-            BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
+            BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0),
           ],
         ),
-        child: Theme(
-          data: Theme.of(context).copyWith(
-            canvasColor: Theme.of(context).colorScheme.surfaceContainer,
-            highlightColor: const Color(0x335DF9FF),
-            splashColor: const Color(0x555DF9FF),
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: Colors.black,
-              secondary: const Color(0xFF5DF9FF),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.filter_list_rounded,
+              size: 18,
+              color: Colors.black,
             ),
-          ),
-          child: DropdownButtonHideUnderline(
-            child: DropdownButton<ExpenseSort>(
-              value: listKey.currentState?._sort ?? ExpenseSort.dateNewest,
-              isDense: true,
-              dropdownColor: Theme.of(context).colorScheme.surfaceContainer,
-              borderRadius: BorderRadius.circular(14),
-              focusColor: Colors.transparent,
-              style: const TextStyle(
-                color: Colors.black,
+            const SizedBox(width: 6),
+            Text(
+              'Filters',
+              style: GoogleFonts.itim(
                 fontSize: 13,
-                fontWeight: FontWeight.w700,
-              ),
-              icon: const Icon(
-                Icons.keyboard_arrow_down,
-                size: 20,
+                fontWeight: FontWeight.bold,
                 color: Colors.black,
               ),
-              items: const [
-                DropdownMenuItem(
-                  value: ExpenseSort.dateNewest,
-                  child: Text('Newest'),
-                ),
-                DropdownMenuItem(
-                  value: ExpenseSort.dateOldest,
-                  child: Text('Oldest'),
-                ),
-                DropdownMenuItem(
-                  value: ExpenseSort.amountHighest,
-                  child: Text('Highest'),
-                ),
-                DropdownMenuItem(
-                  value: ExpenseSort.amountLowest,
-                  child: Text('Lowest'),
-                ),
-              ],
-              onChanged: (value) {
-                if (value != null) {
-                  listKey.currentState?._setSort(value);
-                  setState(() {});
-                }
-              },
             ),
-          ),
+            if (_activeFilterCount > 0) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$_activeFilterCount',
+                  style: GoogleFonts.itim(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
+      ),
+    );
+  }
+
+  void _showFilterPanel() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _FilterPanel(
+        key: _filterPanelKey,
+        initialCategory: _selectedCategory,
+        initialType: _selectedType,
+        initialDateRange: _dateRange,
+        initialSort: _selectedSort,
+        categories: listKey.currentState?._uniqueCategories ?? [],
+        onApply: (category, type, dateRange, sort) {
+          setState(() {
+            _selectedCategory = category;
+            _selectedType = type;
+            _dateRange = dateRange;
+            _selectedSort = sort;
+          });
+          listKey.currentState?._setFilter(category, type, dateRange, sort);
+        },
+        onReset: () {
+          setState(() {
+            _selectedCategory = null;
+            _selectedType = null;
+            _dateRange = null;
+            _selectedSort = ExpenseSort.dateNewest;
+          });
+          listKey.currentState?._resetFilters();
+        },
       ),
     );
   }
@@ -523,1137 +571,188 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     }
   }
 
+
   Future<void> _exportExpenses() async {
     try {
       final expenses = await DatabaseHelp.getData();
       if (!mounted) return;
       if (expenses.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('There are no expenses to export.')),
+          const SnackBar(content: Text("There are no expenses to export.")),
         );
         return;
       }
-
-      final sortedExpenses = [...expenses]
-        ..sort((first, second) {
-          final firstDate = DateTime.tryParse(first['date']?.toString() ?? '');
-          final secondDate = DateTime.tryParse(
-            second['date']?.toString() ?? '',
-          );
-          if (firstDate == null && secondDate == null) return 0;
-          if (firstDate == null) return 1;
-          if (secondDate == null) return -1;
-          return secondDate.compareTo(firstDate);
-        });
-
-      final formatter = NumberFormat.currency(
-        locale: _currencyLocale,
-        symbol: _currencySymbol,
-        decimalDigits: _currencyDecimalDigits,
-      );
-      // Aggregations for summary section
-      double grandTotal = 0;
-      final Map<String, double> categoryAmounts = {};
-      final Map<String, int> categoryCounts = {};
-      final Map<String, double> typeAmounts = {
-        'expected': 0.0,
-        'unexpected': 0.0,
-        'others': 0.0,
-      };
-      final Map<String, int> typeCounts = {
-        'expected': 0,
-        'unexpected': 0,
-        'others': 0,
-      };
-
-      Map<String, dynamic>? highestExpenseItem;
-      double highestExpenseAmount = 0.0;
-
-      for (final expense in sortedExpenses) {
-        final amountIdr = expense['amount'] is int
-            ? expense['amount'] as int
-            : int.tryParse(expense['amount'].toString()) ?? 0;
-        final amount = amountIdr * appExchangeRate.value;
-        grandTotal += amount;
-
-        if (amount > highestExpenseAmount) {
-          highestExpenseAmount = amount;
-          highestExpenseItem = expense;
-        }
-
-        final cat = (expense['category']?.toString() ?? 'lainnya')
-            .trim()
-            .toLowerCase();
-        categoryAmounts[cat] = (categoryAmounts[cat] ?? 0.0) + amount;
-        categoryCounts[cat] = (categoryCounts[cat] ?? 0) + 1;
-
-        final t = (expense['type']?.toString() ?? 'others')
-            .trim()
-            .toLowerCase();
-        final key = typeAmounts.containsKey(t) ? t : 'others';
-        typeAmounts[key] = (typeAmounts[key] ?? 0.0) + amount;
-        typeCounts[key] = (typeCounts[key] ?? 0) + 1;
-      }
-
-      final sortedCategories = categoryAmounts.keys.toList()
-        ..sort((a, b) => categoryAmounts[b]!.compareTo(categoryAmounts[a]!));
-
-      final avgExpense = sortedExpenses.isNotEmpty
-          ? grandTotal / sortedExpenses.length
-          : 0.0;
-      final expectedPct = grandTotal > 0
-          ? (typeAmounts['expected']! / grandTotal) * 100
-          : 0.0;
-      final unexpectedPct = grandTotal > 0
-          ? (typeAmounts['unexpected']! / grandTotal) * 100
-          : 0.0;
-      final othersPct = grandTotal > 0
-          ? (typeAmounts['others']! / grandTotal) * 100
-          : 0.0;
-      final isHighUnexpected = unexpectedPct > 35;
-
-      final document = pw.Document();
-      document.addPage(
-        pw.MultiPage(
-          build: (context) => [
-            pw.Container(
-              padding: const pw.EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              decoration: pw.BoxDecoration(
-                color: pdf.PdfColor.fromInt(0xFF5DF9FF),
-                border: pw.Border.all(color: pdf.PdfColors.black, width: 2),
-                borderRadius: pw.BorderRadius.circular(4),
-              ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text(
-                    'EXPENSE REPORT',
-                    style: pw.TextStyle(
-                      fontSize: 16,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: pw.BoxDecoration(
-                      color: pdf.PdfColor.fromInt(0xFFF9EB5D),
-                      border: pw.Border.all(
-                        color: pdf.PdfColors.black,
-                        width: 1.2,
-                      ),
-                      borderRadius: pw.BorderRadius.circular(3),
-                    ),
-                    child: pw.Text(
-                      appCurrency.value,
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 6),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'Account: ${AuthService.currentUser?.email ?? 'Unknown'}',
-                  style: const pw.TextStyle(
-                    fontSize: 9,
-                    color: pdf.PdfColors.grey700,
-                  ),
-                ),
-                pw.Text(
-                  'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
-                  style: const pw.TextStyle(
-                    fontSize: 9,
-                    color: pdf.PdfColors.grey700,
-                  ),
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 14),
-
-            // Transactions Table
-            pw.Table(
-              border: pw.TableBorder(
-                top: const pw.BorderSide(
-                  color: pdf.PdfColors.black,
-                  width: 1.5,
-                ),
-                bottom: const pw.BorderSide(
-                  color: pdf.PdfColors.black,
-                  width: 1.5,
-                ),
-                left: const pw.BorderSide(
-                  color: pdf.PdfColors.black,
-                  width: 1.5,
-                ),
-                right: const pw.BorderSide(
-                  color: pdf.PdfColors.black,
-                  width: 1.5,
-                ),
-                horizontalInside: const pw.BorderSide(
-                  color: pdf.PdfColor.fromInt(0xFFE5E7EB),
-                  width: 0.8,
-                ),
-              ),
-              columnWidths: const {
-                0: pw.FlexColumnWidth(2.0),
-                1: pw.FixedColumnWidth(95),
-                2: pw.FixedColumnWidth(75),
-                3: pw.FixedColumnWidth(72),
-                4: pw.FixedColumnWidth(85),
-              },
-              children: [
-                // Header Row
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(
-                    color: pdf.PdfColor.fromInt(0xFF5DF9FF), // Neo Cyan Header
-                    border: pw.Border(
-                      bottom: pw.BorderSide(
-                        color: pdf.PdfColors.black,
-                        width: 1.5,
-                      ),
-                    ),
-                  ),
-                  children: [
-                    _buildPdfTableHeaderCell('NAMA TRANSAKSI'),
-                    _buildPdfTableHeaderCell('KATEGORI'),
-                    _buildPdfTableHeaderCell('TIPE', alignCenter: true),
-                    _buildPdfTableHeaderCell('TANGGAL'),
-                    _buildPdfTableHeaderCell('NOMINAL', alignRight: true),
-                  ],
-                ),
-                ...sortedExpenses.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final expense = entry.value;
-                  final amountIdr = expense['amount'] is int
-                      ? expense['amount'] as int
-                      : int.tryParse(expense['amount'].toString()) ?? 0;
-                  final amount = amountIdr * appExchangeRate.value;
-                  final type = expense['type']?.toString() ?? '';
-                  final name = expense['name']?.toString() ?? '';
-                  final category = expense['category']?.toString() ?? '';
-                  final rawDate = expense['date'];
-
-                  return _buildPdfTransactionRow(
-                    index: index,
-                    name: name,
-                    amount: formatter.format(amount),
-                    category: category,
-                    type: type,
-                    date: rawDate,
-                  );
-                }),
-              ],
-            ),
-            pw.SizedBox(height: 10),
-            pw.Align(
-              alignment: pw.Alignment.centerRight,
-              child: pw.Container(
-                padding: const pw.EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: pw.BoxDecoration(
-                  color: pdf.PdfColor.fromInt(0xFFF9EB5D),
-                  border: pw.Border.all(color: pdf.PdfColors.black, width: 1.6),
-                  borderRadius: pw.BorderRadius.circular(4),
-                ),
-                child: pw.Row(
-                  mainAxisSize: pw.MainAxisSize.min,
-                  children: [
-                    pw.Text(
-                      'TOTAL PENGELUARAN: ',
-                      style: pw.TextStyle(
-                        fontSize: 9.5,
-                        fontWeight: pw.FontWeight.bold,
-                        color: pdf.PdfColors.black,
-                      ),
-                    ),
-                    pw.Text(
-                      formatter.format(grandTotal),
-                      style: pw.TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: pw.FontWeight.bold,
-                        color: pdf.PdfColors.black,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-
-      // --- PAGE 2: EXPENSE SUMMARY & ANALYTICS ---
-      document.addPage(
-        pw.MultiPage(
-          build: (context) => [
-            pw.Container(
-              padding: const pw.EdgeInsets.symmetric(
-                horizontal: 12,
-                vertical: 8,
-              ),
-              decoration: pw.BoxDecoration(
-                color: pdf.PdfColor.fromInt(0xFF5DF9FF),
-                border: pw.Border.all(color: pdf.PdfColors.black, width: 2),
-                borderRadius: pw.BorderRadius.circular(4),
-              ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-                children: [
-                  pw.Text(
-                    'EXPENSE SUMMARY & ANALYTICS',
-                    style: pw.TextStyle(
-                      fontSize: 15,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.Container(
-                    padding: const pw.EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: pw.BoxDecoration(
-                      color: pdf.PdfColor.fromInt(0xFFF9EB5D),
-                      border: pw.Border.all(
-                        color: pdf.PdfColors.black,
-                        width: 1.2,
-                      ),
-                      borderRadius: pw.BorderRadius.circular(3),
-                    ),
-                    child: pw.Text(
-                      appCurrency.value,
-                      style: pw.TextStyle(
-                        fontSize: 10,
-                        fontWeight: pw.FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 6),
-            pw.Row(
-              mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-              children: [
-                pw.Text(
-                  'Account: ${AuthService.currentUser?.email ?? 'Unknown'}',
-                  style: const pw.TextStyle(
-                    fontSize: 9,
-                    color: pdf.PdfColors.grey700,
-                  ),
-                ),
-                pw.Text(
-                  'Generated: ${DateFormat('dd MMM yyyy, HH:mm').format(DateTime.now())}',
-                  style: const pw.TextStyle(
-                    fontSize: 9,
-                    color: pdf.PdfColors.grey700,
-                  ),
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 14),
-
-            // --- 3 KPI SUMMARY BOXES ---
-            pw.Row(
-              children: [
-                pw.Expanded(
-                  child: pw.Container(
-                    padding: const pw.EdgeInsets.all(8),
-                    decoration: pw.BoxDecoration(
-                      color: pdf.PdfColor.fromInt(0xFFE8FDFF),
-                      border: pw.Border.all(
-                        color: pdf.PdfColors.black,
-                        width: 1.2,
-                      ),
-                      borderRadius: pw.BorderRadius.circular(4),
-                    ),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          'TOTAL EXPENSES',
-                          style: const pw.TextStyle(
-                            fontSize: 7.5,
-                            color: pdf.PdfColors.grey700,
-                          ),
-                        ),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          formatter.format(grandTotal),
-                          style: pw.TextStyle(
-                            fontSize: 11,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                        pw.Text(
-                          '${sortedExpenses.length} Total Transaksi',
-                          style: const pw.TextStyle(fontSize: 7.5),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                pw.SizedBox(width: 8),
-                pw.Expanded(
-                  child: pw.Container(
-                    padding: const pw.EdgeInsets.all(8),
-                    decoration: pw.BoxDecoration(
-                      color: pdf.PdfColor.fromInt(0xFFF9FBFD),
-                      border: pw.Border.all(
-                        color: pdf.PdfColors.black,
-                        width: 1.2,
-                      ),
-                      borderRadius: pw.BorderRadius.circular(4),
-                    ),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          'RATA-RATA / TRANSAKSI',
-                          style: const pw.TextStyle(
-                            fontSize: 7.5,
-                            color: pdf.PdfColors.grey700,
-                          ),
-                        ),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          formatter.format(avgExpense),
-                          style: pw.TextStyle(
-                            fontSize: 11,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                        pw.Text(
-                          '${sortedCategories.length} Kategori Aktif',
-                          style: const pw.TextStyle(fontSize: 7.5),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                pw.SizedBox(width: 8),
-                pw.Expanded(
-                  child: pw.Container(
-                    padding: const pw.EdgeInsets.all(8),
-                    decoration: pw.BoxDecoration(
-                      color: pdf.PdfColor.fromInt(0xFFFFF9E6),
-                      border: pw.Border.all(
-                        color: pdf.PdfColors.black,
-                        width: 1.2,
-                      ),
-                      borderRadius: pw.BorderRadius.circular(4),
-                    ),
-                    child: pw.Column(
-                      crossAxisAlignment: pw.CrossAxisAlignment.start,
-                      children: [
-                        pw.Text(
-                          'TRANSAKSI TERTINGGI',
-                          style: const pw.TextStyle(
-                            fontSize: 7.5,
-                            color: pdf.PdfColors.grey700,
-                          ),
-                        ),
-                        pw.SizedBox(height: 2),
-                        pw.Text(
-                          formatter.format(highestExpenseAmount),
-                          style: pw.TextStyle(
-                            fontSize: 11,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                        pw.Text(
-                          highestExpenseItem != null
-                              ? (highestExpenseItem['name']?.toString() ?? '-')
-                              : '-',
-                          maxLines: 1,
-                          style: const pw.TextStyle(fontSize: 7.5),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            pw.SizedBox(height: 14),
-
-            // --- CATEGORY BREAKDOWN ---
-            pw.Text(
-              'Distribusi Berdasarkan Kategori',
-              style: pw.TextStyle(fontSize: 10, fontWeight: pw.FontWeight.bold),
-            ),
-            pw.SizedBox(height: 5),
-
-            // Multi-segment category color bar
-            if (sortedCategories.isNotEmpty) ...[
-              pw.Container(
-                height: 12,
-                decoration: pw.BoxDecoration(
-                  border: pw.Border.all(color: pdf.PdfColors.black, width: 1.2),
-                  borderRadius: pw.BorderRadius.circular(3),
-                ),
-                child: pw.Row(
-                  children: sortedCategories.map((cat) {
-                    final amount = categoryAmounts[cat] ?? 0.0;
-                    final pct = grandTotal > 0
-                        ? (amount / grandTotal) * 100
-                        : 0.0;
-                    final flex = (pct * 10).round().clamp(1, 1000);
-                    return pw.Flexible(
-                      flex: flex,
-                      child: pw.Container(color: _pdfCategoryColor(cat)),
-                    );
-                  }).toList(),
-                ),
-              ),
-              pw.SizedBox(height: 8),
-            ],
-
-            // Category Breakdown Table
-            pw.Table(
-              border: pw.TableBorder.all(
-                color: pdf.PdfColors.black,
-                width: 0.8,
-              ),
-              columnWidths: const {
-                0: pw.FlexColumnWidth(1.2),
-                1: pw.FixedColumnWidth(60),
-                2: pw.FixedColumnWidth(70),
-                3: pw.FixedColumnWidth(95),
-              },
-              children: [
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(
-                    color: pdf.PdfColors.grey200,
-                  ),
-                  children: [
-                    _buildPdfCell('Kategori', isHeader: true),
-                    _buildPdfCell(
-                      'Jumlah Item',
-                      isHeader: true,
-                      alignRight: true,
-                    ),
-                    _buildPdfCell(
-                      'Persentase',
-                      isHeader: true,
-                      alignRight: true,
-                    ),
-                    _buildPdfCell(
-                      'Total Nominal',
-                      isHeader: true,
-                      alignRight: true,
-                    ),
-                  ],
-                ),
-                ...sortedCategories.map((cat) {
-                  final amount = categoryAmounts[cat] ?? 0.0;
-                  final count = categoryCounts[cat] ?? 0;
-                  final pct = grandTotal > 0
-                      ? (amount / grandTotal) * 100
-                      : 0.0;
-                  final color = _pdfCategoryColor(cat);
-
-                  return pw.TableRow(
-                    children: [
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 3,
-                        ),
-                        child: pw.Row(
-                          children: [
-                            pw.Container(
-                              width: 8,
-                              height: 8,
-                              decoration: pw.BoxDecoration(
-                                color: color,
-                                border: pw.Border.all(
-                                  color: pdf.PdfColors.black,
-                                  width: 0.8,
-                                ),
-                                borderRadius: pw.BorderRadius.circular(2),
-                              ),
-                            ),
-                            pw.SizedBox(width: 5),
-                            pw.Text(
-                              cat.toUpperCase(),
-                              style: pw.TextStyle(
-                                fontSize: 8.5,
-                                fontWeight: pw.FontWeight.bold,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      _buildPdfCell('$count item', alignRight: true),
-                      _buildPdfCell(
-                        '${pct.toStringAsFixed(1)}%',
-                        alignRight: true,
-                      ),
-                      _buildPdfCell(
-                        formatter.format(amount),
-                        alignRight: true,
-                        isBold: true,
-                      ),
-                    ],
-                  );
-                }),
-              ],
-            ),
-            pw.SizedBox(height: 14),
-
-            // --- EXPENSE TYPE BREAKDOWN & FINANCIAL ADVICE (UNBREAKABLE BLOCK) ---
-            pw.Container(
-              child: pw.Column(
-                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                children: [
-                  pw.Text(
-                    'Distribusi Tipe Pengeluaran',
-                    style: pw.TextStyle(
-                      fontSize: 10,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
-                  ),
-                  pw.SizedBox(height: 5),
-                  pw.Row(
-                    children: [
-                      pw.Expanded(
-                        child: pw.Container(
-                          padding: const pw.EdgeInsets.all(7),
-                          decoration: pw.BoxDecoration(
-                            color: pdf.PdfColor.fromInt(0xFFFFFDE7),
-                            border: pw.Border.all(
-                              color: pdf.PdfColors.black,
-                              width: 1.2,
-                            ),
-                            borderRadius: pw.BorderRadius.circular(4),
-                          ),
-                          child: pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: [
-                              pw.Row(
-                                children: [
-                                  pw.Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: pw.BoxDecoration(
-                                      color: pdf.PdfColor.fromInt(0xFFF9EB5D),
-                                      border: pw.Border.all(
-                                        color: pdf.PdfColors.black,
-                                        width: 0.8,
-                                      ),
-                                      borderRadius: pw.BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                  pw.SizedBox(width: 4),
-                                  pw.Text(
-                                    'TERENCANA',
-                                    style: pw.TextStyle(
-                                      fontSize: 7.5,
-                                      fontWeight: pw.FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              pw.SizedBox(height: 3),
-                              pw.Text(
-                                '${expectedPct.toStringAsFixed(1)}%',
-                                style: pw.TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: pw.FontWeight.bold,
-                                ),
-                              ),
-                              pw.Text(
-                                formatter.format(typeAmounts['expected']!),
-                                style: const pw.TextStyle(fontSize: 7.5),
-                              ),
-                              pw.Text(
-                                '${typeCounts['expected']} item',
-                                style: const pw.TextStyle(
-                                  fontSize: 7,
-                                  color: pdf.PdfColors.grey700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      pw.SizedBox(width: 8),
-                      pw.Expanded(
-                        child: pw.Container(
-                          padding: const pw.EdgeInsets.all(7),
-                          decoration: pw.BoxDecoration(
-                            color: pdf.PdfColor.fromInt(0xFFFFEBEE),
-                            border: pw.Border.all(
-                              color: pdf.PdfColors.black,
-                              width: 1.2,
-                            ),
-                            borderRadius: pw.BorderRadius.circular(4),
-                          ),
-                          child: pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: [
-                              pw.Row(
-                                children: [
-                                  pw.Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: pw.BoxDecoration(
-                                      color: pdf.PdfColor.fromInt(0xFFFF5D5D),
-                                      border: pw.Border.all(
-                                        color: pdf.PdfColors.black,
-                                        width: 0.8,
-                                      ),
-                                      borderRadius: pw.BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                  pw.SizedBox(width: 4),
-                                  pw.Text(
-                                    'TAK TERDUGA',
-                                    style: pw.TextStyle(
-                                      fontSize: 7.5,
-                                      fontWeight: pw.FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              pw.SizedBox(height: 3),
-                              pw.Text(
-                                '${unexpectedPct.toStringAsFixed(1)}%',
-                                style: pw.TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: pw.FontWeight.bold,
-                                ),
-                              ),
-                              pw.Text(
-                                formatter.format(typeAmounts['unexpected']!),
-                                style: const pw.TextStyle(fontSize: 7.5),
-                              ),
-                              pw.Text(
-                                '${typeCounts['unexpected']} item',
-                                style: const pw.TextStyle(
-                                  fontSize: 7,
-                                  color: pdf.PdfColors.grey700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      pw.SizedBox(width: 8),
-                      pw.Expanded(
-                        child: pw.Container(
-                          padding: const pw.EdgeInsets.all(7),
-                          decoration: pw.BoxDecoration(
-                            color: pdf.PdfColor.fromInt(0xFFE3F2FD),
-                            border: pw.Border.all(
-                              color: pdf.PdfColors.black,
-                              width: 1.2,
-                            ),
-                            borderRadius: pw.BorderRadius.circular(4),
-                          ),
-                          child: pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: [
-                              pw.Row(
-                                children: [
-                                  pw.Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: pw.BoxDecoration(
-                                      color: pdf.PdfColor.fromInt(0xFF5D9BFF),
-                                      border: pw.Border.all(
-                                        color: pdf.PdfColors.black,
-                                        width: 0.8,
-                                      ),
-                                      borderRadius: pw.BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                  pw.SizedBox(width: 4),
-                                  pw.Text(
-                                    'LAINNYA',
-                                    style: pw.TextStyle(
-                                      fontSize: 7.5,
-                                      fontWeight: pw.FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              pw.SizedBox(height: 3),
-                              pw.Text(
-                                '${othersPct.toStringAsFixed(1)}%',
-                                style: pw.TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: pw.FontWeight.bold,
-                                ),
-                              ),
-                              pw.Text(
-                                formatter.format(typeAmounts['others']!),
-                                style: const pw.TextStyle(fontSize: 7.5),
-                              ),
-                              pw.Text(
-                                '${typeCounts['others']} item',
-                                style: const pw.TextStyle(
-                                  fontSize: 7,
-                                  color: pdf.PdfColors.grey700,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  pw.SizedBox(height: 7),
-                  pw.Container(
-                    padding: const pw.EdgeInsets.all(7),
-                    decoration: pw.BoxDecoration(
-                      color: isHighUnexpected
-                          ? pdf.PdfColor.fromInt(0xFFFFEBEE)
-                          : pdf.PdfColor.fromInt(0xFFE8F5E9),
-                      border: pw.Border.all(
-                        color: isHighUnexpected
-                            ? pdf.PdfColor.fromInt(0xFFFF5D5D)
-                            : pdf.PdfColor.fromInt(0xFF06D6A0),
-                        width: 1.2,
-                      ),
-                      borderRadius: pw.BorderRadius.circular(4),
-                    ),
-                    child: pw.Text(
-                      isHighUnexpected
-                          ? 'Evaluasi Finansial: Pengeluaran tak terduga mencapai ${unexpectedPct.toStringAsFixed(1)}%! Alokasikan dana darurat lebih ketat untuk menjaga stabilitas keuangan.'
-                          : 'Evaluasi Finansial: Rasio terencana sehat! Pengeluaran tak terduga terkendali di bawah 35% (${unexpectedPct.toStringAsFixed(1)}%).',
-                      style: pw.TextStyle(
-                        fontSize: 8,
-                        fontWeight: pw.FontWeight.bold,
-                        color: isHighUnexpected
-                            ? pdf.PdfColor.fromInt(0xFFB71C1C)
-                            : pdf.PdfColor.fromInt(0xFF1B5E20),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-
-      final Uint8List bytes = await document.save();
-      final fileName =
-          'expense-report-${DateTime.now().millisecondsSinceEpoch}.pdf';
-      String? path;
-      String? androidContentUri;
-      late final String fileToOpenPath;
-
-      if (Platform.isAndroid) {
-        MediaStore.appFolder = 'ExpenseApp';
-        await MediaStore.ensureInitialized();
-        final temporaryDirectory = await getTemporaryDirectory();
-        final temporaryFile = File('${temporaryDirectory.path}/$fileName');
-        await temporaryFile.writeAsBytes(bytes, flush: true);
-        final savedFile = await MediaStore().saveFile(
-          tempFilePath: temporaryFile.path,
-          dirType: DirType.download,
-          dirName: DirName.download,
-        );
-        path = savedFile?.uri.toString();
-        androidContentUri = path;
-        fileToOpenPath = temporaryFile.path;
-      } else {
-        path = await FileSaver.instance.saveFile(
-          name: fileName,
-          bytes: bytes,
-          ext: 'pdf',
-          mimeType: MimeType.pdf,
-        );
-        fileToOpenPath = path;
-      }
-
-      var couldOpenFile = false;
-      try {
-        if (Platform.isAndroid && androidContentUri != null) {
-          final intent = AndroidIntent(
-            action: 'android.intent.action.VIEW',
-            data: androidContentUri,
-            type: 'application/pdf',
-            flags: <int>[Flag.FLAG_GRANT_READ_URI_PERMISSION],
-          );
-          await intent.launch();
-          couldOpenFile = true;
-        } else {
-          final openResult = await OpenFilex.open(
-            fileToOpenPath,
-            type: 'application/pdf',
-          );
-          couldOpenFile = openResult.type == ResultType.done;
-        }
-      } catch (error, stackTrace) {
-        captureAppError(error, stackTrace, 'Open exported expense report');
-        couldOpenFile = false;
-      }
-
+      await PdfExportService.exportExpenses(context: context, expenses: expenses);
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, "Export expense report");
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Could not export PDF: $error")),
+      );
+    }
+  }
+
+  Future<void> _importExpensesFromPdf() async {
+    if (!mounted || _isImportingPdf) return;
+    setState(() => _isImportingPdf = true);
+
+    PdfImportResult parsed;
+    List<Map<String, dynamic>> candidates;
+    try {
+      final picked = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+      );
+      if (picked == null) return;
+      final bytes = await picked.readAsBytes();
+      parsed = await PdfImportService.parse(
+        bytes,
+        exchangeRateFor: DatabaseHelp.getCachedExchangeRate,
+      );
+      candidates = await DatabaseHelp.filterNewExpenses(parsed.expenses);
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Import expense report');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not import PDF: $error')),
+        );
+      }
+      return;
+    } finally {
+      if (mounted) setState(() => _isImportingPdf = false);
+    }
+
+    if (!mounted) return;
+    if (parsed.expenses.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No transactions found in this PDF.')),
+      );
+      return;
+    }
+    if (candidates.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            couldOpenFile
-                ? (path?.isEmpty != false
-                      ? 'PDF exported to Downloads.'
-                      : 'PDF exported: $path')
-                : 'PDF exported. Open it from Downloads.',
+            'All ${parsed.expenses.length} expense(s) in this PDF are '
+            'already present.',
+          ),
+        ),
+      );
+      return;
+    }
+
+    final confirmed = await _showPdfImportSummary(parsed, candidates);
+    if (!confirmed || !mounted) return;
+
+    try {
+      await DatabaseHelp.insertRestoredExpenses(candidates);
+      if (!mounted) return;
+      listKey.currentState?._loadData();
+      final skipped = parsed.expenses.length - candidates.length;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Restored ${candidates.length} expense(s) from PDF'
+            '${skipped > 0 ? ' ($skipped duplicate(s) skipped)' : ''}.',
           ),
         ),
       );
     } catch (error, stackTrace) {
-      captureAppError(error, stackTrace, 'Export expense report');
+      captureAppError(error, stackTrace, 'Restore expenses from PDF');
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not export PDF: $error')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not restore expenses: $error')),
+      );
     }
   }
 
-  pw.Widget _buildPdfTableHeaderCell(
-    String text, {
-    bool alignRight = false,
-    bool alignCenter = false,
-  }) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 6),
-      child: pw.Align(
-        alignment: alignRight
-            ? pw.Alignment.centerRight
-            : (alignCenter ? pw.Alignment.center : pw.Alignment.centerLeft),
-        child: pw.Text(
-          text,
-          style: pw.TextStyle(
-            fontSize: 8.5,
-            fontWeight: pw.FontWeight.bold,
-            color: pdf.PdfColors.black,
-          ),
-        ),
-      ),
+  Future<bool> _showPdfImportSummary(
+    PdfImportResult parsed,
+    List<Map<String, dynamic>> candidates,
+  ) async {
+    final formatter = NumberFormat.currency(
+      locale: currencyLocale,
+      symbol: currencySymbol,
+      decimalDigits: currencyDecimalDigits,
     );
-  }
+    double totalIdr = 0;
+    DateTime? firstDate;
+    DateTime? lastDate;
+    for (final expense in candidates) {
+      totalIdr += (expense['amount'] as num?)?.toDouble() ?? 0;
+      final date = DateTime.tryParse(expense['date']?.toString() ?? '');
+      if (date == null) continue;
+      if (firstDate == null || date.isBefore(firstDate)) firstDate = date;
+      if (lastDate == null || date.isAfter(lastDate)) lastDate = date;
+    }
+    final total = formatter.format(totalIdr * appExchangeRate.value);
+    final period = firstDate == null
+        ? '-'
+        : '${DateFormat('dd MMM yyyy').format(firstDate)} - '
+            '${DateFormat('dd MMM yyyy').format(lastDate!)}';
+    final skipped = parsed.expenses.length - candidates.length;
 
-  pw.TableRow _buildPdfTransactionRow({
-    required int index,
-    required String name,
-    required String amount,
-    required String category,
-    required String type,
-    required dynamic date,
-  }) {
-    final isEven = index % 2 == 0;
-    final rowBg = isEven
-        ? pdf.PdfColors.white
-        : pdf.PdfColor.fromInt(0xFFF9FAFB);
-    final typeColor = _pdfTypeColor(type);
-    final catColor = _pdfCategoryColor(category);
-
-    return pw.TableRow(
-      decoration: pw.BoxDecoration(color: rowBg),
-      children: [
-        // Name
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-          child: pw.Text(
-            name.trim().isNotEmpty ? name : 'Pengeluaran',
-            style: pw.TextStyle(
-              fontSize: 8.5,
-              fontWeight: pw.FontWeight.bold,
-              color: pdf.PdfColors.black,
-            ),
-          ),
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: const BorderSide(color: Colors.black, width: 2),
         ),
-
-        // Category with color dot
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-          child: pw.Row(
-            mainAxisSize: pw.MainAxisSize.min,
-            children: [
-              pw.Container(
-                width: 7,
-                height: 7,
-                decoration: pw.BoxDecoration(
-                  color: catColor,
-                  borderRadius: pw.BorderRadius.circular(2),
-                  border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
-                ),
-              ),
-              pw.SizedBox(width: 4),
-              pw.Expanded(
-                child: pw.Text(
-                  _pdfCategoryLabel(category),
-                  maxLines: 1,
-                  style: const pw.TextStyle(
-                    fontSize: 8,
-                    color: pdf.PdfColors.grey800,
-                  ),
-                ),
+        title: Text(
+          'Import expenses from PDF',
+          style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Transactions found: ${parsed.expenses.length}'),
+            Text('To import: ${candidates.length}'),
+            Text('Duplicates skipped: $skipped'),
+            Text('Period: $period'),
+            Text('Total: $total'),
+            if (!parsed.fromBackupData) ...[
+              const SizedBox(height: 12),
+              Text(
+                parsed.currency == 'IDR'
+                    ? 'Restored from the printed report table.'
+                    : 'Restored from the printed report table. Non-IDR '
+                        'amounts are converted back with the current '
+                        'exchange rate and may differ slightly.',
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
-          ),
+          ],
         ),
-
-        // Type as Pill Badge with its respective color!
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-          child: pw.Center(
-            child: pw.Container(
-              padding: const pw.EdgeInsets.symmetric(
-                horizontal: 5,
-                vertical: 2,
-              ),
-              decoration: pw.BoxDecoration(
-                color: typeColor,
-                borderRadius: pw.BorderRadius.circular(3),
-                border: pw.Border.all(color: pdf.PdfColors.black, width: 0.8),
-              ),
-              child: pw.Text(
-                _pdfTypeLabel(type),
-                style: pw.TextStyle(
-                  fontSize: 7.5,
-                  fontWeight: pw.FontWeight.bold,
-                  color: pdf.PdfColors.black,
-                ),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.onSurface,
+            ),
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.itim()),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF5DF9FF),
+              foregroundColor: Colors.black,
+              side: const BorderSide(color: Colors.black, width: 1.5),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
               ),
             ),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('Import', style: GoogleFonts.itim()),
           ),
-        ),
-
-        // Date
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-          child: pw.Text(
-            _formatPdfDate(date),
-            style: const pw.TextStyle(
-              fontSize: 8,
-              color: pdf.PdfColors.grey700,
-            ),
-          ),
-        ),
-
-        // Amount (RIGHT-ALIGNED)
-        pw.Padding(
-          padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-          child: pw.Align(
-            alignment: pw.Alignment.centerRight,
-            child: pw.Text(
-              amount,
-              style: pw.TextStyle(
-                fontSize: 8.5,
-                fontWeight: pw.FontWeight.bold,
-                color: pdf.PdfColors.black,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  String _formatPdfDate(dynamic rawDate) {
-    if (rawDate == null) return '-';
-    final str = rawDate.toString();
-    final parsed = DateTime.tryParse(str);
-    if (parsed != null) {
-      return DateFormat('dd MMM yyyy').format(parsed);
-    }
-    return str;
-  }
-
-  String _pdfTypeLabel(String type) {
-    switch (type.trim().toLowerCase()) {
-      case 'expected':
-        return 'Terencana';
-      case 'unexpected':
-        return 'Tak Terduga';
-      case 'others':
-        return 'Lainnya';
-      default:
-        return type.isEmpty ? '-' : type;
-    }
-  }
-
-  String _pdfCategoryLabel(String category) {
-    final cat = category.trim();
-    if (cat.isEmpty) return 'LAINNYA';
-    return cat.toUpperCase();
-  }
-
-  pdf.PdfColor _pdfTypeColor(String type) {
-    switch (type.toLowerCase()) {
-      case 'expected':
-        return pdf.PdfColor.fromInt(0xFFF9EB5D);
-      case 'unexpected':
-        return pdf.PdfColor.fromInt(0xFFFF5D5D);
-      case 'others':
-        return pdf.PdfColor.fromInt(0xFF5D9BFF);
-      default:
-        return pdf.PdfColors.white;
-    }
-  }
-
-  pdf.PdfColor _pdfCategoryColor(String category) {
-    switch (category.trim().toLowerCase()) {
-      case 'makanan':
-        return pdf.PdfColor.fromInt(0xFFFFD166);
-      case 'school supply':
-        return pdf.PdfColor.fromInt(0xFFC77DFF);
-      case 'baju':
-        return pdf.PdfColor.fromInt(0xFFFF99C8);
-      case 'elektronik':
-        return pdf.PdfColor.fromInt(0xFF70D6FF);
-      case 'transportasi':
-        return pdf.PdfColor.fromInt(0xFF06D6A0);
-      case 'kesehatan':
-        return pdf.PdfColor.fromInt(0xFFFF70A6);
-      case 'hiburan':
-        return pdf.PdfColor.fromInt(0xFFB5E48C);
-      default:
-        return pdf.PdfColor.fromInt(0xFF5DF9FF);
-    }
-  }
-
-  pw.Widget _buildPdfCell(
-    String text, {
-    bool isHeader = false,
-    bool alignRight = false,
-    bool isBold = false,
-  }) {
-    return pw.Padding(
-      padding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      child: pw.Align(
-        alignment: alignRight
-            ? pw.Alignment.centerRight
-            : pw.Alignment.centerLeft,
-        child: pw.Text(
-          text,
-          style: pw.TextStyle(
-            fontSize: isHeader ? 9 : 8.5,
-            fontWeight: isHeader || isBold
-                ? pw.FontWeight.bold
-                : pw.FontWeight.normal,
-          ),
-        ),
+        ],
       ),
     );
+    return confirmed ?? false;
   }
+
 
   Future<void> _changeCurrency(String currency) async {
     if (mounted) setState(() => _isChangingCurrency = true);
@@ -1710,6 +809,32 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Could not retry sync: $error')));
+    }
+  }
+
+  Future<void> _forceResyncAll() async {
+    try {
+      await DatabaseHelp.markAllUnsyncedForCurrentUser();
+      await Throw.syncPendingExpenses();
+      if (!mounted) return;
+      listKey.currentState?._loadData();
+      final pending = await DatabaseHelp.getUnsyncedData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            pending.isEmpty
+                ? 'All expenses re-synced with the server.'
+                : '${pending.length} expense(s) could not be re-synced.',
+          ),
+        ),
+      );
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Force re-sync all expenses');
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Could not re-sync expenses: $error')),
+      );
     }
   }
 
@@ -1961,7 +1086,485 @@ class _LoadingOverlay extends StatelessWidget {
   }
 }
 
-void _showNotificationSnackBar(
+class _FilterPanel extends StatefulWidget {
+  final String? initialCategory;
+  final String? initialType;
+  final DateTimeRange? initialDateRange;
+  final ExpenseSort initialSort;
+  final List<String> categories;
+  final Function(String?, String?, DateTimeRange?, ExpenseSort) onApply;
+  final VoidCallback onReset;
+
+  const _FilterPanel({
+    super.key,
+    this.initialCategory,
+    this.initialType,
+    this.initialDateRange,
+    required this.initialSort,
+    required this.categories,
+    required this.onApply,
+    required this.onReset,
+  });
+
+  @override
+  State<_FilterPanel> createState() => _FilterPanelState();
+}
+
+class _FilterPanelState extends State<_FilterPanel> {
+  late String? _selectedCategory;
+  late String? _selectedType;
+  late DateTimeRange? _dateRange;
+  late ExpenseSort _selectedSort;
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedCategory = widget.initialCategory;
+    _selectedType = widget.initialType;
+    _dateRange = widget.initialDateRange;
+    _selectedSort = widget.initialSort;
+  }
+
+  void _clearDateRange() {
+    setState(() => _dateRange = null);
+  }
+
+  void _resetAll() {
+    setState(() {
+      _selectedCategory = null;
+      _selectedType = null;
+      _dateRange = null;
+      _selectedSort = ExpenseSort.dateNewest;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final panelBg = isDark ? const Color(0xFF22262B) : Colors.white;
+    final bottomInset = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 60),
+      decoration: BoxDecoration(
+        color: panelBg,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        border: Border.all(color: Colors.black, width: 3),
+        boxShadow: const [
+          BoxShadow(color: Colors.black, offset: Offset(0, -4), blurRadius: 0),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.3),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Filters',
+                  style: GoogleFonts.itim(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: isDark ? Colors.white : Colors.black,
+                  ),
+                ),
+                NeoBouncy(
+                  onTap: () {
+                    _resetAll();
+                    widget.onReset();
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFF5D5D),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.black, width: 2),
+                      boxShadow: const [
+                        BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0),
+                      ],
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.refresh_rounded, size: 16, color: Colors.black),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Reset',
+                          style: GoogleFonts.itim(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Content
+          Flexible(
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(20, 8, 20, bottomInset + 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Date Range Section
+                  _buildSectionTitle('Date Range', isDark),
+                  const SizedBox(height: 8),
+                  _buildDateRangePicker(isDark),
+                  const SizedBox(height: 20),
+
+                  // Sort Section
+                  _buildSectionTitle('Sort By', isDark),
+                  const SizedBox(height: 8),
+                  _buildSortOptions(isDark),
+                  const SizedBox(height: 20),
+
+                  // Type Section
+                  _buildSectionTitle('Type', isDark),
+                  const SizedBox(height: 8),
+                  _buildTypeOptions(isDark),
+                  const SizedBox(height: 20),
+
+                  // Category Section
+                  if (widget.categories.isNotEmpty) ...[
+                    _buildSectionTitle('Category', isDark),
+                    const SizedBox(height: 8),
+                    _buildCategoryOptions(isDark),
+                    const SizedBox(height: 20),
+                  ],
+
+                  // Apply Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: NeoBouncy(
+                      onTap: () {
+                        widget.onApply(_selectedCategory, _selectedType, _dateRange, _selectedSort);
+                        Navigator.pop(context);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF5DF9FF),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.black, width: 2.5),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            'Apply Filters',
+                            style: GoogleFonts.itim(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title, bool isDark) {
+    return Text(
+      title,
+      style: GoogleFonts.itim(
+        fontSize: 16,
+        fontWeight: FontWeight.bold,
+        color: isDark ? const Color(0xFF5DF9FF) : Colors.black87,
+      ),
+    );
+  }
+
+  Widget _buildDateRangePicker(bool isDark) {
+    final isActive = _dateRange != null;
+    return GestureDetector(
+      onTap: () => _showCustomCalendar(isDark),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isActive ? const Color(0xFF5DF9FF) : (isDark ? const Color(0xFF1E2830) : const Color(0xFFF5F5F5)),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black, width: 2),
+          boxShadow: isActive
+              ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+              : null,
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.date_range_rounded,
+              size: 22,
+              color: Colors.black,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                isActive
+                    ? '${DateFormat('dd MMM yyyy', 'id_ID').format(_dateRange!.start)} - ${DateFormat('dd MMM yyyy', 'id_ID').format(_dateRange!.end)}'
+                    : 'Select date range',
+                style: GoogleFonts.itim(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+            if (isActive)
+              GestureDetector(
+                onTap: () => _clearDateRange(),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.close_rounded, size: 16, color: Colors.black),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCustomCalendar(bool isDark) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.black54,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            NeoBrutalistCalendar(
+              initialRange: _dateRange,
+              firstDate: DateTime(2020),
+              lastDate: DateTime.now(),
+              onRangeSelected: (range) {
+                if (range != null) {
+                  setState(() => _dateRange = range);
+                }
+              },
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF5DF9FF),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.black, width: 2.5),
+                  boxShadow: const [
+                    BoxShadow(color: Colors.black, offset: Offset(3, 3), blurRadius: 0),
+                  ],
+                ),
+                child: Center(
+                  child: Text(
+                    'Done',
+                    style: GoogleFonts.itim(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSortOptions(bool isDark) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        _buildSortChip('Newest', ExpenseSort.dateNewest, isDark),
+        _buildSortChip('Oldest', ExpenseSort.dateOldest, isDark),
+        _buildSortChip('Highest', ExpenseSort.amountHighest, isDark),
+        _buildSortChip('Lowest', ExpenseSort.amountLowest, isDark),
+      ],
+    );
+  }
+
+  Widget _buildSortChip(String label, ExpenseSort sort, bool isDark) {
+    final isSelected = _selectedSort == sort;
+    return GestureDetector(
+      onTap: () => setState(() => _selectedSort = sort),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFF9EB5D) : (isDark ? const Color(0xFF1E2830) : Colors.white),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: Colors.black,
+            width: isSelected ? 2.5 : 2,
+          ),
+          boxShadow: isSelected
+              ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.itim(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTypeOptions(bool isDark) {
+    final types = ['expected', 'unexpected', 'others'];
+    final typeLabels = {'expected': 'Expected', 'unexpected': 'Unexpected', 'others': 'Others'};
+    final typeColors = {
+      'expected': const Color(0xFFF9EB5D),
+      'unexpected': const Color(0xFFFF5D5D),
+      'others': const Color(0xFF5D9BFF),
+    };
+
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: types.map((type) {
+        final isSelected = _selectedType == type;
+        return GestureDetector(
+          onTap: () => setState(() => _selectedType = isSelected ? null : type),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected ? typeColors[type] : (isDark ? const Color(0xFF1E2830) : Colors.white),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.black,
+                width: isSelected ? 2.5 : 2,
+              ),
+              boxShadow: isSelected
+                  ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+                  : null,
+            ),
+            child: Text(
+              typeLabels[type]!,
+              style: GoogleFonts.itim(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildCategoryOptions(bool isDark) {
+    return Wrap(
+      spacing: 10,
+      runSpacing: 10,
+      children: [
+        // All category chip
+        GestureDetector(
+          onTap: () => setState(() => _selectedCategory = null),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: _selectedCategory == null ? const Color(0xFF5DF9FF) : (isDark ? const Color(0xFF1E2830) : Colors.white),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.black,
+                width: _selectedCategory == null ? 2.5 : 2,
+              ),
+              boxShadow: _selectedCategory == null
+                  ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+                  : null,
+            ),
+            child: Text(
+              'All',
+              style: GoogleFonts.itim(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                color: Colors.black,
+              ),
+            ),
+          ),
+        ),
+        // Category chips
+        ...widget.categories.map((category) {
+          final isSelected = _selectedCategory == category;
+          return GestureDetector(
+            onTap: () => setState(() => _selectedCategory = category),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 150),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected ? const Color(0xFF5DF9FF) : (isDark ? const Color(0xFF1E2830) : Colors.white),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.black,
+                  width: isSelected ? 2.5 : 2,
+                ),
+                boxShadow: isSelected
+                    ? const [BoxShadow(color: Colors.black, offset: Offset(2, 2), blurRadius: 0)]
+                    : null,
+              ),
+              child: Text(
+                _capitalizeCategory(category),
+                style: GoogleFonts.itim(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black,
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  String _capitalizeCategory(String s) {
+    if (s.isEmpty) return s;
+    return s[0].toUpperCase() + s.substring(1);
+  }
+}
+
+void showNotificationSnackBar(
   BuildContext context,
   String message, {
   bool isError = false,
@@ -2002,678 +1605,6 @@ void _showNotificationSnackBar(
   );
 }
 
-class SettingsPage extends StatefulWidget {
-  final Future<void> Function() onDeleteAll;
-  final Future<void> Function() onExportPdf;
-  final Future<void> Function() onDeleteAccount;
-  final Future<void> Function() onChangePassword;
-  final Future<void> Function() onRetrySync;
-  final Future<void> Function(String) onCurrencyChanged;
-  final Future<void> Function() onLoadOnlineExpenses;
-  final Future<void> Function() onPendingNotificationAdded;
-
-  const SettingsPage({
-    super.key,
-    required this.onDeleteAll,
-    required this.onExportPdf,
-    required this.onDeleteAccount,
-    required this.onChangePassword,
-    required this.onRetrySync,
-    required this.onCurrencyChanged,
-    required this.onLoadOnlineExpenses,
-    required this.onPendingNotificationAdded,
-  });
-
-  @override
-  State<SettingsPage> createState() => _SettingsPageState();
-}
-
-class _SettingsPageState extends State<SettingsPage> {
-  int _pendingSync = 0;
-  bool _notificationsEnabled = true;
-  bool _autoExpenseParserEnabled = false;
-  bool _isUpdatingAiReference = false;
-  Set<String> _allowedNotificationApps = {};
-
-  @override
-  void initState() {
-    super.initState();
-    _loadSyncStatus();
-    _loadNotificationParserStatus();
-    _loadAllowedNotificationApps();
-    _loadReminderPreference();
-  }
-
-  Future<void> _loadReminderPreference() async {
-    final saved = await DatabaseHelp.getSetting('expense_reminders');
-    if (mounted && saved != null) {
-      setState(() => _notificationsEnabled = saved == 'true');
-    }
-  }
-
-  Future<void> _loadAllowedNotificationApps() async {
-    final apps = await NotificationExpenseService.instance.getAllowedApps();
-    if (mounted) setState(() => _allowedNotificationApps = apps);
-  }
-
-  Future<void> _setNotificationAppAllowed(
-    String packageName,
-    bool allowed,
-  ) async {
-    final apps = {..._allowedNotificationApps};
-    if (packageName == NotificationExpenseService.allNotificationsKey) {
-      apps.clear();
-      if (allowed) apps.add(NotificationExpenseService.allNotificationsKey);
-    } else if (apps.contains(NotificationExpenseService.allNotificationsKey)) {
-      apps.remove(NotificationExpenseService.allNotificationsKey);
-      if (allowed) apps.add(packageName);
-    }
-    if (allowed) {
-      apps.add(packageName);
-    } else {
-      apps.remove(packageName);
-    }
-    setState(() => _allowedNotificationApps = apps);
-    await NotificationExpenseService.instance.setAllowedApps(apps);
-  }
-
-  Future<void> _loadNotificationParserStatus() async {
-    final service = NotificationExpenseService.instance;
-    final enabled =
-        await service.isParserEnabled() && await service.isEnabled();
-    if (mounted) setState(() => _autoExpenseParserEnabled = enabled);
-    if (enabled) {
-      await service.start(
-        _showParserError,
-        onPendingNotificationAdded: widget.onPendingNotificationAdded,
-      );
-    }
-  }
-
-  Future<void> _showParserError(String error) async {
-    if (!mounted) return;
-    _showNotificationSnackBar(
-      context,
-      'Could not parse notification: $error',
-      isError: true,
-    );
-  }
-
-  Future<void> _toggleAutoExpenseParser(bool enabled) async {
-    if (!enabled) {
-      await NotificationExpenseService.instance.setParserEnabled(false);
-      if (mounted) setState(() => _autoExpenseParserEnabled = false);
-      return;
-    }
-    final service = NotificationExpenseService.instance;
-    await service.setParserEnabled(true);
-    if (!await service.isEnabled()) await service.openAccessSettings();
-    if (await service.isEnabled()) {
-      await service.start(
-        _showParserError,
-        onPendingNotificationAdded: widget.onPendingNotificationAdded,
-      );
-    }
-    if (mounted) setState(() => _autoExpenseParserEnabled = true);
-  }
-
-  Future<void> _loadSyncStatus() async {
-    final pending = await DatabaseHelp.getUnsyncedData();
-    if (mounted) setState(() => _pendingSync = pending.length);
-  }
-
-  Future<void> _retrySync() async {
-    try {
-      await widget.onRetrySync();
-      if (!mounted) return;
-      await _loadSyncStatus();
-    } catch (error, stackTrace) {
-      captureAppError(error, stackTrace, 'Refresh expense sync status');
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not refresh sync status: $error')),
-      );
-    }
-  }
-
-  Future<void> _updateAiNotificationReference() async {
-    if (_isUpdatingAiReference) return;
-    setState(() => _isUpdatingAiReference = true);
-    try {
-      final count = await NotificationExpenseService.instance
-          .updateAiNotificationReference();
-      if (!mounted) return;
-      _showNotificationSnackBar(
-        context,
-        'AI notification reference updated with $count expenses.',
-      );
-    } catch (error, stackTrace) {
-      captureAppError(error, stackTrace, 'Update AI notification reference');
-      if (!mounted) return;
-      _showNotificationSnackBar(
-        context,
-        'Could not update AI notification reference: $error',
-        isError: true,
-      );
-    } finally {
-      if (mounted) setState(() => _isUpdatingAiReference = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.fromLTRB(24, 24, 24, 150),
-      children: [
-        Text(
-          'Manage your data',
-          style: GoogleFonts.itim(fontSize: 28, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 6),
-        const Text(
-          'Manage your data, account, and app preferences.',
-          style: TextStyle(color: Colors.grey),
-        ),
-        const SizedBox(height: 24),
-        _buildSectionTitle('Data & sync'),
-        _buildSyncCard(),
-        const SizedBox(height: 16),
-        _SettingsAction(
-          icon: Icons.cloud_download_outlined,
-          title: 'Load online expenses',
-          subtitle: 'Import expenses created on another device.',
-          color: const Color(0xFF5DF9FF),
-          onTap: widget.onLoadOnlineExpenses,
-        ),
-        const SizedBox(height: 16),
-        _SettingsAction(
-          icon: Icons.auto_awesome_outlined,
-          title: 'Update AI notification reference',
-          subtitle: _isUpdatingAiReference
-              ? 'Updating expense history...'
-              : 'Refresh expense examples used by notification AI.',
-          color: const Color(0xFFE5E7EB),
-          onTap: _updateAiNotificationReference,
-        ),
-        const SizedBox(height: 16),
-        _SettingsAction(
-          icon: Icons.picture_as_pdf_outlined,
-          title: 'Export expenses as PDF',
-          subtitle: 'Save a complete report of your expenses.',
-          color: const Color(0xFF5DF9FF),
-          onTap: widget.onExportPdf,
-        ),
-        const SizedBox(height: 16),
-        _SettingsAction(
-          icon: Icons.delete_sweep_outlined,
-          title: 'Delete all expenses',
-          subtitle: 'Permanently remove every expense from this account.',
-          color: const Color(0xFFFFD6D6),
-          onTap: widget.onDeleteAll,
-        ),
-        const SizedBox(height: 28),
-        _buildSectionTitle('Preferences'),
-        _buildPreferencesCard(),
-        const SizedBox(height: 28),
-        _buildSectionTitle('Automation'),
-        _buildAutoExpenseParserCard(),
-        const SizedBox(height: 28),
-        _buildSectionTitle('Account'),
-        _SettingsAction(
-          icon: Icons.password_outlined,
-          title: 'Change password',
-          subtitle: 'Set a new password for this account.',
-          color: const Color(0xFFE5E7EB),
-          onTap: widget.onChangePassword,
-        ),
-        const SizedBox(height: 16),
-        _SettingsAction(
-          icon: Icons.person_remove_outlined,
-          title: 'Delete account',
-          subtitle: 'Permanently remove your account and data.',
-          color: const Color(0xFFFFD6D6),
-          onTap: widget.onDeleteAccount,
-        ),
-        const SizedBox(height: 28),
-        _buildSectionTitle('Signed-in account'),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.black, width: 2),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black,
-                offset: Offset(4, 4),
-                blurRadius: 0,
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              const Icon(Icons.account_circle_outlined, size: 42),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  AuthService.currentUser?.email ?? 'Signed-in account',
-                  style: GoogleFonts.itim(fontWeight: FontWeight.bold),
-                ),
-              ),
-              IconButton(
-                tooltip: 'Sign out',
-                onPressed: AuthService.signOut,
-                icon: const Icon(Icons.logout),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 28),
-        _buildSectionTitle('About'),
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.surfaceContainer,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(color: Colors.black, width: 2),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black,
-                offset: Offset(4, 4),
-                blurRadius: 0,
-              ),
-            ],
-          ),
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.info_outline),
-            title: Text(
-              'Expense App',
-              style: GoogleFonts.itim(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(
-              'Version 1.6.0',
-              style: GoogleFonts.itim(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildSectionTitle(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Text(
-        title,
-        style: GoogleFonts.itim(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSyncCard() {
-    final synced = _pendingSync == 0;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black, width: 2),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
-        ],
-      ),
-      child: Row(
-        children: [
-          Icon(
-            synced ? Icons.cloud_done_outlined : Icons.cloud_upload_outlined,
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              synced
-                  ? 'All expenses are synced'
-                  : '$_pendingSync expense(s) waiting to sync',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
-          if (!synced)
-            IconButton(
-              tooltip: 'Retry sync',
-              onPressed: _retrySync,
-              icon: const Icon(Icons.refresh),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPreferencesCard() {
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black, width: 2),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
-        ],
-      ),
-      child: Column(
-        children: [
-          ValueListenableBuilder<String>(
-            valueListenable: appCurrency,
-            builder: (context, currency, child) => ListTile(
-              leading: const Icon(Icons.payments_outlined),
-              title: const Text('Currency'),
-              subtitle: const Text('Used when displaying expense amounts'),
-              trailing: DropdownButton<String>(
-                value: currency,
-                underline: const SizedBox.shrink(),
-                items: const [
-                  DropdownMenuItem(value: 'IDR', child: Text('IDR')),
-                  DropdownMenuItem(value: 'USD', child: Text('USD')),
-                  DropdownMenuItem(value: 'EUR', child: Text('EUR')),
-                ],
-                onChanged: (value) {
-                  if (value != null) widget.onCurrencyChanged(value);
-                },
-              ),
-            ),
-          ),
-          const Divider(height: 1),
-          ValueListenableBuilder<ThemeMode>(
-            valueListenable: appThemeMode,
-            builder: (context, mode, child) => SwitchListTile(
-              secondary: const Icon(Icons.dark_mode_outlined),
-              title: const Text('Dark theme'),
-              subtitle: const Text('Use a darker color scheme'),
-              value: mode == ThemeMode.dark,
-              onChanged: (enabled) async {
-                final mode = enabled ? ThemeMode.dark : ThemeMode.light;
-                appThemeMode.value = mode;
-                await DatabaseHelp.setSetting(
-                  'theme_mode',
-                  enabled ? 'dark' : 'light',
-                );
-              },
-            ),
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications_none_outlined),
-            title: Text(
-              'Expense reminders',
-              style: GoogleFonts.itim(fontWeight: FontWeight.bold),
-            ),
-            subtitle: Text(
-              'Enable reminders to record expenses',
-              style: GoogleFonts.itim(),
-            ),
-            value: _notificationsEnabled,
-            activeThumbColor: const Color(0xFF5DF9FF),
-            onChanged: (enabled) async {
-              setState(() => _notificationsEnabled = enabled);
-              await DatabaseHelp.setSetting(
-                'expense_reminders',
-                enabled.toString(),
-              );
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAutoExpenseParserCard() {
-    final colors = Theme.of(context).colorScheme;
-    return Container(
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: Colors.black, width: 2),
-        boxShadow: const [
-          BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
-        ],
-      ),
-      child: Column(
-        children: [
-          SwitchListTile(
-            secondary: const Icon(Icons.auto_awesome_outlined),
-            title: Text(
-              'Auto Expense parser',
-              style: GoogleFonts.itim(
-                fontWeight: FontWeight.bold,
-                color: colors.onSurface,
-              ),
-            ),
-            subtitle: Text(
-              'Read selected payment notifications automatically.',
-              style: GoogleFonts.itim(color: colors.onSurfaceVariant),
-            ),
-            value: _autoExpenseParserEnabled,
-            activeThumbColor: const Color(0xFF5DF9FF),
-            onChanged: _toggleAutoExpenseParser,
-          ),
-          const Divider(height: 1),
-          ExpansionTile(
-            leading: const Icon(Icons.filter_alt_outlined),
-            iconColor: colors.onSurface,
-            collapsedIconColor: colors.onSurface,
-            title: Text(
-              'Allowed payment apps',
-              style: GoogleFonts.itim(
-                fontWeight: FontWeight.bold,
-                color: colors.onSurface,
-              ),
-            ),
-            subtitle: Text(
-              _allowedNotificationApps.contains(
-                    NotificationExpenseService.allNotificationsKey,
-                  )
-                  ? 'All notifications selected'
-                  : '${_allowedNotificationApps.length} selected',
-              style: GoogleFonts.itim(color: colors.onSurfaceVariant),
-            ),
-            children: [
-              CheckboxListTile(
-                dense: true,
-                activeColor: const Color(0xFF5DF9FF),
-                checkColor: Colors.black,
-                title: Text(
-                  'All notifications',
-                  style: GoogleFonts.itim(
-                    fontWeight: FontWeight.bold,
-                    color: colors.onSurface,
-                  ),
-                ),
-                subtitle: Text(
-                  'Include notifications from every app',
-                  style: GoogleFonts.itim(color: colors.onSurfaceVariant),
-                ),
-                value: _allowedNotificationApps.contains(
-                  NotificationExpenseService.allNotificationsKey,
-                ),
-                onChanged: (allowed) {
-                  if (allowed != null) {
-                    _setNotificationAppAllowed(
-                      NotificationExpenseService.allNotificationsKey,
-                      allowed,
-                    );
-                  }
-                },
-              ),
-              ...NotificationExpenseService.supportedApps.entries.map(
-                (entry) => CheckboxListTile(
-                  dense: true,
-                  activeColor: const Color(0xFF5DF9FF),
-                  checkColor: Colors.black,
-                  title: Text(
-                    entry.value,
-                    style: GoogleFonts.itim(
-                      fontWeight: FontWeight.bold,
-                      color: colors.onSurface,
-                    ),
-                  ),
-                  subtitle: Text(
-                    entry.key,
-                    style: GoogleFonts.itim(
-                      fontSize: 12,
-                      color: colors.onSurfaceVariant,
-                    ),
-                  ),
-                  value: _allowedNotificationApps.contains(entry.key),
-                  onChanged: (allowed) {
-                    if (allowed != null) {
-                      _setNotificationAppAllowed(entry.key, allowed);
-                    }
-                  },
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _SettingsAction extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final Color color;
-  final Future<void> Function() onTap;
-
-  const _SettingsAction({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return NeoBouncy(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainer,
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: Colors.black, width: 2),
-          boxShadow: const [
-            BoxShadow(color: Colors.black, offset: Offset(4, 4), blurRadius: 0),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.black, width: 2),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Colors.black,
-                    offset: Offset(2, 2),
-                    blurRadius: 0,
-                  ),
-                ],
-              ),
-              child: Icon(icon, color: Colors.black),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.itim(
-                      color: Theme.of(context).colorScheme.onSurface,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: GoogleFonts.itim(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              Icons.chevron_right,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ExpenseModel {
-  final int? id;
-  final String name;
-  final int amount;
-  final DateTime date;
-  final String category;
-  final String type;
-
-  ExpenseModel({
-    this.id,
-    required this.name,
-    required this.amount,
-    required this.date,
-    required this.category,
-    required this.type,
-  });
-
-  factory ExpenseModel.fromMap(Map<String, dynamic> map) {
-    final parsedDate = DateTime.tryParse(map['date']?.toString() ?? '');
-    return ExpenseModel(
-      id: map['id'] as int?,
-      name: map['name']?.toString().trim().isNotEmpty == true
-          ? map['name'].toString()
-          : 'Unknown',
-      amount: map['amount'] is int
-          ? map['amount'] as int
-          : int.tryParse(map['amount']?.toString() ?? '0') ?? 0,
-      date: parsedDate ?? DateTime.now(),
-      category: map['category']?.toString().trim().isNotEmpty == true
-          ? map['category'].toString().trim().toLowerCase()
-          : 'general',
-      type: map['type']?.toString().trim().isNotEmpty == true
-          ? map['type'].toString().trim().toLowerCase()
-          : 'others',
-    );
-  }
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'name': name,
-      'amount': amount,
-      'date': date.toIso8601String().substring(0, 10),
-      'category': category,
-      'type': type,
-    };
-  }
-}
-
 class ListWithCards extends StatefulWidget {
   const ListWithCards({super.key});
 
@@ -2687,6 +1618,18 @@ class _ListWithCardsState extends State<ListWithCards>
   bool _isLoading = true;
   ExpenseSort _sort = ExpenseSort.dateNewest;
   bool _isSyncing = false;
+
+  // Filter state
+  String _searchQuery = '';
+  String? _filterCategory;
+  String? _filterType;
+  DateTimeRange? _filterDateRange;
+
+  List<String> get _uniqueCategories {
+    final cats = _expenses.map((e) => e.category.toLowerCase()).toSet().toList();
+    cats.sort();
+    return cats;
+  }
 
   @override
   void initState() {
@@ -2763,7 +1706,50 @@ class _ListWithCardsState extends State<ListWithCards>
   }
 
   List<ExpenseModel> get _sortedExpenses {
-    final result = [..._expenses];
+    var result = [..._expenses];
+
+    // Apply search filter
+    if (_searchQuery.isNotEmpty) {
+      final query = _searchQuery.toLowerCase();
+      result = result.where((e) {
+        return e.name.toLowerCase().contains(query) ||
+            e.category.toLowerCase().contains(query);
+      }).toList();
+    }
+
+    // Apply category filter
+    if (_filterCategory != null) {
+      result = result
+          .where((e) => e.category.toLowerCase() == _filterCategory!.toLowerCase())
+          .toList();
+    }
+
+    // Apply type filter
+    if (_filterType != null) {
+      result = result
+          .where((e) => e.type.toLowerCase() == _filterType!.toLowerCase())
+          .toList();
+    }
+
+    // Apply date range filter
+    if (_filterDateRange != null) {
+      final start = DateTime(
+        _filterDateRange!.start.year,
+        _filterDateRange!.start.month,
+        _filterDateRange!.start.day,
+      );
+      final end = DateTime(
+        _filterDateRange!.end.year,
+        _filterDateRange!.end.month,
+        _filterDateRange!.end.day,
+        23,
+        59,
+        59,
+      );
+      result = result.where((e) {
+        return !e.date.isBefore(start) && !e.date.isAfter(end);
+      }).toList();
+    }
 
     result.sort((a, b) {
       switch (_sort) {
@@ -2843,9 +1829,9 @@ class _ListWithCardsState extends State<ListWithCards>
       (total, expense) => total + expense.amount,
     );
     final formatter = NumberFormat.currency(
-      locale: _currencyLocale,
-      symbol: _currencySymbol,
-      decimalDigits: _currencyDecimalDigits,
+      locale: currencyLocale,
+      symbol: currencySymbol,
+      decimalDigits: currencyDecimalDigits,
     );
     final uniqueCategories = _expenses.map((e) => e.category).toSet().length;
 
@@ -2867,10 +1853,7 @@ class _ListWithCardsState extends State<ListWithCards>
             builder: (context, constraints) {
               final isCompact = constraints.maxWidth < 340;
               final currencyChip = Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 9,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
                 decoration: BoxDecoration(
                   color: const Color(0xFFF9EB5D),
                   borderRadius: BorderRadius.circular(8),
@@ -3141,8 +2124,22 @@ class _ListWithCardsState extends State<ListWithCards>
     );
   }
 
-  void _setSort(ExpenseSort value) {
-    setState(() => _sort = value);
+  void _setFilter(String? category, String? type, DateTimeRange? dateRange, ExpenseSort sort) {
+    setState(() {
+      _filterCategory = category;
+      _filterType = type;
+      _filterDateRange = dateRange;
+      _sort = sort;
+    });
+  }
+
+  void _resetFilters() {
+    setState(() {
+      _filterCategory = null;
+      _filterType = null;
+      _filterDateRange = null;
+      _sort = ExpenseSort.dateNewest;
+    });
   }
 }
 
@@ -3191,9 +2188,9 @@ class CardList extends StatelessWidget {
   Widget build(BuildContext context) {
     final amountValue = expense.amount;
     final formatter = NumberFormat.currency(
-      locale: _currencyLocale,
-      symbol: _currencySymbol,
-      decimalDigits: _currencyDecimalDigits,
+      locale: currencyLocale,
+      symbol: currencySymbol,
+      decimalDigits: currencyDecimalDigits,
     );
     return NeoBouncy(
       onTap: () async {
@@ -3217,11 +2214,11 @@ class CardList extends StatelessWidget {
         child: Row(
           children: [
             Container(
-              width: 58,
-              height: 58,
+              width: 44,
+              height: 44,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: Colors.black, width: 2),
                 boxShadow: const [
                   BoxShadow(
@@ -3231,9 +2228,9 @@ class CardList extends StatelessWidget {
                   ),
                 ],
               ),
-              child: Icon(_getCategoryIcon(), color: Colors.black, size: 30),
+              child: Icon(_getCategoryIcon(), color: Colors.black, size: 24),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -3242,18 +2239,17 @@ class CardList extends StatelessWidget {
                   Text(
                     expense.name,
                     style: GoogleFonts.itim(
-                      fontSize: 20,
+                      fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color: Colors.black,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 2),
                   Text(
                     formatter.format(amountValue * appExchangeRate.value),
                     style: GoogleFonts.itim(
-                      fontSize: 17,
+                      fontSize: 14,
                       fontWeight: FontWeight.w600,
                       color: Colors.black,
                     ),
@@ -3261,42 +2257,11 @@ class CardList extends StatelessWidget {
                   Text(
                     DateFormat('dd MMM yyyy', 'id_ID').format(expense.date),
                     style: GoogleFonts.itim(
-                      fontSize: 13,
+                      fontSize: 11,
                       color: Colors.black87,
                     ),
                   ),
                 ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            NeoBouncy(
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  SmoothPageRoute(page: ExpenseEdit(expenseId: expense.id)),
-                );
-                onRefresh();
-              },
-              child: Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.black, width: 2),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: Colors.black,
-                      offset: Offset(2, 2),
-                      blurRadius: 0,
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.edit_rounded,
-                  size: 18,
-                  color: Colors.black,
-                ),
               ),
             ),
           ],
@@ -3306,37 +2271,6 @@ class CardList extends StatelessWidget {
   }
 }
 
-String get _currencySymbol {
-  switch (appCurrency.value) {
-    case 'USD':
-      return r'$';
-    case 'EUR':
-      return '€';
-    default:
-      return 'Rp';
-  }
-}
-
-String get _currencyLocale {
-  switch (appCurrency.value) {
-    case 'USD':
-      return 'en_US';
-    case 'EUR':
-      return 'de_DE';
-    default:
-      return 'id_ID';
-  }
-}
-
-int get _currencyDecimalDigits {
-  switch (appCurrency.value) {
-    case 'USD':
-    case 'EUR':
-      return 2;
-    default:
-      return 0;
-  }
-}
 
 class ExpenseBottomBar extends StatelessWidget {
   final int selectedIndex;

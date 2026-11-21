@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 import 'ApiService.dart';
@@ -144,6 +145,31 @@ class DatabaseHelp {
       'key': key,
       'value': value,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  /// Stable per-install identifier used by the admin panel to show the last
+  /// sync time of each device.
+  static Future<String> getOrCreateDeviceId() async {
+    final existing = await getSetting('device_id');
+    if (existing != null && existing.isNotEmpty) return existing;
+
+    final random = Random.secure().nextInt(0x7fffffff).toRadixString(16);
+    final id =
+        '${DateTime.now().millisecondsSinceEpoch.toRadixString(36)}-$random';
+    await setSetting('device_id', id);
+    return id;
+  }
+
+  static Future<int> getLocalExpenseCount() async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return 0;
+
+    final db = await initDB();
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS count FROM my_table WHERE ownerId = ?',
+      [userId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   static Future<void> cacheExchangeRate(String currency, double rate) async {
@@ -395,11 +421,11 @@ class DatabaseHelp {
     );
   }
 
-  static Future<void> updateMongoId(int localId, String mongoId) async {
+  static Future<void> markSynced(int localId) async {
     final db = await initDB();
     await db.update(
       'my_table',
-      {'mongoId': mongoId, 'synced': 1},
+      {'synced': 1},
       where: 'id = ? AND ownerId = ?',
       whereArgs: [localId, AuthService.currentUser?.uid],
     );
@@ -424,36 +450,102 @@ class DatabaseHelp {
     final db = await initDB();
     final localRows = await db.query(
       'my_table',
-      columns: ['mongoId'],
-      where: 'ownerId = ? AND mongoId IS NOT NULL',
+      columns: ['id'],
+      where: 'ownerId = ?',
       whereArgs: [userId],
     );
-    final localMongoIds = localRows
-        .map((row) => row['mongoId']?.toString())
+    final localIds = localRows
+        .map((row) => row['id']?.toString())
         .whereType<String>()
         .toSet();
 
     var imported = 0;
     for (final onlineExpense in onlineExpenses) {
-      final mongoId = onlineExpense['_id']?.toString();
-      if (mongoId == null || localMongoIds.contains(mongoId)) continue;
+      final localId = onlineExpense['localId']?.toString();
+      if (localId == null || localIds.contains(localId)) continue;
 
-      await db.insert('my_table', {
-        'mongoId': mongoId,
-        'ownerId': userId,
-        'name': onlineExpense['name']?.toString() ?? 'Unknown',
-        'amount': onlineExpense['amount'] is num
-            ? (onlineExpense['amount'] as num).toInt()
-            : int.tryParse(onlineExpense['amount']?.toString() ?? '0') ?? 0,
-        'date': onlineExpense['date']?.toString() ?? '',
-        'category': onlineExpense['category']?.toString() ?? 'general',
-        'type': onlineExpense['type']?.toString() ?? 'expected',
-        'synced': 1,
-      });
-      localMongoIds.add(mongoId);
+      final parsedId = int.tryParse(localId);
+      await db.insert(
+        'my_table',
+        {
+          'id': ?parsedId,
+          'ownerId': userId,
+          'name': onlineExpense['name']?.toString() ?? 'Unknown',
+          'amount': onlineExpense['amount'] is num
+              ? (onlineExpense['amount'] as num).toInt()
+              : int.tryParse(onlineExpense['amount']?.toString() ?? '0') ?? 0,
+          'date': onlineExpense['date']?.toString() ?? '',
+          'category': onlineExpense['category']?.toString() ?? 'general',
+          'type': onlineExpense['type']?.toString() ?? 'expected',
+          'synced': 1,
+        },
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
+      localIds.add(localId);
       imported++;
     }
     return imported;
+  }
+
+  /// Returns the subset of [expenses] that does not already exist locally for
+  /// the current user (exact match on name, amount, date, category and type).
+  static Future<List<Map<String, dynamic>>> filterNewExpenses(
+    List<Map<String, dynamic>> expenses,
+  ) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return [];
+
+    final db = await initDB();
+    final existing = await db.query(
+      'my_table',
+      where: 'ownerId = ?',
+      whereArgs: [userId],
+    );
+    final seen = existing.map(_expenseIdentity).toSet();
+
+    final fresh = <Map<String, dynamic>>[];
+    for (final expense in expenses) {
+      if (seen.add(_expenseIdentity(expense))) fresh.add(expense);
+    }
+    return fresh;
+  }
+
+  /// Inserts expenses restored from a PDF backup and pushes them to the
+  /// server. Rows stay marked as unsynced until the push succeeds, so the
+  /// regular pending-sync retries pick them up when offline.
+  static Future<void> insertRestoredExpenses(
+    List<Map<String, dynamic>> expenses,
+  ) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return;
+
+    final db = await initDB();
+    final batch = db.batch();
+    for (final expense in expenses) {
+      batch.insert('my_table', {
+        'ownerId': userId,
+        'name': expense['name']?.toString() ?? 'Unknown',
+        'amount': expense['amount'] is int
+            ? expense['amount'] as int
+            : int.tryParse(expense['amount']?.toString() ?? '0') ?? 0,
+        'date': expense['date']?.toString() ?? '',
+        'category': expense['category']?.toString() ?? 'general',
+        'type': expense['type']?.toString() ?? 'others',
+        'synced': 0,
+      });
+    }
+    await batch.commit(noResult: true);
+    unawaited(Throw.syncPendingExpenses());
+  }
+
+  static String _expenseIdentity(Map<String, dynamic> expense) {
+    return [
+      expense['name']?.toString().trim(),
+      expense['amount']?.toString(),
+      expense['date']?.toString().trim(),
+      expense['category']?.toString().trim().toLowerCase(),
+      expense['type']?.toString().trim().toLowerCase(),
+    ].join('|');
   }
 
   static Future<List<Map<String, dynamic>>> getUnsyncedData() async {
@@ -462,6 +554,17 @@ class DatabaseHelp {
       'my_table',
       where: 'synced = ? AND ownerId = ?',
       whereArgs: [0, AuthService.currentUser?.uid],
+    );
+  }
+
+  /// Marks every expense of the current user as needing a server push.
+  static Future<void> markAllUnsyncedForCurrentUser() async {
+    final db = await initDB();
+    await db.update(
+      'my_table',
+      {'synced': 0},
+      where: 'ownerId = ?',
+      whereArgs: [AuthService.currentUser?.uid],
     );
   }
 

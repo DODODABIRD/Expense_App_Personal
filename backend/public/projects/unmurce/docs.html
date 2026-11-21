@@ -202,6 +202,17 @@
             border: 1px solid #000;
         }
 
+        .mobile-toc-toggle {
+            display: none;
+        }
+
+        .docs-sidebar-inner {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            width: 100%;
+        }
+
         .sidebar-search-box {
             position: relative;
             margin-bottom: 12px;
@@ -249,8 +260,8 @@
             border-radius: 12px;
             font-weight: 700;
             font-size: 0.87rem;
-            border: 2px solid transparent;
-            transition: all 0.15s ease;
+            border: var(--border-thin) solid transparent;
+            transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease, transform 0.15s ease;
             display: flex;
             align-items: center;
             gap: 8px;
@@ -267,7 +278,7 @@
         .sidebar-link:hover,
         .sidebar-link.active {
             background: var(--card-yellow);
-            border: var(--border-thin);
+            border-color: #000000;
             box-shadow: var(--shadow-sm);
             transform: translateX(4px);
             color: #000000;
@@ -1045,7 +1056,7 @@
 
         @media (max-width: 680px) {
             html {
-                scroll-padding-top: 104px;
+                scroll-padding-top: 80px;
             }
 
             .docs-header {
@@ -1059,7 +1070,117 @@
             }
 
             .docs-sidebar {
+                position: sticky;
                 top: 12px;
+                z-index: 950;
+                display: flex;
+                flex-direction: column;
+                overflow: visible;
+                white-space: normal;
+                padding: 0;
+                border-radius: var(--radius-md);
+                background: transparent;
+                box-shadow: none;
+                border: none;
+                max-height: none;
+                gap: 0;
+            }
+
+            .mobile-toc-toggle {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                width: 100%;
+                padding: 12px 18px;
+                background: #ffffff;
+                border: var(--border-thin);
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow);
+                font-family: var(--font);
+                font-weight: 800;
+                font-size: 0.92rem;
+                cursor: pointer;
+                user-select: none;
+                transition: transform 0.12s ease, box-shadow 0.12s ease;
+                color: var(--ink);
+            }
+
+            .mobile-toc-toggle:active {
+                transform: translate(2px, 2px);
+                box-shadow: 1px 1px 0 #000;
+            }
+
+            .mobile-toc-label {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+
+            .mobile-toc-icon {
+                font-size: 1.15rem;
+                line-height: 1;
+            }
+
+            .mobile-toc-arrow {
+                font-size: 0.75rem;
+                transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            }
+
+            .docs-sidebar.is-open .mobile-toc-arrow {
+                transform: rotate(180deg);
+            }
+
+            .docs-sidebar.is-open .mobile-toc-toggle {
+                border-bottom-left-radius: 0;
+                border-bottom-right-radius: 0;
+            }
+
+            .docs-sidebar-inner {
+                display: none;
+                flex-direction: column;
+                gap: 6px;
+                padding: 14px;
+                background: #ffffff;
+                border: var(--border-thin);
+                border-top: none;
+                border-radius: 0 0 var(--radius-md) var(--radius-md);
+                box-shadow: var(--shadow);
+                max-height: 60vh;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .docs-sidebar.is-open .docs-sidebar-inner {
+                display: flex;
+            }
+
+            .docs-sidebar.is-open .sidebar-title,
+            .docs-sidebar.is-open .sidebar-search-box {
+                display: block;
+            }
+
+            .sidebar-search-box {
+                margin-bottom: 8px;
+            }
+
+            .sidebar-title {
+                font-size: 0.72rem;
+                margin: 8px 0 4px 4px;
+            }
+
+            .sidebar-link {
+                padding: 8px 12px;
+                font-size: 0.84rem;
+                border-radius: 8px;
+                width: 100%;
+                flex-shrink: 0;
+            }
+
+            .sidebar-link:hover,
+            .sidebar-link.active {
+                background: var(--card-yellow);
+                border: var(--border-thin);
+                transform: translateX(4px);
             }
 
             .docs-brand {
@@ -1141,13 +1262,21 @@
     </header>
 
     <div class="docs-container">
-        <!-- Sticky Sidebar Navigation -->
-        <aside class="docs-sidebar">
-            <div class="sidebar-search-box">
-                <span class="sidebar-search-icon">🔍</span>
-                <input type="text" id="docs-search-input" class="sidebar-search-input"
-                    placeholder="Search docs & APIs...">
-            </div>
+        <!-- Sticky Sidebar Navigation / Mobile Dropdown -->
+        <aside class="docs-sidebar" id="docs-sidebar">
+            <button class="mobile-toc-toggle" id="mobile-toc-toggle" type="button" aria-expanded="false" aria-controls="docs-sidebar-nav" aria-label="Toggle Table of Contents">
+                <span class="mobile-toc-label">
+                    <span class="mobile-toc-icon">☰</span>
+                    <span>Table of Contents</span>
+                </span>
+                <span class="mobile-toc-arrow">▼</span>
+            </button>
+            <div class="docs-sidebar-inner" id="docs-sidebar-nav">
+                <div class="sidebar-search-box">
+                    <span class="sidebar-search-icon">🔍</span>
+                    <input type="text" id="docs-search-input" class="sidebar-search-input"
+                        placeholder="Search docs & APIs...">
+                </div>
 
             <span class="sidebar-title">Architecture & UI</span>
             <a class="sidebar-link active" href="#overview"><span class="num">01</span> System Overview</a>
@@ -1169,6 +1298,7 @@
             <span class="sidebar-title">API & Tooling</span>
             <a class="sidebar-link" href="#api-reference"><span class="num">12</span> REST API Reference</a>
             <a class="sidebar-link" href="#setup-guide"><span class="num">13</span> Setup & Build Guide</a>
+            </div>
         </aside>
 
         <!-- Main Content Area -->
@@ -1250,9 +1380,10 @@
                                 </td>
                             </tr>
                             <tr>
-                                <td><strong>MongoDB Atlas</strong></td>
+                                <td><strong>PostgreSQL</strong></td>
                                 <td>Cloud Database</td>
-                                <td>Mongoose schema-validated multi-tenant cloud storage with compound unique indices.
+                                <td>Relational multi-tenant cloud storage keyed by a compound
+                                    <code>(owner_id, local_id)</code> unique index.
                                 </td>
                             </tr>
                             <tr>
@@ -1443,7 +1574,8 @@
             <section id="architecture" class="docs-card">
                 <span class="tag-badge tag-badge-aqua">SYSTEM TOPOLOGY // MULTI-TIER</span>
                 <h2>03. Architecture & Data Flow</h2>
-                <p>The app combines an offline-first Flutter client, an Express API hosted on Vercel, and MongoDB Atlas.
+                <p>The app combines an offline-first Flutter client, an Express API hosted on Vercel, and a
+                    PostgreSQL database.
                     Cloudflare provides edge routing for the production domain.</p>
 
                 <div class="arch-pipeline">
@@ -1479,10 +1611,10 @@
                         <div class="arch-node-header">
                             <span class="arch-node-badge" style="background: var(--card-mint);">CLOUD CORE</span>
                         </div>
-                        <div class="arch-node-title">Express 5 & MongoDB</div>
+                        <div class="arch-node-title">Express 5 & PostgreSQL</div>
                         <p class="arch-node-desc">Serverless Node.js backend on Vercel handling multi-tenant
                             transactional
-                            persistence in MongoDB Atlas.</p>
+                            persistence in PostgreSQL.</p>
                     </div>
                 </div>
 
@@ -1521,11 +1653,11 @@
                                                  │ requireAuth Firebase Admin │
                                                  └───────┬─────────────┬──────┘
                                                          │             │
-                                        Mongoose Cluster │             │ AI Vision OCR
+                                        PostgreSQL       │             │ AI Vision OCR
                                                          ▼             ▼
                                              ┌───────────────┐ ┌───────────────────────┐
-                                             │ MongoDB Atlas │ │ Groq model             │
-                                             │ Expense Schema│ │ (Azure receipt fallback)│
+                                             │ PostgreSQL    │ │ Groq model             │
+                                             │ expenses table│ │ (Azure receipt fallback)│
                                              └───────────────┘ └───────────────────────┘</code></pre>
                 </div>
             </section>
@@ -1919,14 +2051,14 @@ if (shown == null && !isPermissionGranted) {
                                 <td><code>synced = 0</code></td>
                                 <td>Local Mutation Pending</td>
                                 <td>Record exists only on device. Picked up by background worker
-                                    <code>syncPendingExpenses()</code> to push to MongoDB.
+                                    <code>syncPendingExpenses()</code> to push to PostgreSQL.
                                 </td>
                             </tr>
                             <tr>
                                 <td><code>synced = 1</code></td>
                                 <td>Reconciled & In-Sync</td>
-                                <td>Record has been accepted by MongoDB Atlas and holds a valid remote
-                                    <code>mongoId</code>.
+                                <td>Record has been accepted by PostgreSQL and is marked as synced. No remote id is
+                                    stored on the device.
                                 </td>
                             </tr>
                         </tbody>
@@ -1942,13 +2074,13 @@ if (shown == null && !isPermissionGranted) {
                         <button class="btn-copy" onclick="copyCode(this)">Copy Algorithm</button>
                     </div>
                     <pre><code>final localRows = await db.query('my_table', where: 'ownerId = ?', whereArgs: [uid]);
-final localMongoIds = localRows.map((r) => r['mongoId']).whereType&lt;String&gt;().toSet();
+final localIds = localRows.map((r) => r['id'].toString()).toSet();
 
 for (final online in onlineExpenses) {
-  final remoteId = online['_id'] as String;
-  if (!localMongoIds.contains(remoteId)) {
+  final localId = online['localId'] as String;
+  if (!localIds.contains(localId)) {
     await db.insert('my_table', {
-      'mongoId': remoteId,
+      'id': int.parse(localId),
       'ownerId': uid,
       'name': online['name'],
       'amount': online['amount'],
@@ -1965,7 +2097,7 @@ for (final online in onlineExpenses) {
             <!-- 11. Database Schemas -->
             <section id="database-schemas" class="docs-card">
                 <span class="tag-badge tag-badge-aqua">DATA MODELS // SCHEMAS</span>
-                <h2>11. Primary Data Models (SQLite & MongoDB)</h2>
+                <h2>11. Primary Data Models (SQLite & PostgreSQL)</h2>
 
                 <h3>1. Local SQLite Schema (my_db.db — Version 6)</h3>
                 <div class="table-responsive">
@@ -1992,7 +2124,7 @@ for (final online in onlineExpenses) {
                                 <td><code>mongoId</code></td>
                                 <td>TEXT</td>
                                 <td>NULLABLE</td>
-                                <td>Remote MongoDB ObjectId reference.</td>
+                                <td>Legacy column kept for old installs; no longer read or written.</td>
                             </tr>
                             <tr>
                                 <td><code>my_table</code></td>
@@ -2126,34 +2258,34 @@ for (final online in onlineExpenses) {
                     </table>
                 </div>
 
-                <h3>2. Cloud MongoDB Atlas Mongoose Schema</h3>
+                <h3>2. Cloud PostgreSQL Schema</h3>
                 <div class="code-container">
                     <div class="code-header">
-                        <span class="code-title">Mongoose Expense Schema & Compound Index</span>
+                        <span class="code-title">Expense Table DDL & Compound Unique Key</span>
                         <button class="btn-copy" onclick="copyCode(this)">Copy Schema</button>
                     </div>
-                    <pre><code>const ExpenseSchema = new mongoose.Schema(
-  {
-    ownerId: { type: String, required: true, index: true },
-    localId: { type: String, required: true },
-    name: { type: String, required: true },
-    amount: { type: Number, required: true },
-    category: { type: String, required: true },
-    type: { type: String, required: true }, // 'expected' | 'unexpected' | 'others'
-    date: { type: String, required: true }, // 'YYYY-MM-DD'
-  },
-  { timestamps: true }
+                    <pre><code>CREATE TABLE expenses (
+  owner_id TEXT NOT NULL,
+  local_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  amount INTEGER NOT NULL,
+  category TEXT NOT NULL,
+  type TEXT NOT NULL,
+  date TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  -- Natural identity: every client operation is keyed by (owner_id, local_id)
+  UNIQUE (owner_id, local_id)
 );
 
-// Compound unique index guarantees upsert idempotency per local ID
-ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
+CREATE INDEX expenses_owner_id_idx ON expenses (owner_id);</code></pre>
                 </div>
             </section>
 
             <!-- 12. Complete REST API Reference -->
             <section id="api-reference" class="docs-card">
                 <span class="tag-badge tag-badge-mint">API SPEC // REST ENDPOINTS</span>
-                <h2>12. Core REST API Reference (10 Endpoints)</h2>
+                <h2>12. Core REST API Reference (9 Endpoints)</h2>
                 <p>This section covers ten core transaction, parsing, and exchange-rate endpoints. The Flutter client
                     defaults to <code>https://expense-app-personal.vercel.app/api</code>; override it with
                     <code>EXPENSE_API_BASE_URL</code> when needed. Private endpoints require a Firebase ID token in
@@ -2178,7 +2310,6 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
                             </div>
                             <pre><code>[
   {
-    "_id": "6643a7b9f1d2c3e4a5b6c7d8",
     "ownerId": "firebase_uid_12345",
     "localId": "42",
     "name": "Kopi Kenangan QRIS",
@@ -2221,45 +2352,45 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
                     </div>
                 </div>
 
-                <!-- API 03: GET /api/users/:id -->
+                <!-- API 03: GET /api/users/:localId -->
                 <div class="api-card">
                     <div class="api-header">
                         <div class="api-route">
                             <span class="method-badge method-get">GET</span>
-                            <span>/api/users/:id</span>
+                            <span>/api/users/:localId</span>
                         </div>
                         <span class="tag-badge tag-badge-aqua" style="margin:0;">Auth: Bearer JWT</span>
                     </div>
                     <div class="api-body">
-                        <p>Retrieve a single transaction document by its MongoDB ObjectId.</p>
+                        <p>Retrieve a single transaction by the client's SQLite <code>localId</code>.</p>
                     </div>
                 </div>
 
-                <!-- API 04: PUT /api/users/:id -->
+                <!-- API 04: PUT /api/users/:localId -->
                 <div class="api-card">
                     <div class="api-header">
                         <div class="api-route">
                             <span class="method-badge method-put">PUT</span>
-                            <span>/api/users/:id</span>
+                            <span>/api/users/:localId</span>
                         </div>
                         <span class="tag-badge tag-badge-yellow" style="margin:0;">Auth: Bearer JWT</span>
                     </div>
                     <div class="api-body">
-                        <p>Update fields of an existing transaction by its MongoDB ObjectId.</p>
+                        <p>Update fields of an existing transaction by its <code>localId</code>.</p>
                     </div>
                 </div>
 
-                <!-- API 05: DELETE /api/users/:id -->
+                <!-- API 05: DELETE /api/users/:localId -->
                 <div class="api-card">
                     <div class="api-header">
                         <div class="api-route">
                             <span class="method-badge method-delete">DELETE</span>
-                            <span>/api/users/:id</span>
+                            <span>/api/users/:localId</span>
                         </div>
                         <span class="tag-badge tag-badge-pink" style="margin:0;">Auth: Bearer JWT</span>
                     </div>
                     <div class="api-body">
-                        <p>Permanently remove a transaction by its MongoDB ObjectId.</p>
+                        <p>Permanently remove a transaction by its <code>localId</code>.</p>
                     </div>
                 </div>
 
@@ -2286,21 +2417,7 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
                     </div>
                 </div>
 
-                <!-- API 07: GET /api/users/local/:localId -->
-                <div class="api-card">
-                    <div class="api-header">
-                        <div class="api-route">
-                            <span class="method-badge method-get">GET</span>
-                            <span>/api/users/local/:localId</span>
-                        </div>
-                        <span class="tag-badge tag-badge-aqua" style="margin:0;">Auth: Bearer JWT</span>
-                    </div>
-                    <div class="api-body">
-                        <p>Retrieve a transaction by the SQLite device <code>localId</code> string.</p>
-                    </div>
-                </div>
-
-                <!-- API 08: POST /api/parse-receipt -->
+                <!-- API 07: POST /api/parse-receipt -->
                 <div class="api-card">
                     <div class="api-header">
                         <div class="api-route">
@@ -2322,7 +2439,7 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
                     </div>
                 </div>
 
-                <!-- API 09: POST /api/parse-notification -->
+                <!-- API 08: POST /api/parse-notification -->
                 <div class="api-card">
                     <div class="api-header">
                         <div class="api-route">
@@ -2357,7 +2474,7 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
                     </div>
                 </div>
 
-                <!-- API 10: GET /api/exchange-rates -->
+                <!-- API 09: GET /api/exchange-rates -->
                 <div class="api-card">
                     <div class="api-header">
                         <div class="api-route">
@@ -2400,7 +2517,7 @@ ExpenseSchema.index({ ownerId: 1, localId: 1 }, { unique: true });</code></pre>
                         <button class="btn-copy" onclick="copyCode(this)">Copy Variables</button>
                     </div>
                     <pre><code># Required; replace the placeholder values
-MONGODB_URI=YOUR_MONGODB_URI
+DATABASE_URL=YOUR_POSTGRES_CONNECTION_STRING
 FIREBASE_SERVICE_ACCOUNT_JSON=YOUR_SERVICE_ACCOUNT_JSON
 GROQ_API_KEY=YOUR_GROQ_API_KEY
 GROQ_MODEL=YOUR_GROQ_MODEL_ID
@@ -2609,6 +2726,38 @@ flutter build apk --split-per-abi --release</code></pre>
 
             window.addEventListener('scroll', updateScrollSpy, { passive: true });
             updateScrollSpy();
+
+            // Mobile TOC Hamburger Dropdown Toggle
+            const tocSidebar = document.getElementById('docs-sidebar');
+            const tocToggle = document.getElementById('mobile-toc-toggle');
+
+            if (tocSidebar && tocToggle) {
+                tocToggle.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    const isOpen = tocSidebar.classList.toggle('is-open');
+                    tocToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+                });
+
+                // Auto-close dropdown when a section link is clicked on mobile
+                navLinks.forEach(link => {
+                    link.addEventListener('click', () => {
+                        if (window.innerWidth <= 680) {
+                            tocSidebar.classList.remove('is-open');
+                            tocToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    });
+                });
+
+                // Close dropdown when tapping outside
+                document.addEventListener('click', (e) => {
+                    if (window.innerWidth <= 680 && tocSidebar.classList.contains('is-open')) {
+                        if (!tocSidebar.contains(e.target)) {
+                            tocSidebar.classList.remove('is-open');
+                            tocToggle.setAttribute('aria-expanded', 'false');
+                        }
+                    }
+                });
+            }
         });
     </script>
 </body>

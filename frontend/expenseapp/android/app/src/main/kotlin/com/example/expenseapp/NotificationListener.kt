@@ -15,6 +15,7 @@ class NotificationListener : NotificationListenerService() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        attach(applicationContext)
         preferences = getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
         allowedPackages = preferences.getStringSet(ALLOWED_PACKAGES, emptySet()) ?: emptySet()
         allowAllNotifications = preferences.getBoolean(ALLOW_ALL_NOTIFICATIONS, false)
@@ -150,26 +151,33 @@ class NotificationListener : NotificationListenerService() {
 
         private val recentSignatures = LinkedHashMap<String, Long>()
         private var instance: NotificationListener? = null
+        private var appContext: Context? = null
+
+        // Called by both MainActivity and the service so settings survive even
+        // when the listener service has not been bound yet.
+        fun attach(context: Context) {
+            if (appContext == null) appContext = context.applicationContext
+        }
+
+        private fun sharedPreferences(): SharedPreferences? =
+            appContext?.getSharedPreferences(PREFERENCES, Context.MODE_PRIVATE)
 
         var allowedPackages: Set<String> = emptySet()
             set(value) {
                 field = value
-                instance?.preferences?.edit()
-                    ?.putStringSet(ALLOWED_PACKAGES, value)?.apply()
+                sharedPreferences()?.edit()?.putStringSet(ALLOWED_PACKAGES, value)?.apply()
             }
 
         var parserActive: Boolean = true
             set(value) {
                 field = value
-                instance?.preferences?.edit()
-                    ?.putBoolean(PARSER_ACTIVE, value)?.apply()
+                sharedPreferences()?.edit()?.putBoolean(PARSER_ACTIVE, value)?.apply()
             }
 
         var allowAllNotifications: Boolean = false
             set(value) {
                 field = value
-                instance?.preferences?.edit()
-                    ?.putBoolean(ALLOW_ALL_NOTIFICATIONS, value)?.apply()
+                sharedPreferences()?.edit()?.putBoolean(ALLOW_ALL_NOTIFICATIONS, value)?.apply()
             }
 
         var eventSink: EventChannel.EventSink? = null

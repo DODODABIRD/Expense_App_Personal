@@ -5,6 +5,7 @@ import '../main.dart';
 import '../services/databaseHelper.dart';
 import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
+import '../widgets/neo_brutalist_calendar.dart';
 import 'ReceiptScanPage.dart';
 
 class ExpenseAddPage extends StatefulWidget {
@@ -796,22 +797,23 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
   }
 
   Future<void> _pickCustomDate() async {
-    final date = await showDatePicker(
+    final date = await showDialog<DateTime?>(
       context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2100),
-      builder: (context, child) {
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: const Color(0xFF5DF9FF),
-              onPrimary: Colors.black,
-              surface: Theme.of(context).colorScheme.surface,
-              onSurface: Theme.of(context).colorScheme.onSurface,
-            ),
+      builder: (context) {
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          child: NeoBrutalistCalendar(
+            initialDate: _selectedDate,
+            firstDate: DateTime(2000),
+            lastDate: DateTime(2100),
+            singleDateMode: true,
+            onDateSelected: (date) {},
+            onRangeSelected: (range) {
+              if (range != null) {
+                Navigator.of(context).pop(range.start);
+              }
+            },
           ),
-          child: child!,
         );
       },
     );

@@ -2,10 +2,10 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "api/index.js",
+  "main": "server.js",
   "scripts": {
     "test": "node --test",
-    "start": "node api/index.js"
+    "start": "node server.js"
   },
   "keywords": [],
   "author": "",
@@ -15,8 +15,7 @@
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
     "firebase-admin": "^13.4.0",
-    "mongodb": "^7.1.0",
-    "mongoose": "^9.6.2",
+    "pg": "^8.16.3",
     "ws": "^8.22.0"
   }
 }

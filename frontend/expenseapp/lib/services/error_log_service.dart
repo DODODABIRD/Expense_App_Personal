@@ -120,6 +120,14 @@ class ErrorLogService {
     return File('${directory.path}${Platform.pathSeparator}$_logFileName');
   }
 
+  Future<void> deleteAllLogs() async {
+    await _writeQueue;
+    final file = await _logFile();
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+
   Future<void> _append(ErrorLogEntry entry) async {
     try {
       final file = await _logFile();

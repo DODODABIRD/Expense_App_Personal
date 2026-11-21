@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'dart:io';
@@ -7,7 +8,17 @@ import 'error_log_service.dart';
 
 const String baseUrl = String.fromEnvironment(
   'EXPENSE_API_BASE_URL',
-  defaultValue: 'https://expense-app-personal.vercel.app/api',
+  defaultValue: 'https://dododabird.us/api',
+);
+
+const String wsUrl = String.fromEnvironment(
+  'EXPENSE_WS_URL',
+  defaultValue: 'wss://dododabird.us/ws',
+);
+
+const String appVersion = String.fromEnvironment(
+  'EXPENSE_APP_VERSION',
+  defaultValue: '2.0.0',
 );
 
 typedef ReceiptScanProgress =
@@ -35,14 +46,6 @@ class Throw {
     };
   }
 
-  static Future<void> getUsers() async {
-    final url = Uri.parse('$baseUrl/users');
-
-    final response = await http.get(url, headers: await _headers());
-
-    print(response.statusCode);
-    print(response.body);
-  }
 
   static Future<List<Map<String, dynamic>>> getOnlineExpenses() async {
     final response = await http
@@ -213,11 +216,36 @@ class Throw {
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  static Future<int> updateAiNotificationReference() async {
+  static Future<Map<String, dynamic>> getAiNotificationReference() async {
     final response = await http
-        .post(
-          Uri.parse('$baseUrl/ai-notification-reference/refresh'),
+        .get(
+          Uri.parse('$baseUrl/ai-notification-reference'),
           headers: await _headers(),
+        )
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode != 200) {
+      String message =
+          'Could not load AI notification context (${response.statusCode})';
+      try {
+        final body = jsonDecode(response.body) as Map<String, dynamic>;
+        if (body['error'] != null) message = body['error'].toString();
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Load AI reference error response');
+        // Keep the status-based message when the backend response is not JSON.
+      }
+      throw Exception(message);
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
+  static Future<int> saveAiNotificationReference(
+    List<Map<String, dynamic>> items,
+  ) async {
+    final response = await http
+        .put(
+          Uri.parse('$baseUrl/ai-notification-reference'),
+          headers: await _headers(),
+          body: jsonEncode({'items': items}),
         )
         .timeout(const Duration(seconds: 30));
     if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -240,64 +268,17 @@ class Throw {
     return body['itemCount'] is int ? body['itemCount'] as int : 0;
   }
 
-  Future<void> getUserById(String id) async {
-    final url = Uri.parse('$baseUrl/users/$id');
-
-    final response = await http.get(url, headers: await _headers());
-
-    print(response.statusCode);
-    print(response.body);
-  }
-
-  Future<void> updateUser(String id) async {
-    final url = Uri.parse('$baseUrl/users/$id');
-
-    final response = await http.put(
-      url,
-      headers: await _headers(),
-      body: jsonEncode({"name": "Updated Name"}),
-    );
-
-    print(response.statusCode);
-    print(response.body);
-  }
-
-  Future<void> deleteUser(String id) async {
-    final url = Uri.parse('$baseUrl/users/$id');
-
-    final response = await http.delete(url, headers: await _headers());
-
-    print(response.statusCode);
-    print(response.body);
-  }
-
-  static Future<String?> getMongoIdFromLocalId(int localId) async {
-    final url = Uri.parse('$baseUrl/users/local/$localId');
-
-    final response = await http.get(url, headers: await _headers());
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data['_id']; // ✅ Mongo ObjectId
-    }
-
-    print('User not found');
-    return null;
-  }
-
   static Future<bool> updateUserByLocalId(
     int? localId,
     String name,
-    int amount, // ← Change from String to int
+    int amount,
     String category,
     String type,
     String date,
   ) async {
-    final mongoId = await getMongoIdFromLocalId(localId!);
+    if (localId == null) return false;
 
-    if (mongoId == null) return false;
-
-    final url = Uri.parse('$baseUrl/users/$mongoId');
+    final url = Uri.parse('$baseUrl/users/$localId');
 
     final response = await http
         .put(
@@ -313,30 +294,22 @@ class Throw {
         )
         .timeout(const Duration(seconds: 10));
 
+    if (response.statusCode == 404) return false;
+
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
         'Update failed (${response.statusCode}): ${response.body}',
       );
     }
 
-    await DatabaseHelp.updateMongoId(localId, mongoId);
-
-    print(response.statusCode);
-    print(response.body);
+    await DatabaseHelp.markSynced(localId);
     return true;
   }
 
   static Future<void> deleteUserByLocalId(int localId) async {
-    final mongoId = await getMongoIdFromLocalId(localId);
+    final url = Uri.parse('$baseUrl/users/$localId');
 
-    if (mongoId == null) return;
-
-    final url = Uri.parse('$baseUrl/users/$mongoId');
-
-    final response = await http.delete(url, headers: await _headers());
-
-    print(response.statusCode);
-    print(response.body);
+    await http.delete(url, headers: await _headers());
   }
 
   /// Bulk-deletes every expense owned by the current user in one request.
@@ -392,15 +365,8 @@ class Throw {
         );
       }
 
-      final mongoResponse = jsonDecode(response.body) as Map<String, dynamic>;
-      final mongoId = mongoResponse['_id'] as String?;
-      if (mongoId != null) {
-        await DatabaseHelp.updateMongoId(localId, mongoId);
-      }
-
-      print(response.statusCode);
-      print(response.body);
-      return mongoId != null;
+      await DatabaseHelp.markSynced(localId);
+      return true;
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Create expense sync');
       print('Sync failed: $error');
@@ -414,43 +380,134 @@ class Throw {
 
     for (final expense in pendingExpenses) {
       try {
-        final mongoId = expense['mongoId'] as String?;
-        if (mongoId == null || mongoId.isEmpty) {
-          await createExpense(
-            expense['id'] as int,
-            expense['name'] as String,
-            expense['amount'] as int,
-            expense['category'] as String,
-            expense['type'] as String,
-            expense['date'] as String,
-          );
-        } else {
-          await updateUserByLocalId(
-            expense['id'] as int,
-            expense['name'] as String,
-            expense['amount'] as int,
-            expense['category'] as String,
-            expense['type'] as String,
-            expense['date'] as String,
-          );
-        }
+        // POST /users upserts by (owner, localId), so unsynced rows only ever
+        // need a single push regardless of whether the server already knows them.
+        await createExpense(
+          expense['id'] as int,
+          expense['name'] as String,
+          expense['amount'] as int,
+          expense['category'] as String,
+          expense['type'] as String,
+          expense['date'] as String,
+        );
       } catch (error, stackTrace) {
         captureAppError(error, stackTrace, 'Pending expense sync');
         print('Pending sync failed: $error');
       }
     }
+
+    await reportDeviceSync();
+  }
+
+  /// Reports this device's last successful sync so the admin panel can show
+  /// per-device activity. Failures are logged and never block expense sync.
+  static Future<void> reportDeviceSync() async {
+    try {
+      final deviceId = await DatabaseHelp.getOrCreateDeviceId();
+      final expenseCount = await DatabaseHelp.getLocalExpenseCount();
+
+      await http
+          .post(
+            Uri.parse('$baseUrl/sync/beat'),
+            headers: await _headers(),
+            body: jsonEncode({
+              'deviceId': deviceId,
+              'deviceName':
+                  '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+              'platform': Platform.operatingSystem,
+              'appVersion': appVersion,
+              'expenseCount': expenseCount,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Device sync heartbeat');
+    }
+  }
+
+  static WebSocket? _liveWs;
+  static Timer? _pingTimer;
+  static final StreamController<Map<String, dynamic>> _liveEventsController =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  /// Stream of real-time events broadcasted by the VPS server (create, update, delete).
+  static Stream<Map<String, dynamic>> get liveEvents =>
+      _liveEventsController.stream;
+
+  /// Returns true if the live WebSocket is currently connected.
+  static bool get isWebSocketConnected =>
+      _liveWs != null && _liveWs!.readyState == WebSocket.open;
+
+  /// Connects to the VPS backend WebSocket server defined in backend/server.js.
+  /// Sends auth token and streams live changes from backend/api/index.js.
+  static Future<void> connectLiveWebSocket() async {
+    if (isWebSocketConnected) return;
+
+    try {
+      final token = await AuthService.getIdToken();
+      final uri = Uri.parse(wsUrl).replace(
+        queryParameters: {'token': token},
+      );
+
+      final socket = await WebSocket.connect(uri.toString());
+      _liveWs = socket;
+
+      socket.add(jsonEncode({'type': 'auth', 'token': token}));
+
+      _pingTimer?.cancel();
+      _pingTimer = Timer.periodic(const Duration(seconds: 25), (timer) {
+        if (_liveWs != null && _liveWs!.readyState == WebSocket.open) {
+          _liveWs!.add(jsonEncode({'type': 'ping'}));
+        } else {
+          timer.cancel();
+        }
+      });
+
+      socket.listen(
+        (data) {
+          try {
+            final decoded = jsonDecode(data.toString());
+            if (decoded is Map<String, dynamic>) {
+              if (decoded['type'] == 'pong') return;
+              _liveEventsController.add(decoded);
+            }
+          } catch (e, stackTrace) {
+            captureAppError(e, stackTrace, 'WebSocket message decode');
+          }
+        },
+        onError: (error, stackTrace) {
+          captureAppError(error, stackTrace, 'WebSocket connection error');
+          disconnectLiveWebSocket();
+        },
+        onDone: () {
+          disconnectLiveWebSocket();
+        },
+        cancelOnError: true,
+      );
+    } catch (e, stackTrace) {
+      captureAppError(e, stackTrace, 'WebSocket connect failed');
+    }
+  }
+
+  /// Closes the live WebSocket connection and stops the heartbeat timer.
+  static Future<void> disconnectLiveWebSocket() async {
+    _pingTimer?.cancel();
+    _pingTimer = null;
+    final socket = _liveWs;
+    _liveWs = null;
+    if (socket != null && socket.readyState == WebSocket.open) {
+      await socket.close();
+    }
+  }
+
+  /// Fetches public configuration from VPS backend /api/public-config
+  static Future<Map<String, dynamic>> getPublicConfig() async {
+    final response = await http
+        .get(Uri.parse('$baseUrl/public-config'))
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode != 200) {
+      throw Exception('Could not fetch public config (${response.statusCode})');
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 }
-
-// void main() async {
-//   for (int index = 0; index <= 10; index++) {
-//     await Throw.createUser(index, 'Nigga $index', '4', 'nigga', 'nigga', 'nigga');
-//   }
-//   ;
-
-//   // for (int index = 0; index<=10; index++){
-//   //   deleteUserByLocalId(index);
-
-//   // }
-//   // await getUsers();
-// }

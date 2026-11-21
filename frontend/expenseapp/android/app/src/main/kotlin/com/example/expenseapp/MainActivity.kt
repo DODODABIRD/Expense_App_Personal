@@ -10,6 +10,7 @@ import io.flutter.embedding.android.FlutterActivity
 class MainActivity : FlutterActivity() {
 	override fun configureFlutterEngine(flutterEngine: io.flutter.embedding.engine.FlutterEngine) {
 		super.configureFlutterEngine(flutterEngine)
+		NotificationListener.attach(applicationContext)
 		MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "expense_app/platform")
 			.setMethodCallHandler { call, result ->
 				if (call.method == "isAndroid") result.success(true) else result.notImplemented()

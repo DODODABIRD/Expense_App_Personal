@@ -3,3 +3,4 @@ backend/ignore
 .env
 .vercel
 .env*
+backend/nul

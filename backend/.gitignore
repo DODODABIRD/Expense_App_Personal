@@ -4,3 +4,6 @@ node_modules/
 !.env.example
 firebase-service-account.json
 firebase-adminsdk-*.json
+ignore
+data/
+
