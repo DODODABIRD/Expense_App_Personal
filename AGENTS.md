@@ -85,6 +85,7 @@ backend/
 ├── admin-ui/              /dodo panel HTML + static/ (served by routes, not express.static)
 ├── public/                public website: portfolio, /downloads, /expenses web app, unmurce pages, asset/
 ├── content/portfolio.json seed for the portfolio CMS
+├── scripts/vps-ops.sh     VPS ops shell functions (update-backend etc.), sourced from ~/.bashrc
 ├── test/                  *.test.js
 ├── Dockerfile, .dockerignore, .env.example, vercel.json (legacy)
 ```
