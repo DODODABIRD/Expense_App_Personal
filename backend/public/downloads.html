@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="color-scheme" content="only light">
+    <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#f3f5f8">
     <meta name="description" content="Download the latest Android release of apps by Orlando Diamond Prasetyo.">
     <meta name="author" content="Orlando Diamond Prasetyo">
@@ -23,10 +23,23 @@
         rel="stylesheet">
     <link rel="stylesheet" href="/portfolio.css">
     <link rel="stylesheet" href="/downloads.css">
+    <script>
+        (function () {
+            try {
+                var savedTheme = localStorage.getItem('theme');
+                var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                if (savedTheme === 'dark' || (!savedTheme && systemDark)) {
+                    document.documentElement.setAttribute('data-theme', 'dark');
+                } else {
+                    document.documentElement.setAttribute('data-theme', 'light');
+                }
+            } catch (e) {}
+        })();
+    </script>
 </head>
 
 <body>
-    <div class="site-header-wrapper is-top">
+    <div class="site-header-wrapper is-top" id="site-header-wrapper">
         <header class="site-header">
             <a class="brand" href="/" aria-label="Orlando Diamond Prasetyo home">
                 <img class="brand-avatar" src="/asset/orlando-profile-photo.jpg" alt="Orlando Diamond Prasetyo">
@@ -38,10 +51,71 @@
             <nav class="site-nav" aria-label="Primary navigation">
                 <a href="/">Home</a>
                 <a href="/projects/unmurce">Unmurce</a>
-                <a href="/downloads">Downloads</a>
+                <a href="/downloads" aria-current="page">Downloads</a>
                 <a href="/projects/docs">Docs</a>
             </nav>
+            <div class="header-actions-group">
+                <button class="theme-toggle-btn" id="theme-toggle-btn" type="button"
+                    aria-label="Toggle dark/light theme" title="Toggle theme">
+                    <span class="theme-icon-moon">🌙</span>
+                    <span class="theme-icon-sun">☀️</span>
+                </button>
+                <a class="header-action button-aqua" href="/expenses">Launch App <span aria-hidden="true">↗</span></a>
+                <button class="mobile-hamburger" id="mobile-menu-toggle" type="button"
+                    aria-label="Toggle navigation menu" aria-expanded="false">
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                    <span class="hamburger-line"></span>
+                </button>
+            </div>
         </header>
+    </div>
+
+    <!-- Mobile Navigation Drawer -->
+    <div class="mobile-drawer" id="mobile-drawer" aria-hidden="true">
+        <div class="mobile-drawer-content">
+            <div class="mobile-drawer-header">
+                <div class="drawer-user-info">
+                    <img class="drawer-avatar" src="/asset/orlando-profile-photo.jpg" alt="Orlando Diamond Prasetyo">
+                    <div>
+                        <strong>Orlando D. Prasetyo</strong>
+                        <span class="status-indicator"><i class="status-dot"></i> App Downloads</span>
+                    </div>
+                </div>
+                <div class="drawer-header-actions">
+                    <button class="theme-toggle-btn" id="drawer-theme-toggle-btn" type="button"
+                        aria-label="Toggle dark/light theme" title="Toggle theme">
+                        <span class="theme-icon-moon">🌙</span>
+                        <span class="theme-icon-sun">☀️</span>
+                    </button>
+                    <button class="drawer-close-btn" id="close-mobile-drawer" type="button"
+                        aria-label="Close menu">✕</button>
+                </div>
+            </div>
+
+            <nav class="mobile-drawer-nav" aria-label="Mobile navigation">
+                <a class="mobile-drawer-link" href="/">
+                    <span>01</span> Home / Portfolio
+                </a>
+                <a class="mobile-drawer-link" href="/projects/unmurce">
+                    <span>02</span> Unmurce Showcase <small class="badge-mini aqua">PROJECT</small>
+                </a>
+                <a class="mobile-drawer-link" href="/downloads" aria-current="page">
+                    <span>03</span> App Downloads <small class="badge-mini yellow">APK</small>
+                </a>
+                <a class="mobile-drawer-link" href="/projects/docs">
+                    <span>04</span> Technical Docs <small class="badge-mini yellow">DOCS</small>
+                </a>
+                <a class="mobile-drawer-link" href="/expenses">
+                    <span>05</span> Launch Web App <small class="badge-mini aqua">WEB</small>
+                </a>
+            </nav>
+
+            <div class="mobile-drawer-footer">
+                <a class="button button-aqua drawer-cta" href="/projects/unmurce">Unmurce Showcase ↗</a>
+                <a class="button button-yellow drawer-cta" href="/expenses">Launch Web App ↗</a>
+            </div>
+        </div>
     </div>
 
     <main class="downloads-main">
@@ -61,9 +135,11 @@
     <footer class="downloads-footer">
         <span>© <span id="downloadsYear"></span> Orlando Diamond Prasetyo</span>
         <div class="downloads-footer-links">
+            <a href="/">Home</a>
             <a href="/projects/unmurce">Unmurce</a>
+            <a href="/downloads">Downloads</a>
             <a href="/projects/docs">Docs</a>
-            <a href="/">Portfolio</a>
+            <a href="/expenses">Launch App</a>
         </div>
     </footer>
 

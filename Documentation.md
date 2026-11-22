@@ -849,7 +849,7 @@ If the relevant variable is unset, that login method returns 503. It never allow
 - Catalog built from `/api/downloads`.
 
 **`/projects/unmurce`, `/projects/docs`**
-- Static product pages.
+- Static product pages. `/projects/unmurce` hydrates release info via `portfolio-cms.js` (`/api/portfolio` and `/api/downloads/unmurce`); `/projects/docs` hydrates model info via `model-status.js` (`/api/public-config`) and syncs its displayed version from `/api/downloads/unmurce` (falling back to `/api/portfolio`).
 
 **`/expenses`**
 - Web version of the expense app: Firebase compat SDK 10.12.2, jsPDF.

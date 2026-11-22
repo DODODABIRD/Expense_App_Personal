@@ -228,6 +228,25 @@
     }
     actions.appendChild(permalink);
 
+    if (app.slug === "unmurce") {
+      var extraLinks = document.createElement("div");
+      extraLinks.className = "download-card-extra-links";
+
+      var showcaseLink = document.createElement("a");
+      showcaseLink.className = "download-permalink";
+      showcaseLink.href = "/projects/unmurce";
+      showcaseLink.textContent = "Project Showcase ↗";
+      extraLinks.appendChild(showcaseLink);
+
+      var docsLink = document.createElement("a");
+      docsLink.className = "download-permalink";
+      docsLink.href = "/projects/docs";
+      docsLink.textContent = "Tech Docs ↗";
+      extraLinks.appendChild(docsLink);
+
+      actions.appendChild(extraLinks);
+    }
+
     card.appendChild(actions);
     return card;
   }
@@ -283,5 +302,80 @@
     });
   }
 
+  function initShell() {
+    var headerWrapper = document.getElementById("site-header-wrapper");
+    function handleScroll() {
+      if (!headerWrapper) return;
+      if (window.scrollY <= 20) {
+        headerWrapper.classList.add("is-top");
+      } else {
+        headerWrapper.classList.remove("is-top");
+      }
+      headerWrapper.classList.remove("nav-hidden");
+    }
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    handleScroll();
+
+    function toggleTheme() {
+      var isDark = document.documentElement.getAttribute("data-theme") === "dark";
+      var next = isDark ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try {
+        localStorage.setItem("theme", next);
+      } catch (e) {}
+    }
+
+    var themeBtn = document.getElementById("theme-toggle-btn");
+    var drawerThemeBtn = document.getElementById("drawer-theme-toggle-btn");
+    if (themeBtn) themeBtn.addEventListener("click", toggleTheme);
+    if (drawerThemeBtn) drawerThemeBtn.addEventListener("click", toggleTheme);
+
+    var menuToggle = document.getElementById("mobile-menu-toggle");
+    var closeDrawerBtn = document.getElementById("close-mobile-drawer");
+    var mobileDrawer = document.getElementById("mobile-drawer");
+    var drawerLinks = document.querySelectorAll(".mobile-drawer-link");
+
+    function openDrawer() {
+      if (!mobileDrawer) return;
+      mobileDrawer.classList.add("active");
+      mobileDrawer.setAttribute("aria-hidden", "false");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "true");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeDrawer() {
+      if (!mobileDrawer) return;
+      mobileDrawer.classList.remove("active");
+      mobileDrawer.setAttribute("aria-hidden", "true");
+      if (menuToggle) menuToggle.setAttribute("aria-expanded", "false");
+      document.body.style.overflow = "";
+    }
+
+    if (menuToggle) {
+      menuToggle.addEventListener("click", function () {
+        if (mobileDrawer && mobileDrawer.classList.contains("active")) {
+          closeDrawer();
+        } else {
+          openDrawer();
+        }
+      });
+    }
+    if (closeDrawerBtn) closeDrawerBtn.addEventListener("click", closeDrawer);
+    if (mobileDrawer) {
+      mobileDrawer.addEventListener("click", function (event) {
+        if (event.target === mobileDrawer) closeDrawer();
+      });
+    }
+    drawerLinks.forEach(function (link) {
+      link.addEventListener("click", closeDrawer);
+    });
+    document.addEventListener("keydown", function (event) {
+      if (event.key === "Escape" && mobileDrawer && mobileDrawer.classList.contains("active")) {
+        closeDrawer();
+      }
+    });
+  }
+
+  initShell();
   load();
 })();

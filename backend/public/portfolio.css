@@ -4325,3 +4325,30 @@ h1 {
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
+
+
+/* Active Public Navigation Pill & Drawer Link */
+.site-nav a[aria-current="page"] {
+    padding: 4px 12px;
+    background: var(--card-yellow);
+    color: #000000;
+    border: 2px solid #000000;
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-sm);
+}
+
+.site-nav a[aria-current="page"]:hover {
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0px #000000;
+}
+
+.mobile-drawer-link[aria-current="page"],
+[data-theme="dark"] .mobile-drawer-link[aria-current="page"] {
+    background: var(--card-yellow);
+    color: #000000;
+    transform: translateX(4px);
+}
+
+.mobile-drawer-link[aria-current="page"] span {
+    color: #000000;
+}

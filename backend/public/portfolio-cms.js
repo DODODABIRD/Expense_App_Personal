@@ -47,7 +47,8 @@
     apk = apk || {};
 
     document.querySelectorAll("[data-apk-version]").forEach(function (element) {
-      element.textContent = apk.version ? "v" + apk.version : "";
+      var version = String(apk.version || "").trim();
+      element.textContent = version ? (/^v/i.test(version) ? version : "v" + version) : "";
     });
     document.querySelectorAll("[data-apk-size]").forEach(function (element) {
       element.textContent = formatBytes(apk.size_bytes);

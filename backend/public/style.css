@@ -2276,3 +2276,55 @@ body {
         font-size: 0.82rem;
     }
 }
+
+/* Auth & Settings Site Navigation */
+.app-site-nav {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+}
+
+.app-site-nav a {
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
+    background: var(--card-white);
+    color: var(--ink);
+    border: var(--border-subtle);
+    border-radius: var(--radius-pill);
+    box-shadow: var(--shadow-sm);
+    font-size: 0.78rem;
+    font-weight: 800;
+    text-decoration: none;
+    transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.12s ease;
+}
+
+.app-site-nav a:hover {
+    background: var(--card-yellow);
+    transform: translate(-1px, -1px);
+    box-shadow: 3px 3px 0px #000;
+}
+
+.app-site-nav a:active {
+    transform: translate(2px, 2px);
+    box-shadow: none;
+}
+
+.settings-links-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.settings-links-grid a {
+    text-decoration: none;
+    text-align: center;
+}
+
+@media (max-width: 440px) {
+    .settings-links-grid {
+        grid-template-columns: 1fr;
+    }
+}
+

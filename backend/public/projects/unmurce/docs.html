@@ -280,7 +280,7 @@
             color: var(--on-surface);
         }
 
-        @media (min-width: 1280px) {
+        @media (min-width: 1360px) {
             .live-status-pill {
                 display: inline-flex;
             }
@@ -507,23 +507,25 @@
             font-size: 12px;
         }
 
-        .header-portfolio-btn {
+        .header-nav-links {
             display: none;
+            align-items: center;
+            gap: 0.45rem;
         }
 
         .header-launch-btn {
             display: none;
         }
 
-        @media (min-width: 640px) {
-            .header-portfolio-btn {
+        @media (min-width: 768px) {
+            .header-launch-btn {
                 display: inline-flex;
             }
         }
 
-        @media (min-width: 900px) {
-            .header-launch-btn {
-                display: inline-flex;
+        @media (min-width: 1024px) {
+            .header-nav-links {
+                display: flex;
             }
         }
 
@@ -2019,7 +2021,7 @@
     </style>
 </head>
 
-<body>
+<body data-download-app="unmurce">
     <div id="reading-progress"></div>
 
     <!-- Top Fixed Bar -->
@@ -2032,7 +2034,7 @@
                 </button>
                 <a class="brand-badge" href="/" aria-label="Unmurce Portfolio Home">
                     <span class="brand-name">UNMURCE</span>
-                    <span class="brand-version">v1.5.2</span>
+                    <span class="brand-version" data-apk-version>v1.7.5</span>
                 </a>
                 <div class="live-status-pill" aria-live="polite">
                     <span class="pulse-dot-wrap" aria-hidden="true">
@@ -2059,10 +2061,11 @@
             </div>
 
             <div class="header-actions">
-                <a class="neo-btn header-portfolio-btn" href="/">
-                    <span>PORTFOLIO</span>
-                    <span class="material-symbols-outlined" style="font-size: 16px;">north_east</span>
-                </a>
+                <nav class="header-nav-links" aria-label="Primary navigation">
+                    <a class="neo-btn" href="/">Home</a>
+                    <a class="neo-btn" href="/projects/unmurce">Unmurce</a>
+                    <a class="neo-btn" href="/downloads/unmurce">Downloads</a>
+                </nav>
                 <a class="neo-btn neo-btn-yellow header-launch-btn" href="/expenses">
                     <span>LAUNCH APP</span>
                     <span class="material-symbols-outlined" style="font-size: 16px;">open_in_new</span>
@@ -2193,10 +2196,10 @@
             <div class="sidebar-header-label" style="margin-bottom: 0.25rem;">
                 <span>Quick Navigation</span>
             </div>
-            <a class="neo-btn" href="/">← Portfolio</a>
-            <a class="neo-btn neo-btn-cyan" href="/projects/unmurce">Product Showcase</a>
+            <a class="neo-btn" href="/">← Home</a>
+            <a class="neo-btn neo-btn-cyan" href="/projects/unmurce">Unmurce Showcase</a>
+            <a class="neo-btn" href="/downloads/unmurce">Download APK</a>
             <a class="neo-btn neo-btn-yellow" href="/expenses">Launch Web App ↗</a>
-            <a class="neo-btn" href="/downloads">Android Downloads</a>
         </div>
     </aside>
 
@@ -2233,7 +2236,7 @@
                             <div class="badge-row">
                                 <span class="meta-pill meta-pill-emerald">
                                     <span class="dot-emerald"></span>
-                                    <span>v1.5.2 • PRODUCTION LIVE</span>
+                                    <span><span data-apk-version>v1.7.5</span> • PRODUCTION LIVE</span>
                                 </span>
                                 <span class="meta-pill meta-pill-neutral">STACK: FLUTTER + EXPRESS 5 + POSTGRESQL</span>
                                 <span class="meta-pill meta-pill-cyan">AUTHOR: ORLANDO DIAMOND PRASETYO</span>
@@ -4336,6 +4339,39 @@ flutter build apk --split-per-abi --release</code></pre>
 
             window.addEventListener('scroll', updateScrollSpy, { passive: true });
             updateScrollSpy();
+
+            async function syncLatestAppVersion() {
+                const slug = (document.body && document.body.dataset.downloadApp) || 'unmurce';
+
+                function applyLatestVersion(rawVersion) {
+                    const cleaned = String(rawVersion || '').trim();
+                    if (!cleaned) return false;
+                    const formatted = /^v/i.test(cleaned) ? cleaned : `v${cleaned}`;
+                    document.querySelectorAll('[data-apk-version]').forEach((el) => {
+                        el.textContent = formatted;
+                    });
+                    return true;
+                }
+
+                try {
+                    const res = await fetch(`/api/downloads/${encodeURIComponent(slug)}`, { cache: 'no-store' });
+                    if (res.ok) {
+                        const payload = await res.json();
+                        const latestVersion = payload && payload.app && payload.app.latest && payload.app.latest.version;
+                        if (applyLatestVersion(latestVersion)) return;
+                    }
+                } catch (e) {}
+
+                try {
+                    const fallbackRes = await fetch('/api/portfolio', { cache: 'no-store' });
+                    if (!fallbackRes.ok) return;
+                    const fallbackPayload = await fallbackRes.json();
+                    const apkVersion = fallbackPayload && fallbackPayload.content && fallbackPayload.content.apk && fallbackPayload.content.apk.version;
+                    applyLatestVersion(apkVersion);
+                } catch (e) {}
+            }
+
+            syncLatestAppVersion();
         });
     </script>
 </body>
