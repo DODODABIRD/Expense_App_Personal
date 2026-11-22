@@ -975,6 +975,7 @@ If an older copy of the functions was pasted into `~/.bashrc` (between `# >>> ex
 | `first-setup-backend` | One time: creates the network, builds, runs |
 | `first-setup-db` | One time: creates `expense-postgres` with the `pgdata` volume, using user/password/db from `DATABASE_URL` (password must not be URL-encoded) |
 | `restore-db <file.sql.gz>` | Restores a `backup-db` file. Refuses if the `expenses` table already exists, so run it before `first-setup-backend` |
+| `help-backend` | Lists all ops commands with short descriptions |
 
 **Without the helpers: update by hand**
 

@@ -551,6 +551,7 @@ tr.clickable { cursor: pointer; }
 /* ---------- Dialogs ---------- */
 
 dialog {
+  margin: auto;
   background: var(--card-soft);
   color: var(--text);
   border: 1px solid var(--line);

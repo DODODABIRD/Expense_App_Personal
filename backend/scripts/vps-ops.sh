@@ -227,3 +227,39 @@ restore-db() {
     || { echo "FAILED: restore stopped on an error (see above)"; return 1; }
   echo "OK: restored $file ($(docker exec "$db" psql "$url" -tAc 'SELECT count(*) FROM expenses') expenses)"
 }
+
+help-backend() {
+  cat <<'EOF'
+expense-backend VPS ops helpers (backend/scripts/vps-ops.sh)
+
+Deploy & lifecycle:
+  update-backend              Pull VPS_Test, tag :previous, build, recreate container, verify health
+  recreate-backend            Recreate container without pull/build (required after .env.local edits)
+  restart-backend             Restart container quickly (does not re-read .env.local)
+  stop-backend                Stop the backend container
+  start-backend               Start the backend container and wait for health
+  rollback-backend            Roll back to the :previous image (one step back)
+
+Logs, status & debugging:
+  status-backend              Show container status, health, created time, commit and disk usage
+  logs-backend                Follow live container logs (tail 200)
+  logs-backend-errors         Show error/fail/exception lines from the last 500 log lines
+  shell-backend               Open interactive sh inside the backend container
+  env-backend                 Edit backend/.env.local in $EDITOR (default nano)
+  git-info-backend            Show current branch, last 3 commits and local git status
+
+Database & maintenance:
+  backup-db                   Dump Postgres to ~/expense-backups/ (keeps 14 days)
+  db-shell                    Open interactive psql shell in the Postgres container
+  disk-check                  Show host root disk usage and docker system df
+  docker-cleanup              Prune dangling images and >7d build cache (keeps :previous)
+
+First-time setup & migration:
+  first-setup-db              One-time: create expense-postgres container and pgdata volume
+  restore-db <file.sql.gz>    Restore a backup-db file into an empty database
+  first-setup-backend         One-time: create network, build image and run container
+
+Other:
+  help-backend                Show this list of commands
+EOF
+}
