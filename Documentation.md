@@ -481,6 +481,8 @@ The Home counter goes up when Home is tapped while already on Home, and also whe
 
 `NeoBrutalistCalendar` is a custom range/single-date picker built on material + intl; it does not use `table_calendar`.
 
+`NeoSnackBar` (`neo_snackbar.dart`): standardized floating neo-brutalist snackbar with green `#06D6A0` (`success`) and red `#FF5D5D` (`error`) variants.
+
 ### 2.14 Categories and types
 
 - **Picker categories:** `makanan`, `transportasi`, `hiburan`, `school supply`, `baju`, `elektronik`, `kesehatan`.
@@ -1087,6 +1089,7 @@ Bump `version:` in `pubspec.yaml` and the hard-coded "Version 2.0.0" in `setting
 | `expense_summary_page_test.dart` | Outlier rules, type segments, empty state |
 | `local_notification_parser_test.dart` | Noise, income, ambiguity, Tier-1 apps except BSI and CIMB, amount formats, universal fallback |
 | `neo_brutalist_calendar_test.dart` | Narrow dialog layout |
+| `neo_snackbar_test.dart` | Success/error styling and snackbar replacement |
 | `notification_expense_service_test.dart` | Reference item building, BCA package variants |
 | `pdf_import_service_test.dart` | Backup restore, table recovery, non-IDR conversion, rejection of foreign PDFs |
 
@@ -1103,7 +1106,6 @@ Recorded so nobody mistakes them for intended behaviour. Fix only when asked.
 - Amounts typed while the display currency is USD/EUR are saved without converting to IDR.
 - The WebSocket client and `getPublicConfig` are never called.
 - Unused dependencies: `mongo_dart`, `objectid`, `flutter_svg`, `postgres`, `table_calendar`.
-- `showNotificationSnackBar` is defined twice (`hp2.dart`, `settings_page.dart`).
 - The "Expense reminders" toggle does nothing.
 - The permission page says processing is local, but the cloud parser runs first.
 - Naming is inconsistent: Android label "UNMURCE" vs. MaterialApp title / About "Expense App".

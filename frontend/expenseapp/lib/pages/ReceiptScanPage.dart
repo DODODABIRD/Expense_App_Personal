@@ -11,6 +11,7 @@ import '../services/ApiService.dart';
 import '../services/databaseHelper.dart';
 import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
+import '../widgets/neo_snackbar.dart';
 
 class ReceiptScanPage extends StatefulWidget {
   const ReceiptScanPage({super.key});
@@ -412,20 +413,7 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
   Future<void> _saveSelectedItems() async {
     final selected = _items.where((item) => item.checked).toList();
     if (selected.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFFFF5D5D),
-          content: const Text(
-            'Select at least one item to save.',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-        ),
-      );
+      NeoSnackBar.error(context, 'Select at least one item to save.');
       return;
     }
 
@@ -459,53 +447,16 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
       }
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFF06D6A0),
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.black),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Saved ${selected.length} item(s) from receipt!',
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      NeoSnackBar.success(
+        context,
+        'Saved ${selected.length} item(s) from receipt!',
       );
       Navigator.pop(context, true);
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Save receipt items');
       if (!mounted) return;
       Navigator.pop(context); // Close loading dialog
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFFFF5D5D),
-          content: Text(
-            'Could not save items: $error',
-            style: const TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      );
+      NeoSnackBar.error(context, 'Could not save items: $error');
     }
   }
 

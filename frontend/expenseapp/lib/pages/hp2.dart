@@ -17,6 +17,7 @@ import '../services/auth_service.dart';
 import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
 import '../widgets/neo_brutalist_calendar.dart';
+import '../widgets/neo_snackbar.dart';
 import 'ExpenseAddPage.dart';
 import 'ExpenseEdit.dart';
 import 'ExpenseSumarry.dart';
@@ -100,7 +101,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   Future<void> _handlePendingNotificationAdded() async {
     await _loadPendingNotificationCount();
     if (mounted) {
-      showNotificationSnackBar(
+      NeoSnackBar.success(
         context,
         'A parsed notification is ready for review.',
       );
@@ -139,11 +140,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
 
   Future<void> _showNotificationParserError(String error) async {
     if (!mounted) return;
-    showNotificationSnackBar(
-      context,
-      'Could not parse notification: $error',
-      isError: true,
-    );
+    NeoSnackBar.error(context, 'Could not parse notification: $error');
   }
 
   Future<void> _checkFirstTimeNotificationPermission() async {
@@ -562,15 +559,11 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     try {
       await DatabaseHelp.deleteAllForCurrentUser();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('All expenses deleted.')));
+      NeoSnackBar.success(context, 'All expenses deleted.');
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Delete all expenses');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not delete expenses: $error')),
-      );
+      NeoSnackBar.error(context, 'Could not delete expenses: $error');
     }
   }
 
@@ -580,18 +573,14 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
       final expenses = await DatabaseHelp.getData();
       if (!mounted) return;
       if (expenses.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("There are no expenses to export.")),
-        );
+        NeoSnackBar.error(context, 'There are no expenses to export.');
         return;
       }
       await PdfExportService.exportExpenses(context: context, expenses: expenses);
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, "Export expense report");
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Could not export PDF: $error")),
-      );
+      NeoSnackBar.error(context, 'Could not export PDF: $error');
     }
   }
 
@@ -616,9 +605,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Import expense report');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not import PDF: $error')),
-        );
+        NeoSnackBar.error(context, 'Could not import PDF: $error');
       }
       return;
     } finally {
@@ -627,19 +614,14 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
 
     if (!mounted) return;
     if (parsed.expenses.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No transactions found in this PDF.')),
-      );
+      NeoSnackBar.error(context, 'No transactions found in this PDF.');
       return;
     }
     if (candidates.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'All ${parsed.expenses.length} expense(s) in this PDF are '
-            'already present.',
-          ),
-        ),
+      NeoSnackBar.success(
+        context,
+        'All ${parsed.expenses.length} expense(s) in this PDF are '
+        'already present.',
       );
       return;
     }
@@ -652,20 +634,15 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
       if (!mounted) return;
       listKey.currentState?._loadData();
       final skipped = parsed.expenses.length - candidates.length;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Restored ${candidates.length} expense(s) from PDF'
-            '${skipped > 0 ? ' ($skipped duplicate(s) skipped)' : ''}.',
-          ),
-        ),
+      NeoSnackBar.success(
+        context,
+        'Restored ${candidates.length} expense(s) from PDF'
+        '${skipped > 0 ? ' ($skipped duplicate(s) skipped)' : ''}.',
       );
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Restore expenses from PDF');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not restore expenses: $error')),
-      );
+      NeoSnackBar.error(context, 'Could not restore expenses: $error');
     }
   }
 
@@ -790,9 +767,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Change currency');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not change currency: $error')),
-        );
+        NeoSnackBar.error(context, 'Could not change currency: $error');
       }
     } finally {
       if (mounted) setState(() => _isChangingCurrency = false);
@@ -803,15 +778,20 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
     try {
       await Throw.syncPendingExpenses();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Sync retry completed.')));
+      final pendingCount = await DatabaseHelp.getUnsyncedCount();
+      if (!mounted) return;
+      if (pendingCount == 0) {
+        NeoSnackBar.success(context, 'Sync retry completed.');
+      } else {
+        NeoSnackBar.error(
+          context,
+          '$pendingCount expense(s) could not be synced.',
+        );
+      }
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Retry expense sync');
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not retry sync: $error')));
+      NeoSnackBar.error(context, 'Could not retry sync: $error');
     }
   }
 
@@ -825,21 +805,18 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
       listKey.currentState?._loadData(syncPending: false);
       final pendingCount = await DatabaseHelp.getUnsyncedCount();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            pendingCount == 0
-                ? 'All expenses re-synced with the server.'
-                : '$pendingCount expense(s) could not be re-synced.',
-          ),
-        ),
-      );
+      if (pendingCount == 0) {
+        NeoSnackBar.success(context, 'All expenses re-synced with the server.');
+      } else {
+        NeoSnackBar.error(
+          context,
+          '$pendingCount expense(s) could not be re-synced.',
+        );
+      }
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Force re-sync all expenses');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not re-sync expenses: $error')),
-      );
+      NeoSnackBar.error(context, 'Could not re-sync expenses: $error');
     } finally {
       if (mounted) setState(() => _isResyncingExpenses = false);
     }
@@ -854,21 +831,16 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
 
       if (!mounted) return;
       listKey.currentState?._loadData();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            imported == 0
-                ? 'Your local data is already up to date.'
-                : 'Loaded $imported expense(s) from your account.',
-          ),
-        ),
+      NeoSnackBar.success(
+        context,
+        imported == 0
+            ? 'Your local data is already up to date.'
+            : 'Loaded $imported expense(s) from your account.',
       );
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Load online expenses');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not load online expenses: $error')),
-      );
+      NeoSnackBar.error(context, 'Could not load online expenses: $error');
     } finally {
       if (mounted) setState(() => _isLoadingOnlineExpenses = false);
     }
@@ -889,9 +861,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
         newPassword: passwords[1],
       );
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Password updated.')));
+      NeoSnackBar.success(context, 'Password updated.');
     } on FirebaseAuthException catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Change password');
       if (!mounted) return;
@@ -899,9 +869,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
           error.code == 'wrong-password' || error.code == 'invalid-credential'
           ? 'Current password is incorrect.'
           : error.message ?? 'Could not update password.';
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(message)));
+      NeoSnackBar.error(context, message);
     }
   }
 
@@ -1569,47 +1537,6 @@ class _FilterPanelState extends State<_FilterPanel> {
     if (s.isEmpty) return s;
     return s[0].toUpperCase() + s.substring(1);
   }
-}
-
-void showNotificationSnackBar(
-  BuildContext context,
-  String message, {
-  bool isError = false,
-}) {
-  final foregroundColor = isError ? Colors.black : Colors.white;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: isError
-          ? const Color(0xFFFFD6D6)
-          : const Color(0xFF22262B),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Colors.black, width: 1.5),
-      ),
-      content: Row(
-        children: [
-          Icon(
-            isError
-                ? Icons.error_outline_rounded
-                : Icons.notifications_active_rounded,
-            color: isError ? const Color(0xFFFF5D5D) : const Color(0xFF5DF9FF),
-            size: 18,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: GoogleFonts.itim(
-                color: foregroundColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }
 
 class ListWithCards extends StatefulWidget {

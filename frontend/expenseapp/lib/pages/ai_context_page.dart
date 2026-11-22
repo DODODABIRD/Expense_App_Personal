@@ -8,6 +8,7 @@ import '../services/ApiService.dart';
 import '../services/error_log_service.dart';
 import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
+import '../widgets/neo_snackbar.dart';
 
 class AiContextPage extends StatefulWidget {
   const AiContextPage({super.key, this.loadReference});
@@ -73,14 +74,11 @@ class _AiContextPageState extends State<AiContextPage> {
   }
 
   void _showMessage(String message, {bool isError = false}) {
-    final colors = Theme.of(context).colorScheme;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: isError ? colors.error : colors.inverseSurface,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
+    if (isError) {
+      NeoSnackBar.error(context, message);
+    } else {
+      NeoSnackBar.success(context, message);
+    }
   }
 
   @override

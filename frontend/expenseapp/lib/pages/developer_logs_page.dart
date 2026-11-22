@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'package:share_plus/share_plus.dart';
 
 import '../services/error_log_service.dart';
+import '../widgets/neo_snackbar.dart';
 
 class DeveloperLogsPage extends StatefulWidget {
   final ErrorLogService? errorLogService;
@@ -60,9 +61,7 @@ class _DeveloperLogsPageState extends State<DeveloperLogsPage> {
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Export and share developer logs');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not share error logs: $error')),
-        );
+        NeoSnackBar.error(context, 'Could not share error logs: $error');
       }
     } finally {
       if (mounted) setState(() => _isSharing = false);
@@ -103,15 +102,11 @@ class _DeveloperLogsPageState extends State<DeveloperLogsPage> {
       await _errorLogService.deleteAllLogs();
       if (!mounted) return;
       setState(() => _entries = []);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('All logs deleted.')),
-      );
+      NeoSnackBar.success(context, 'All logs deleted.');
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Delete developer logs');
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Could not delete logs: $error')),
-        );
+        NeoSnackBar.error(context, 'Could not delete logs: $error');
       }
     } finally {
       if (mounted) setState(() => _isDeleting = false);

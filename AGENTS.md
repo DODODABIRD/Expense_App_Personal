@@ -103,7 +103,7 @@ frontend/expenseapp/
 │   │                      notification_expense_service, local_notification_parser,
 │   │                      pdf_export_service, pdf_import_service, error_log_service
 │   ├── models/expense_model.dart
-│   └── widgets/           neo_animations, neo_brutalist_calendar
+│   └── widgets/           neo_animations, neo_brutalist_calendar, neo_snackbar
 ├── android/app/src/main/kotlin/com/example/expenseapp/  MainActivity.kt, NotificationListener.kt
 └── test/
 ```

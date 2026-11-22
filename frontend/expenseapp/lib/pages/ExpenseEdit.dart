@@ -7,6 +7,7 @@ import '../services/databaseHelper.dart';
 import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
 import '../widgets/neo_brutalist_calendar.dart';
+import '../widgets/neo_snackbar.dart';
 
 class ExpenseEdit extends StatefulWidget {
   final int? expenseId;
@@ -1000,20 +1001,7 @@ class _ExpenseEditState extends State<ExpenseEdit> {
     if (shouldDelete == true) {
       await DatabaseHelp.deleteTs(widget.expenseId);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFF06D6A0),
-          content: const Text(
-            'Expense deleted successfully!',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-        ),
-      );
+      NeoSnackBar.success(context, 'Expense deleted successfully!');
       Navigator.pop(context);
     }
   }
@@ -1027,38 +1015,12 @@ class _ExpenseEditState extends State<ExpenseEdit> {
         0;
 
     if (cleanName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFFFF5D5D),
-          content: const Text(
-            'Please enter an expense name!',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-        ),
-      );
+      NeoSnackBar.error(context, 'Please enter an expense name!');
       return;
     }
 
     if (cleanAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFFFF5D5D),
-          content: const Text(
-            'Please enter a valid amount!',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-        ),
-      );
+      NeoSnackBar.error(context, 'Please enter a valid amount!');
       return;
     }
 
@@ -1079,54 +1041,14 @@ class _ExpenseEditState extends State<ExpenseEdit> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFF06D6A0),
-          content: const Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.black),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Expense updated successfully!',
-                  style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      NeoSnackBar.success(context, 'Expense updated successfully!');
 
       Navigator.pop(context);
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Update expense');
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFFFF5D5D),
-          content: Text(
-            'Failed to update: $error',
-            style: const TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      );
+      NeoSnackBar.error(context, 'Failed to update: $error');
     }
   }
 }

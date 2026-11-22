@@ -6,6 +6,7 @@ import '../services/databaseHelper.dart';
 import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
 import '../widgets/neo_brutalist_calendar.dart';
+import '../widgets/neo_snackbar.dart';
 import 'ReceiptScanPage.dart';
 
 class ExpenseAddPage extends StatefulWidget {
@@ -845,38 +846,12 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
         0;
 
     if (cleanName.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFFFF5D5D),
-          content: const Text(
-            'Please enter an expense name!',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-        ),
-      );
+      NeoSnackBar.error(context, 'Please enter an expense name!');
       return;
     }
 
     if (cleanAmount <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFFFF5D5D),
-          content: const Text(
-            'Please enter a valid amount!',
-            style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-          ),
-        ),
-      );
+      NeoSnackBar.error(context, 'Please enter a valid amount!');
       return;
     }
 
@@ -896,30 +871,9 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
 
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFF06D6A0),
-          content: Row(
-            children: [
-              const Icon(Icons.check_circle, color: Colors.black),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Expense "$cleanName" saved successfully!',
-                  style: const TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      NeoSnackBar.success(
+        context,
+        'Expense "$cleanName" saved successfully!',
       );
 
       if (widget.embedded) {
@@ -938,23 +892,7 @@ class _ExpenseAddPageState extends State<ExpenseAddPage> {
       captureAppError(error, stackTrace, 'Save expense');
       if (!mounted) return;
       setState(() => _isSaving = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: const BorderSide(color: Colors.black, width: 2),
-          ),
-          backgroundColor: const Color(0xFFFF5D5D),
-          content: Text(
-            'Failed to save: $error',
-            style: const TextStyle(
-              color: Colors.black,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      );
+      NeoSnackBar.error(context, 'Failed to save: $error');
     }
   }
 }

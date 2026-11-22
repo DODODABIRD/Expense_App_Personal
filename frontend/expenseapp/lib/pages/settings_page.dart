@@ -6,6 +6,7 @@ import '../services/databaseHelper.dart';
 import '../services/notification_expense_service.dart';
 import '../services/error_log_service.dart';
 import '../widgets/neo_animations.dart';
+import '../widgets/neo_snackbar.dart';
 import 'ai_context_page.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -102,11 +103,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _showParserError(String error) async {
     if (!mounted) return;
-    showNotificationSnackBar(
-      context,
-      'Could not parse notification: $error',
-      isError: true,
-    );
+    NeoSnackBar.error(context, 'Could not parse notification: $error');
   }
 
   Future<void> _toggleAutoExpenseParser(bool enabled) async {
@@ -143,9 +140,7 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Refresh expense sync status');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not refresh sync status: $error')),
-      );
+      NeoSnackBar.error(context, 'Could not refresh sync status: $error');
     }
   }
 
@@ -157,9 +152,7 @@ class _SettingsPageState extends State<SettingsPage> {
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Force re-sync all expenses');
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not re-sync expenses: $error')),
-      );
+      NeoSnackBar.error(context, 'Could not re-sync expenses: $error');
     }
   }
 
@@ -176,17 +169,16 @@ class _SettingsPageState extends State<SettingsPage> {
       final count = await NotificationExpenseService.instance
           .updateAiNotificationReference();
       if (!mounted) return;
-      showNotificationSnackBar(
+      NeoSnackBar.success(
         context,
         'AI notification reference updated with $count expenses.',
       );
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Update AI notification reference');
       if (!mounted) return;
-      showNotificationSnackBar(
+      NeoSnackBar.error(
         context,
         'Could not update AI notification reference: $error',
-        isError: true,
       );
     } finally {
       if (mounted) setState(() => _isUpdatingAiReference = false);
@@ -685,45 +677,4 @@ class _SettingsAction extends StatelessWidget {
       ),
     );
   }
-}
-
-void showNotificationSnackBar(
-  BuildContext context,
-  String message, {
-  bool isError = false,
-}) {
-  final foregroundColor = isError ? Colors.black : Colors.white;
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      behavior: SnackBarBehavior.floating,
-      backgroundColor: isError
-          ? const Color(0xFFFFD6D6)
-          : const Color(0xFF22262B),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: Colors.black, width: 1.5),
-      ),
-      content: Row(
-        children: [
-          Icon(
-            isError
-                ? Icons.error_outline_rounded
-                : Icons.notifications_active_rounded,
-            color: isError ? const Color(0xFFFF5D5D) : const Color(0xFF2196F3),
-            size: 18,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: GoogleFonts.itim(
-                color: foregroundColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
 }

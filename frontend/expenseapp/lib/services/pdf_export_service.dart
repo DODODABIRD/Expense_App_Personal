@@ -15,6 +15,7 @@ import 'package:path_provider/path_provider.dart';
 import '../main.dart';
 import '../services/auth_service.dart';
 import '../services/error_log_service.dart';
+import '../widgets/neo_snackbar.dart';
 import 'pdf_import_service.dart';
 
 class PdfExportService {
@@ -24,9 +25,7 @@ class PdfExportService {
   }) async {
     try {
       if (expenses.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('There are no expenses to export.')),
-        );
+        NeoSnackBar.error(context, 'There are no expenses to export.');
         return;
       }
 
@@ -39,9 +38,7 @@ class PdfExportService {
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Export expense report');
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Could not export PDF: $error')));
+      NeoSnackBar.error(context, 'Could not export PDF: $error');
     }
   }
 
@@ -772,16 +769,13 @@ class PdfExportService {
     }
 
     if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          couldOpenFile
-              ? (path?.isEmpty != false
-                  ? 'PDF exported to Downloads.'
-                  : 'PDF exported: $path')
-              : 'PDF exported. Open it from Downloads.',
-        ),
-      ),
+    NeoSnackBar.success(
+      context,
+      couldOpenFile
+          ? (path?.isEmpty != false
+              ? 'PDF exported to Downloads.'
+              : 'PDF exported: $path')
+          : 'PDF exported. Open it from Downloads.',
     );
   }
 

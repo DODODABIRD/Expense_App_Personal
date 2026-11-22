@@ -6,6 +6,7 @@ import '../services/databaseHelper.dart';
 import '../services/error_log_service.dart';
 import '../services/notification_expense_service.dart';
 import '../widgets/neo_animations.dart';
+import '../widgets/neo_snackbar.dart';
 
 class PendingNotificationReviewPage extends StatefulWidget {
   final Future<void> Function()? onExpenseApproved;
@@ -113,7 +114,7 @@ class _PendingNotificationReviewPageState
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Load pending notifications');
       if (mounted) setState(() => _isLoading = false);
-      _showMessage('Could not load pending notifications.');
+      _showMessage('Could not load pending notifications.', isError: true);
     }
   }
 
@@ -154,6 +155,7 @@ class _PendingNotificationReviewPageState
       captureAppError(error, stackTrace, 'Save pending notification edits');
       _showMessage(
         error is FormatException ? error.message : 'Could not save changes.',
+        isError: true,
       );
     } finally {
       _endAction(item.id);
@@ -182,6 +184,7 @@ class _PendingNotificationReviewPageState
         error is FormatException
             ? error.message
             : 'Could not add this expense.',
+        isError: true,
       );
     } finally {
       _endAction(item.id);
@@ -202,7 +205,7 @@ class _PendingNotificationReviewPageState
       if (mounted) setState(() => _items.remove(item));
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Discard pending notification');
-      _showMessage('Could not discard this notification.');
+      _showMessage('Could not discard this notification.', isError: true);
     } finally {
       _endAction(item.id);
     }
@@ -243,25 +246,13 @@ class _PendingNotificationReviewPageState
   String _sourceLabel(String packageName) =>
       NotificationExpenseService.supportedApps[packageName] ?? packageName;
 
-  void _showMessage(String message) {
+  void _showMessage(String message, {bool isError = false}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        behavior: SnackBarBehavior.floating,
-        backgroundColor: const Color(0xFF22262B),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: const BorderSide(color: Colors.black, width: 1.5),
-        ),
-        content: Text(
-          message,
-          style: GoogleFonts.itim(
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
+    if (isError) {
+      NeoSnackBar.error(context, message);
+    } else {
+      NeoSnackBar.success(context, message);
+    }
   }
 
   @override
