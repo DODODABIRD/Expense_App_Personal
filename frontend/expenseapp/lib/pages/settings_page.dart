@@ -131,8 +131,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadSyncStatus() async {
-    final pending = await DatabaseHelp.getUnsyncedData();
-    if (mounted) setState(() => _pendingSync = pending.length);
+    final pendingCount = await DatabaseHelp.getUnsyncedCount();
+    if (mounted) setState(() => _pendingSync = pendingCount);
   }
 
   Future<void> _retrySync() async {

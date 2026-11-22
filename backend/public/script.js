@@ -288,6 +288,7 @@ class LiveSyncManager {
         this.pollingTimer = null;
         this.status = 'disconnected'; // 'live', 'syncing', 'offline'
         this.retryCount = 0;
+        this.bulkRefreshTimer = null;
     }
 
     async connect() {
@@ -433,6 +434,19 @@ class LiveSyncManager {
             currentExpenses = [];
             this.refreshActiveView();
             showToast('All transactions cleared');
+        } else if (data.type === 'bulk_upserted') {
+            clearTimeout(this.bulkRefreshTimer);
+            const triggerRefresh = async () => {
+                if (isFetching) {
+                    this.bulkRefreshTimer = setTimeout(triggerRefresh, 250);
+                    return;
+                }
+                await fetchExpenses(false);
+                this.refreshActiveView();
+            };
+            this.bulkRefreshTimer = setTimeout(triggerRefresh, 250);
+            const count = Number(data.count) || 0;
+            showToast(count > 0 ? `Synced ${count} transaction(s)` : 'Transactions synced');
         }
     }
 
@@ -465,6 +479,10 @@ class LiveSyncManager {
         if (this.pollingTimer) {
             clearInterval(this.pollingTimer);
             this.pollingTimer = null;
+        }
+        if (this.bulkRefreshTimer) {
+            clearTimeout(this.bulkRefreshTimer);
+            this.bulkRefreshTimer = null;
         }
         this.updateStatus('offline', 'Offline');
     }

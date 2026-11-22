@@ -171,15 +171,22 @@ function toExpenseJson(row) {
   };
 }
 
+function normalizeExpenseFields(fields) {
+  return {
+    localId: String(fields.localId),
+    name: String(fields.name ?? ""),
+    amount: Number.isFinite(Number(fields.amount))
+      ? Math.round(Number(fields.amount))
+      : 0,
+    category: String(fields.category ?? "lainnya"),
+    type: String(fields.type ?? "unexpected"),
+    date: String(fields.date ?? ""),
+  };
+}
+
 async function upsertExpense(ownerId, fields) {
-  const localId = String(fields.localId);
-  const name = String(fields.name ?? "");
-  const amount = Number.isFinite(Number(fields.amount))
-    ? Math.round(Number(fields.amount)) 
-    : 0;
-  const category = String(fields.category ?? "lainnya");
-  const type = String(fields.type ?? "unexpected");
-  const date = String(fields.date ?? "");
+  const { localId, name, amount, category, type, date } =
+    normalizeExpenseFields(fields);
 
   const result = await getPool().query(
     `INSERT INTO expenses (owner_id, local_id, name, amount, category, type, date)
@@ -203,6 +210,55 @@ async function upsertExpense(ownerId, fields) {
     ]
   );
   return toExpenseJson(result.rows[0]);
+}
+
+async function upsertExpensesBulk(ownerId, items) {
+  if (!Array.isArray(items) || items.length === 0) return [];
+
+  // Deduplicate by localId (last write wins) so PostgreSQL never sees two
+  // rows targeting the same conflict key in one INSERT statement.
+  const deduped = new Map();
+  for (const item of items) {
+    const normalized = normalizeExpenseFields(item);
+    deduped.set(normalized.localId, normalized);
+  }
+
+  const localIds = [];
+  const names = [];
+  const amounts = [];
+  const categories = [];
+  const types = [];
+  const dates = [];
+  for (const item of deduped.values()) {
+    localIds.push(item.localId);
+    names.push(item.name);
+    amounts.push(item.amount);
+    categories.push(item.category);
+    types.push(item.type);
+    dates.push(item.date);
+  }
+
+  await getPool().query(
+    `INSERT INTO expenses (owner_id, local_id, name, amount, category, type, date)
+     SELECT $1, u.local_id, u.name, u.amount, u.category, u.type, u.date
+     FROM UNNEST($2::text[], $3::text[], $4::int[], $5::text[], $6::text[], $7::text[])
+       AS u(local_id, name, amount, category, type, date)
+     ON CONFLICT (owner_id, local_id) DO UPDATE SET
+       name = EXCLUDED.name,
+       amount = EXCLUDED.amount,
+       category = EXCLUDED.category,
+       type = EXCLUDED.type,
+       date = EXCLUDED.date,
+       updated_at = now()
+     WHERE expenses.name IS DISTINCT FROM EXCLUDED.name
+        OR expenses.amount IS DISTINCT FROM EXCLUDED.amount
+        OR expenses.category IS DISTINCT FROM EXCLUDED.category
+        OR expenses.type IS DISTINCT FROM EXCLUDED.type
+        OR expenses.date IS DISTINCT FROM EXCLUDED.date`,
+    [ownerId, localIds, names, amounts, categories, types, dates]
+  );
+
+  return localIds;
 }
 
 async function listExpenses(ownerId) {
@@ -1098,6 +1154,7 @@ module.exports = {
   updateRagFeedback,
   upsertDeviceSync,
   upsertExpense,
+  upsertExpensesBulk,
   upsertNotificationReference,
 };
 

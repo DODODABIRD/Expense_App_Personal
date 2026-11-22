@@ -15,6 +15,7 @@ const {
   toExpenseJson,
   updateExpenseByLocalId,
   upsertExpense,
+  upsertExpensesBulk,
   upsertNotificationReference,
 } = require("../api/db");
 
@@ -133,6 +134,72 @@ test("upsertExpense inserts or updates expense and returns json without any serv
     "makanan",
     "expected",
     "2026-10-08",
+  ]);
+});
+
+test("upsertExpensesBulk returns empty array without querying when items is empty", async () => {
+  let called = false;
+  setPool({
+    async query() {
+      called = true;
+      return { rows: [] };
+    },
+  });
+
+  const ids = await upsertExpensesBulk("user-1", []);
+  assert.deepEqual(ids, []);
+  assert.equal(called, false);
+});
+
+test("upsertExpensesBulk executes single UNNEST upsert, deduplicates localIds, and rounds amounts", async () => {
+  const queries = [];
+  setPool({
+    async query(sql, params) {
+      queries.push({ sql, params });
+      return { rows: [] };
+    },
+  });
+
+  const ids = await upsertExpensesBulk("user-1", [
+    {
+      localId: "10",
+      name: "Kopi",
+      amount: 18000.4,
+      category: "makanan",
+      type: "expected",
+      date: "2026-10-08",
+    },
+    {
+      localId: "11",
+      name: "Bus",
+      amount: 5000,
+      category: "transportasi",
+      type: "unexpected",
+      date: "2026-10-09",
+    },
+    {
+      localId: "10",
+      name: "Kopi Susu",
+      amount: 22000.6,
+      category: "makanan",
+      type: "expected",
+      date: "2026-10-08",
+    },
+  ]);
+
+  assert.deepEqual(ids, ["10", "11"]);
+  assert.equal(queries.length, 1);
+  assert.ok(queries[0].sql.includes("INSERT INTO expenses"));
+  assert.ok(queries[0].sql.includes("FROM UNNEST("));
+  assert.ok(queries[0].sql.includes("IS DISTINCT FROM"));
+  assert.deepEqual(queries[0].params, [
+    "user-1",
+    ["10", "11"],
+    ["Kopi Susu", "Bus"],
+    [22001, 5000],
+    ["makanan", "transportasi"],
+    ["expected", "unexpected"],
+    ["2026-10-08", "2026-10-09"],
   ]);
 });
 

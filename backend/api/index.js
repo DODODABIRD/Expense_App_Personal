@@ -190,6 +190,7 @@ function createApp() {
 
   // Expense CRUD routes
   app.post("/api/users", requireAuth, expensesRoutes.createExpense);
+  app.post("/api/users/bulk", requireAuth, expensesRoutes.bulkUpsertExpenses);
   app.get("/api/users", requireAuth, expensesRoutes.listAllExpenses);
   app.get("/api/users/:localId", requireAuth, expensesRoutes.getExpense);
   app.put("/api/users/:localId", requireAuth, expensesRoutes.updateExpense);

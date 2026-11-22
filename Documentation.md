@@ -238,8 +238,8 @@ All calls send `Authorization: Bearer <Firebase ID token>`, except `getPublicCon
 | `updateUserByLocalId` | PUT `/users/{localId}` | 10s | 2xx → `markSynced`; 404 → false |
 | `deleteUserByLocalId` | DELETE `/users/{localId}` | none | Fire-and-forget |
 | `deleteAllExpenses` | POST `/users/delete-all` | 15s | |
-| `syncPendingExpenses` | — | — | `createExpense` for every unsynced row, then `reportDeviceSync` |
-| `reportDeviceSync` | POST `/sync/beat` `{deviceId, deviceName, platform, appVersion, expenseCount}` | 10s | |
+| `syncPendingExpenses` | POST `/users/bulk` | 30s | Single-flight serialized; pushes in chunks of 500 with a shared `http.Client`, single token fetch, embedded `device` heartbeat on the final chunk, and 404 fallback to `POST /users` |
+| `reportDeviceSync` | POST `/sync/beat` `{deviceId, deviceName, platform, appVersion, expenseCount}` | 10s | Throttled to a 30s cooldown after a successful heartbeat |
 | `connectLiveWebSocket` etc. | WS `wsUrl?token=` | — | Sends `{type:'auth'}` and pings every 25s. **Not called anywhere.** |
 | `getPublicConfig` | GET `/public-config` | 10s | **Not called anywhere.** |
 
@@ -257,9 +257,9 @@ All calls send `Authorization: Bearer <Firebase ID token>`, except `getPublicCon
 **Pushes to the server.** `syncPendingExpenses` runs:
 - on every list load and on app resume;
 - from Settings "Retry sync";
-- from "Re-sync all", which first marks every row unsynced.
+- from "Re-sync all", which marks every row unsynced, shows a loading overlay, and reloads the list without triggering a second sync pass.
 
-The server upserts on `(owner_id, local_id)`, so re-sending is safe.
+Concurrent sync calls are serialized into at most one queued follow-up pass. Rows are pushed in chunks of 500 via `POST /api/users/bulk` (falling back to `POST /api/users` on 404) using a single HTTP client and token, and each confirmed chunk is marked `synced = 1` in one SQLite transaction (`markManySynced`). The server upserts on `(owner_id, local_id)`, so re-sending is safe.
 
 **Pulls from the server.** Manual only, through "Load online expenses":
 - `GET /users` → `importMissingExpenses`;
@@ -554,6 +554,7 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
 |---|---|
 | GET `/api/events` | SSE stream (§3.4). Firebase ID token in the Bearer header or `?token=`; 401 if missing/invalid, also 401 (not 503) when Firebase is not configured |
 | POST `/api/users` | `{localId*, name, amount, category, type, date}` → the expense. Upserts on `(owner_id, local_id)`. Broadcasts `expense_created`. |
+| POST `/api/users/bulk` | `{expenses* (≤ 1000), device?}` → `{count, syncedLocalIds}`. Single-statement `UNNEST` upsert on `(owner_id, local_id)`; optionally updates `device_syncs`. Broadcasts `bulk_upserted`. |
 | GET `/api/users` | → array ordered by `date DESC, created_at DESC` |
 | GET `/api/users/:localId` | → the expense, or 404 |
 | PUT `/api/users/:localId` | partial fields → the updated expense, or 404. Broadcasts `expense_updated`. |
@@ -689,6 +690,7 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
   | `expense_updated` | `{item}` |
   | `expense_deleted` | `{localId}` |
   | `bulk_deleted` | `{deletedCount}` |
+  | `bulk_upserted` | `{count}` |
 
 - Sources: user routes and admin edits/deletes.
 
@@ -1066,8 +1068,8 @@ Bump `version:` in `pubspec.yaml` and the hard-coded "Version 2.0.0" in `setting
 |---|---|
 | `admin.test.js` | Panel redirects, secret login, asset CRUD/backups/restore, overview, expenses, CSV, audit, logout, 503 without `ADMIN_SECRET` |
 | `admin_features.test.js` | Portfolio CMS, RAG admin, health, devices, admin expense edit/delete |
-| `api_users.test.js` | `/api/users` CRUD with mocked `verifyIdToken`, 401/404, notification reference, delete-all |
-| `db.test.js` | Row mapping, SSL detection, `ensureSchema` SQL, CRUD, JSONB reference |
+| `api_users.test.js` | `/api/users` CRUD and `/api/users/bulk` with mocked `verifyIdToken`, 401/404, notification reference, delete-all |
+| `db.test.js` | Row mapping, SSL detection, `ensureSchema` SQL, CRUD, bulk `UNNEST` upsert, JSONB reference |
 | `downloads.test.js` | Version comparison, seeding, admin app/release CRUD, latest selection, public endpoints |
 | `notification_context.test.js` | Reference refresh (≤ 100 items), template building |
 
@@ -1078,6 +1080,7 @@ Bump `version:` in `pubspec.yaml` and the hard-coded "Version 2.0.0" in `setting
 | File | Covers |
 |---|---|
 | `ai_context_page_test.dart` | Category ranges, empty state, retry |
+| `api_sync_test.dart` | Chunked bulk push, single token fetch, embedded device heartbeat on final chunk, 404 fallback, mid-sync failure handling |
 | `developer_logs_page_test.dart` | Empty state, expandable stack trace |
 | `error_log_service_test.dart` | Persist/read order, export |
 | `expense_edit_page_test.dart` | Null expense id |

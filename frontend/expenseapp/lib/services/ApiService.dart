@@ -38,7 +38,25 @@ class ReceiptScanOperation {
   void cancel() => _cancel();
 }
 
+class BulkSyncResult {
+  final int syncedCount;
+  final bool heartbeatSent;
+  final bool failed;
+
+  const BulkSyncResult({
+    required this.syncedCount,
+    required this.heartbeatSent,
+    required this.failed,
+  });
+}
+
 class Throw {
+  static const int bulkSyncChunkSize = 500;
+  static const Duration _heartbeatCooldown = Duration(seconds: 30);
+
+  static Future<void>? _inFlightSync;
+  static Future<void>? _queuedSync;
+  static DateTime? _lastHeartbeatAt;
   static Future<Map<String, String>> _headers() async {
     return {
       'Content-Type': 'application/json',
@@ -375,51 +393,266 @@ class Throw {
     }
   }
 
-  static Future<void> syncPendingExpenses() async {
-    final pendingExpenses = await DatabaseHelp.getUnsyncedData();
+  static Future<BulkSyncResult> pushExpenseBatches({
+    required List<Map<String, dynamic>> pendingExpenses,
+    required Future<String> Function() getToken,
+    required Future<void> Function(List<int> syncedLocalIds) onBatchSynced,
+    Map<String, dynamic>? deviceInfo,
+    http.Client? client,
+    String apiBaseUrl = baseUrl,
+    int chunkSize = bulkSyncChunkSize,
+  }) async {
+    if (chunkSize < 1) {
+      throw ArgumentError.value(chunkSize, 'chunkSize', 'must be >= 1');
+    }
+    if (pendingExpenses.isEmpty) {
+      return const BulkSyncResult(
+        syncedCount: 0,
+        heartbeatSent: false,
+        failed: false,
+      );
+    }
 
-    for (final expense in pendingExpenses) {
-      try {
-        // POST /users upserts by (owner, localId), so unsynced rows only ever
-        // need a single push regardless of whether the server already knows them.
-        await createExpense(
-          expense['id'] as int,
-          expense['name'] as String,
-          expense['amount'] as int,
-          expense['category'] as String,
-          expense['type'] as String,
-          expense['date'] as String,
-        );
-      } catch (error, stackTrace) {
-        captureAppError(error, stackTrace, 'Pending expense sync');
-        print('Pending sync failed: $error');
+    final token = await getToken();
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
+
+    final httpClient = client ?? http.Client();
+    var bulkUnsupported = false;
+    var syncedCount = 0;
+    var heartbeatSent = false;
+    var failed = false;
+
+    try {
+      for (var i = 0; i < pendingExpenses.length; i += chunkSize) {
+        final end = (i + chunkSize) > pendingExpenses.length
+            ? pendingExpenses.length
+            : i + chunkSize;
+        final chunk = pendingExpenses.sublist(i, end);
+        final isLastChunk = end >= pendingExpenses.length;
+        final chunkIds = chunk.map((e) => (e['id'] as num).toInt()).toList();
+
+        if (!bulkUnsupported) {
+          try {
+            final payload = <String, dynamic>{
+              'expenses': chunk
+                  .map(
+                    (e) => {
+                      'localId': (e['id'] as num).toInt(),
+                      'name': e['name'],
+                      'amount': (e['amount'] as num).toInt(),
+                      'category': e['category'],
+                      'type': e['type'],
+                      'date': e['date'],
+                    },
+                  )
+                  .toList(),
+              if (isLastChunk && deviceInfo != null) 'device': deviceInfo,
+            };
+
+            final response = await httpClient
+                .post(
+                  Uri.parse('$apiBaseUrl/users/bulk'),
+                  headers: headers,
+                  body: jsonEncode(payload),
+                )
+                .timeout(const Duration(seconds: 30));
+
+            if (response.statusCode == 404) {
+              bulkUnsupported = true;
+            } else if (response.statusCode >= 200 &&
+                response.statusCode < 300) {
+              final confirmedIds = _parseConfirmedLocalIds(
+                response.body,
+                chunkIds,
+              );
+              if (confirmedIds.isNotEmpty) {
+                await onBatchSynced(confirmedIds);
+                syncedCount += confirmedIds.length;
+              }
+              if (isLastChunk && deviceInfo != null) {
+                heartbeatSent = true;
+              }
+              continue;
+            } else {
+              throw Exception(
+                'Bulk sync failed (${response.statusCode}): ${response.body}',
+              );
+            }
+          } catch (error, stackTrace) {
+            captureAppError(error, stackTrace, 'Bulk expense sync');
+            failed = true;
+            break;
+          }
+        }
+
+        // Fallback for older backend servers that do not expose /users/bulk.
+        final succeededIds = <int>[];
+        for (final expense in chunk) {
+          final localId = (expense['id'] as num).toInt();
+          try {
+            final response = await httpClient
+                .post(
+                  Uri.parse('$apiBaseUrl/users'),
+                  headers: headers,
+                  body: jsonEncode({
+                    'localId': localId,
+                    'name': expense['name'],
+                    'amount': (expense['amount'] as num).toInt(),
+                    'category': expense['category'],
+                    'type': expense['type'],
+                    'date': expense['date'],
+                  }),
+                )
+                .timeout(const Duration(seconds: 10));
+
+            if (response.statusCode != 200 && response.statusCode != 201) {
+              throw Exception(
+                'Create failed (${response.statusCode}): ${response.body}',
+              );
+            }
+            succeededIds.add(localId);
+          } catch (error, stackTrace) {
+            captureAppError(error, stackTrace, 'Pending expense sync');
+            failed = true;
+          }
+        }
+        if (succeededIds.isNotEmpty) {
+          await onBatchSynced(succeededIds);
+          syncedCount += succeededIds.length;
+        }
+      }
+    } finally {
+      if (client == null) {
+        httpClient.close();
       }
     }
 
-    await reportDeviceSync();
+    return BulkSyncResult(
+      syncedCount: syncedCount,
+      heartbeatSent: heartbeatSent,
+      failed: failed,
+    );
+  }
+
+  static List<int> _parseConfirmedLocalIds(
+    String responseBody,
+    List<int> fallbackIds,
+  ) {
+    if (responseBody.trim().isEmpty) return fallbackIds;
+    try {
+      final decoded = jsonDecode(responseBody);
+      if (decoded is Map<String, dynamic> &&
+          decoded['syncedLocalIds'] is List) {
+        return (decoded['syncedLocalIds'] as List<dynamic>)
+            .map((id) => id is int ? id : int.tryParse(id.toString()))
+            .whereType<int>()
+            .toList();
+      }
+    } catch (_) {
+      // Fall back to the chunk's local IDs on unexpected 2xx bodies.
+    }
+    return fallbackIds;
+  }
+
+  static Future<void> syncPendingExpenses() {
+    if (_inFlightSync != null) {
+      return _queuedSync ??= _runQueuedSync();
+    }
+    return _startSyncPass();
+  }
+
+  static Future<void> _startSyncPass() {
+    final future = _runSyncPendingExpenses().whenComplete(() {
+      _inFlightSync = null;
+    });
+    _inFlightSync = future;
+    return future;
+  }
+
+  static Future<void> _runQueuedSync() async {
+    try {
+      await _inFlightSync;
+    } catch (_) {
+      // Let the queued follow-up pass run and report its own outcome.
+    }
+    _queuedSync = null;
+    final active = _inFlightSync ?? _startSyncPass();
+    await active;
+  }
+
+  static Future<void> _runSyncPendingExpenses() async {
+    final pendingExpenses = await DatabaseHelp.getUnsyncedData();
+    if (pendingExpenses.isEmpty) {
+      await _maybeReportDeviceSync();
+      return;
+    }
+
+    Map<String, dynamic>? deviceInfo;
+    try {
+      deviceInfo = await _buildDeviceSyncPayload();
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Build device sync payload');
+    }
+
+    final result = await pushExpenseBatches(
+      pendingExpenses: pendingExpenses,
+      getToken: AuthService.getIdToken,
+      onBatchSynced: DatabaseHelp.markManySynced,
+      deviceInfo: deviceInfo,
+    );
+
+    if (result.heartbeatSent) {
+      _lastHeartbeatAt = DateTime.now();
+    } else if (!result.failed) {
+      unawaited(_maybeReportDeviceSync(deviceInfo: deviceInfo));
+    }
+  }
+
+  static Future<Map<String, dynamic>> _buildDeviceSyncPayload() async {
+    final deviceId = await DatabaseHelp.getOrCreateDeviceId();
+    final expenseCount = await DatabaseHelp.getLocalExpenseCount();
+    return {
+      'deviceId': deviceId,
+      'deviceName':
+          '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
+      'platform': Platform.operatingSystem,
+      'appVersion': appVersion,
+      'expenseCount': expenseCount,
+    };
+  }
+
+  static Future<void> _maybeReportDeviceSync({
+    Map<String, dynamic>? deviceInfo,
+  }) async {
+    final last = _lastHeartbeatAt;
+    if (last != null &&
+        DateTime.now().difference(last) < _heartbeatCooldown) {
+      return;
+    }
+    await reportDeviceSync(deviceInfo: deviceInfo);
   }
 
   /// Reports this device's last successful sync so the admin panel can show
   /// per-device activity. Failures are logged and never block expense sync.
-  static Future<void> reportDeviceSync() async {
+  static Future<void> reportDeviceSync({
+    Map<String, dynamic>? deviceInfo,
+  }) async {
     try {
-      final deviceId = await DatabaseHelp.getOrCreateDeviceId();
-      final expenseCount = await DatabaseHelp.getLocalExpenseCount();
+      final payload = deviceInfo ?? await _buildDeviceSyncPayload();
 
-      await http
+      final response = await http
           .post(
             Uri.parse('$baseUrl/sync/beat'),
             headers: await _headers(),
-            body: jsonEncode({
-              'deviceId': deviceId,
-              'deviceName':
-                  '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
-              'platform': Platform.operatingSystem,
-              'appVersion': appVersion,
-              'expenseCount': expenseCount,
-            }),
+            body: jsonEncode(payload),
           )
           .timeout(const Duration(seconds: 10));
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        _lastHeartbeatAt = DateTime.now();
+      }
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Device sync heartbeat');
     }

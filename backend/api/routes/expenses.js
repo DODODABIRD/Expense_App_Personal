@@ -2,6 +2,8 @@ const { requireAuth } = require("../middleware/auth");
 const {
   listExpenses,
   upsertExpense,
+  upsertExpensesBulk,
+  upsertDeviceSync,
   getExpenseByLocalId,
   updateExpenseByLocalId,
   deleteExpenseByLocalId,
@@ -9,6 +11,8 @@ const {
   connectDB,
 } = require("../db");
 const { broadcastLiveChange } = require("../lib/broadcast");
+
+const MAX_BULK_EXPENSES = 1000;
 
 /**
  * CREATE
@@ -124,8 +128,74 @@ async function deleteAllUserExpenses(req, res) {
   }
 }
 
+/**
+ * BULK UPSERT
+ * POST /api/users/bulk
+ */
+async function bulkUpsertExpenses(req, res) {
+  const expenses = req.body?.expenses;
+  if (!Array.isArray(expenses)) {
+    return res.status(400).json({ error: "expenses array is required" });
+  }
+  if (expenses.length > MAX_BULK_EXPENSES) {
+    return res
+      .status(400)
+      .json({ error: `At most ${MAX_BULK_EXPENSES} expenses per request` });
+  }
+  for (const item of expenses) {
+    if (
+      !item ||
+      item.localId === undefined ||
+      item.localId === null ||
+      String(item.localId).trim() === ""
+    ) {
+      return res
+        .status(400)
+        .json({ error: "Every expense must include a localId" });
+    }
+  }
+
+  try {
+    await connectDB();
+    const syncedLocalIds =
+      expenses.length > 0
+        ? await upsertExpensesBulk(req.user.uid, expenses)
+        : [];
+
+    const device = req.body?.device;
+    if (device && String(device.deviceId || "").trim()) {
+      try {
+        await upsertDeviceSync(req.user.uid, {
+          deviceId: String(device.deviceId).trim(),
+          deviceName: device.deviceName,
+          platform: device.platform,
+          appVersion: device.appVersion,
+          expenseCount: device.expenseCount,
+        });
+      } catch (err) {
+        console.error("Bulk sync device heartbeat error:", err.message);
+      }
+    }
+
+    if (syncedLocalIds.length > 0) {
+      broadcastLiveChange(req.user.uid, {
+        type: "bulk_upserted",
+        count: syncedLocalIds.length,
+      });
+    }
+
+    res.status(200).json({
+      count: syncedLocalIds.length,
+      syncedLocalIds,
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+}
+
 module.exports = {
   createExpense,
+  bulkUpsertExpenses,
   listAllExpenses,
   getExpense,
   updateExpense,

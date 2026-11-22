@@ -18,7 +18,6 @@ class DatabaseHelp {
   //Inisialisasi Database
   static Future<Database> initDB() async {
     if (_db != null) {
-      await _ensureSettingsTable(_db!);
       return _db!;
     }
     String path = join(
@@ -559,6 +558,29 @@ class DatabaseHelp {
     );
   }
 
+  static Future<void> markManySynced(Iterable<int> localIds) async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return;
+    final ids = localIds.toSet().toList();
+    if (ids.isEmpty) return;
+
+    final db = await initDB();
+    await db.transaction((txn) async {
+      const batchSize = 900;
+      for (var i = 0; i < ids.length; i += batchSize) {
+        final chunk = ids.sublist(
+          i,
+          i + batchSize > ids.length ? ids.length : i + batchSize,
+        );
+        final placeholders = List.filled(chunk.length, '?').join(', ');
+        await txn.rawUpdate(
+          'UPDATE my_table SET synced = 1 WHERE ownerId = ? AND id IN ($placeholders)',
+          [userId, ...chunk],
+        );
+      }
+    });
+  }
+
   // TODO: Add conflict algorithm
   static Future<List<Map<String, dynamic>>> getData() async {
     final db = await initDB();
@@ -683,6 +705,18 @@ class DatabaseHelp {
       where: 'synced = ? AND ownerId = ?',
       whereArgs: [0, AuthService.currentUser?.uid],
     );
+  }
+
+  static Future<int> getUnsyncedCount() async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return 0;
+
+    final db = await initDB();
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) AS count FROM my_table WHERE synced = 0 AND ownerId = ?',
+      [userId],
+    );
+    return Sqflite.firstIntValue(result) ?? 0;
   }
 
   /// Marks every expense of the current user as needing a server push.

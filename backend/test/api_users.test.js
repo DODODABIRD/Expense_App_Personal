@@ -30,6 +30,7 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
   const dbStore = new Map();
   let aiRefStore = new Map();
   let aiSummaryStore = new Map();
+  const deviceSyncStore = new Map();
 
   const mockPool = {
     async query(sql, params) {
@@ -37,6 +38,29 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
 
       // ensureSchema
       if (trimmed.startsWith("CREATE TABLE")) {
+        return { rows: [] };
+      }
+
+      // upsertExpensesBulk
+      if (trimmed.startsWith("INSERT INTO expenses") && trimmed.includes("UNNEST(")) {
+        const [ownerId, localIds, names, amounts, categories, types, dates] = params;
+        for (let i = 0; i < localIds.length; i += 1) {
+          const localId = localIds[i];
+          const key = `${ownerId}:${localId}`;
+          const existing = dbStore.get(key);
+          const row = {
+            owner_id: ownerId,
+            local_id: localId,
+            name: names[i],
+            amount: amounts[i],
+            category: categories[i],
+            type: types[i],
+            date: dates[i],
+            created_at: existing ? existing.created_at : new Date("2026-10-08T00:00:00Z"),
+            updated_at: new Date("2026-10-08T01:00:00Z"),
+          };
+          dbStore.set(key, row);
+        }
         return { rows: [] };
       }
 
@@ -170,6 +194,22 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
         const [ownerId] = params;
         const items = aiRefStore.get(ownerId) || [];
         return { rows: [{ items }] };
+      }
+
+      // upsertDeviceSync
+      if (trimmed.startsWith("INSERT INTO device_syncs")) {
+        const [ownerId, deviceId, deviceName, platform, appVersion, expenseCount] = params;
+        const row = {
+          owner_id: ownerId,
+          device_id: deviceId,
+          device_name: deviceName,
+          platform,
+          app_version: appVersion,
+          expense_count: expenseCount,
+          last_sync_at: new Date("2026-10-08T03:00:00Z"),
+        };
+        deviceSyncStore.set(`${ownerId}:${deviceId}`, row);
+        return { rows: [row] };
       }
 
       return { rows: [] };
@@ -321,6 +361,114 @@ test("Express /api/users API contract with Postgres backend", async (t) => {
     const bulkData = await bulkDeleteRes.json();
     assert.equal(bulkData.message, "Deleted");
     assert.equal(bulkData.deletedCount, 1);
+
+    // 10. POST /api/users/bulk requires auth and validates payload
+    const unauthBulkRes = await fetch(`${baseUrl}/api/users/bulk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ expenses: [] }),
+    });
+    assert.equal(unauthBulkRes.status, 401);
+
+    const invalidTypeRes = await fetch(`${baseUrl}/api/users/bulk`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ expenses: "not-an-array" }),
+    });
+    assert.equal(invalidTypeRes.status, 400);
+
+    const missingLocalIdRes = await fetch(`${baseUrl}/api/users/bulk`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ expenses: [{ name: "No ID", amount: 1000 }] }),
+    });
+    assert.equal(missingLocalIdRes.status, 400);
+
+    const tooManyRes = await fetch(`${baseUrl}/api/users/bulk`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({
+        expenses: Array.from({ length: 1001 }, (_, i) => ({
+          localId: String(i + 1),
+          name: "Item",
+          amount: 1000,
+        })),
+      }),
+    });
+    assert.equal(tooManyRes.status, 400);
+
+    // 11. POST /api/users/bulk with empty array succeeds cleanly
+    const emptyBulkRes = await fetch(`${baseUrl}/api/users/bulk`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({ expenses: [] }),
+    });
+    assert.equal(emptyBulkRes.status, 200);
+    assert.deepEqual(await emptyBulkRes.json(), {
+      count: 0,
+      syncedLocalIds: [],
+    });
+
+    // 12. POST /api/users/bulk upserts expenses, deduplicates, and records device sync
+    const bulkUpsertRes = await fetch(`${baseUrl}/api/users/bulk`, {
+      method: "POST",
+      headers: authHeaders,
+      body: JSON.stringify({
+        expenses: [
+          {
+            localId: "101",
+            name: "Nasi Uduk",
+            amount: 15000,
+            category: "makanan",
+            type: "expected",
+            date: "2026-10-08",
+          },
+          {
+            localId: "102",
+            name: "GrabBike",
+            amount: 22000,
+            category: "transportasi",
+            type: "unexpected",
+            date: "2026-10-09",
+          },
+          {
+            localId: "101",
+            name: "Nasi Uduk Komplit",
+            amount: 20000,
+            category: "makanan",
+            type: "expected",
+            date: "2026-10-08",
+          },
+        ],
+        device: {
+          deviceId: "dev-1",
+          deviceName: "android 14",
+          platform: "android",
+          appVersion: "2.0.0",
+          expenseCount: 2,
+        },
+      }),
+    });
+    assert.equal(bulkUpsertRes.status, 200);
+    assert.deepEqual(await bulkUpsertRes.json(), {
+      count: 2,
+      syncedLocalIds: ["101", "102"],
+    });
+
+    const listAfterBulkRes = await fetch(`${baseUrl}/api/users`, {
+      headers: authHeaders,
+    });
+    assert.equal(listAfterBulkRes.status, 200);
+    const listAfterBulk = await listAfterBulkRes.json();
+    assert.equal(listAfterBulk.length, 2);
+    const item101 = listAfterBulk.find((e) => e.localId === "101");
+    assert.equal(item101.name, "Nasi Uduk Komplit");
+    assert.equal(item101.amount, 20000);
+
+    const syncedDevice = deviceSyncStore.get("test-owner-id:dev-1");
+    assert.ok(syncedDevice);
+    assert.equal(syncedDevice.expense_count, 2);
+    assert.equal(syncedDevice.platform, "android");
   } finally {
     server.close();
   }

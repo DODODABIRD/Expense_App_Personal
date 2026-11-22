@@ -43,6 +43,7 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   bool _isChangingCurrency = false;
   bool _isLoadingOnlineExpenses = false;
   bool _isImportingPdf = false;
+  bool _isResyncingExpenses = false;
   int _pendingNotificationCount = 0;
 
   // Filter state
@@ -222,6 +223,8 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
             const _LoadingOverlay(message: 'Loading online expenses...'),
           if (_isImportingPdf)
             const _LoadingOverlay(message: 'Reading expense report...'),
+          if (_isResyncingExpenses)
+            const _LoadingOverlay(message: 'Re-syncing expenses...'),
         ],
       ),
     );
@@ -813,19 +816,21 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   }
 
   Future<void> _forceResyncAll() async {
+    if (!mounted || _isResyncingExpenses) return;
+    setState(() => _isResyncingExpenses = true);
     try {
       await DatabaseHelp.markAllUnsyncedForCurrentUser();
       await Throw.syncPendingExpenses();
       if (!mounted) return;
-      listKey.currentState?._loadData();
-      final pending = await DatabaseHelp.getUnsyncedData();
+      listKey.currentState?._loadData(syncPending: false);
+      final pendingCount = await DatabaseHelp.getUnsyncedCount();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            pending.isEmpty
+            pendingCount == 0
                 ? 'All expenses re-synced with the server.'
-                : '${pending.length} expense(s) could not be re-synced.',
+                : '$pendingCount expense(s) could not be re-synced.',
           ),
         ),
       );
@@ -835,6 +840,8 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Could not re-sync expenses: $error')),
       );
+    } finally {
+      if (mounted) setState(() => _isResyncingExpenses = false);
     }
   }
 
@@ -1679,12 +1686,12 @@ class _ListWithCardsState extends State<ListWithCards>
     }
   }
 
-  Future<void> _loadData() async {
+  Future<void> _loadData({bool syncPending = true}) async {
     setState(() => _isLoading = true);
     try {
       await DatabaseHelp.initDB();
       await DatabaseHelp.assignLegacyExpensesToCurrentUser();
-      unawaited(_syncPendingExpenses());
+      if (syncPending) unawaited(_syncPendingExpenses());
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Initialize expense database');
     }
