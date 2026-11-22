@@ -2,6 +2,7 @@ const express = require("express");
 const admin = require("firebase-admin");
 const db = require("../db");
 const { broadcastLiveChange } = require("../lib/broadcast");
+const r2 = require("../services/r2Service");
 const PORTFOLIO_SEED = require("../../content/portfolio.json");
 const RAG_KNOWLEDGE_SEED = require("../../public/asset/rag_knowledge.json");
 
@@ -61,15 +62,15 @@ function normalizeDownloadApp(input) {
   };
 }
 
-function normalizeDownloadRelease(input) {
+function normalizeDownloadRelease(input, { allowEmptyUrl = false } = {}) {
   const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
   const version = String(source.version || "").trim().replace(/^v/i, "");
   if (!version) return { error: "version is required" };
   if (version.length > 40) return { error: "version is too long" };
 
   const url = String(source.url || "").trim();
-  if (!url) return { error: "url is required" };
-  if (!DOWNLOAD_URL_PATTERN.test(url)) {
+  if (!url && !allowEmptyUrl) return { error: "url is required" };
+  if (url && !DOWNLOAD_URL_PATTERN.test(url)) {
     return { error: "url must start with / or http(s)://" };
   }
   if (url.length > 2048) return { error: "url is too long" };
@@ -91,6 +92,8 @@ function normalizeDownloadRelease(input) {
     }
   }
 
+  const r2Key = String(source.r2_key || "").trim() || null;
+
   return {
     release: {
       version,
@@ -98,6 +101,50 @@ function normalizeDownloadRelease(input) {
       size_bytes: Math.round(sizeBytes),
       released_at: releasedAt,
       notes: String(source.notes || "").trim().slice(0, 300),
+      r2_key: r2Key,
+    },
+  };
+}
+
+async function cleanupR2Object(r2Key, { excludeReleaseId = null } = {}) {
+  if (!r2Key || !r2.isConfigured()) {
+    return { deleted: false, warning: null };
+  }
+  try {
+    const remaining = await db.countReleasesByR2Key(r2Key, {
+      excludeId: excludeReleaseId,
+    });
+    if (remaining > 0) {
+      return { deleted: false, warning: null };
+    }
+    await r2.deleteObject(r2Key);
+    return { deleted: true, warning: null };
+  } catch (err) {
+    console.warn("[admin] R2 cleanup failed:", err.message);
+    return { deleted: false, warning: err.message };
+  }
+}
+
+async function resolveR2ReleasePayload(slug, r2Key, releaseFields) {
+  if (!r2.isConfigured()) {
+    return { status: 503, error: "Cloudflare R2 is not configured on this server" };
+  }
+  if (!r2.isValidReleaseKeyForApp(slug, r2Key)) {
+    return { status: 400, error: "Invalid R2 object key" };
+  }
+  const head = await r2.headObject(r2Key);
+  if (!head) {
+    return {
+      status: 400,
+      error: "Uploaded file was not found in R2. Please upload again.",
+    };
+  }
+  return {
+    release: {
+      ...releaseFields,
+      r2_key: r2Key,
+      url: r2.getPublicUrl(r2Key),
+      size_bytes: head.sizeBytes,
     },
   };
 }
@@ -410,7 +457,11 @@ router.get("/api/downloads", async (req, res) => {
     await db.connectDB();
     res.json({
       success: true,
-      apps: await db.listDownloadApps({ includeInactive: true }),
+      apps: await db.listDownloadApps({
+        includeInactive: true,
+        includeStorageKey: true,
+      }),
+      r2Configured: r2.isConfigured(),
     });
   } catch (err) {
     sendDbError(res, err);
@@ -475,13 +526,96 @@ router.delete("/api/downloads/apps/:slug", async (req, res) => {
   const slug = String(req.params.slug || "").trim().toLowerCase();
   try {
     await db.connectDB();
+    const r2Keys = await db.listAppReleaseR2Keys(slug);
     const deleted = await db.deleteDownloadApp(slug);
     if (!deleted) {
       return res.status(404).json({ success: false, error: "App not found" });
     }
-    recordAdminAudit(req, "download_app_deleted", `download_app:${slug}`, {});
-    res.json({ success: true });
+
+    let deletedR2Files = 0;
+    const r2Warnings = [];
+    for (const key of r2Keys) {
+      const cleanup = await cleanupR2Object(key);
+      if (cleanup.deleted) deletedR2Files += 1;
+      if (cleanup.warning) r2Warnings.push(cleanup.warning);
+    }
+
+    recordAdminAudit(req, "download_app_deleted", `download_app:${slug}`, {
+      deletedR2Files,
+    });
+    res.json({
+      success: true,
+      deletedR2Files,
+      ...(r2Warnings.length ? { r2Warnings } : {}),
+    });
   } catch (err) {
+    sendDbError(res, err);
+  }
+});
+
+// POST /api/downloads/apps/:slug/releases/presign - Sign a direct R2 upload URL
+router.post("/api/downloads/apps/:slug/releases/presign", async (req, res) => {
+  const slug = String(req.params.slug || "").trim().toLowerCase();
+  if (!r2.isConfigured()) {
+    return res
+      .status(503)
+      .json({ success: false, error: "Cloudflare R2 is not configured on this server" });
+  }
+
+  const version = String(req.body?.version || "").trim().replace(/^v/i, "");
+  if (!version) {
+    return res.status(400).json({ success: false, error: "version is required" });
+  }
+  if (version.length > 40) {
+    return res.status(400).json({ success: false, error: "version is too long" });
+  }
+
+  let releaseId = null;
+  if (
+    req.body?.releaseId !== undefined &&
+    req.body?.releaseId !== null &&
+    req.body?.releaseId !== ""
+  ) {
+    releaseId = Number(req.body.releaseId);
+    if (!Number.isInteger(releaseId) || releaseId <= 0) {
+      return res.status(400).json({ success: false, error: "Invalid release id" });
+    }
+  }
+
+  try {
+    await db.connectDB();
+    const app = await db.getDownloadApp(slug, { includeInactive: true });
+    if (!app) {
+      return res.status(404).json({ success: false, error: "App not found" });
+    }
+
+    if (releaseId !== null) {
+      const existingRelease = await db.getDownloadReleaseById(releaseId);
+      if (!existingRelease || existingRelease.app_slug !== slug) {
+        return res.status(404).json({ success: false, error: "Release not found" });
+      }
+    }
+
+    const duplicate = await db.hasDownloadReleaseVersion(slug, version, {
+      excludeId: releaseId,
+    });
+    if (duplicate) {
+      return res
+        .status(409)
+        .json({ success: false, error: "That version already exists for this app" });
+    }
+
+    const presigned = await r2.createReleaseUploadUrl({
+      slug,
+      version,
+      filename: req.body?.filename,
+      sizeBytes: req.body?.size_bytes ?? req.body?.sizeBytes,
+    });
+    res.json({ success: true, ...presigned });
+  } catch (err) {
+    if (err?.status === 400 || err?.status === 413 || err?.status === 503) {
+      return res.status(err.status).json({ success: false, error: err.message });
+    }
     sendDbError(res, err);
   }
 });
@@ -489,7 +623,12 @@ router.delete("/api/downloads/apps/:slug", async (req, res) => {
 // POST /api/downloads/apps/:slug/releases - Add a release
 router.post("/api/downloads/apps/:slug/releases", async (req, res) => {
   const slug = String(req.params.slug || "").trim().toLowerCase();
-  const normalized = normalizeDownloadRelease(req.body?.release || req.body);
+  const rawInput = req.body?.release || req.body;
+  const incomingR2Key = String(rawInput?.r2_key || "").trim() || null;
+
+  const normalized = normalizeDownloadRelease(rawInput, {
+    allowEmptyUrl: Boolean(incomingR2Key),
+  });
   if (normalized.error) {
     return res.status(400).json({ success: false, error: normalized.error });
   }
@@ -500,12 +639,33 @@ router.post("/api/downloads/apps/:slug/releases", async (req, res) => {
     if (!app) {
       return res.status(404).json({ success: false, error: "App not found" });
     }
-    const release = await db.createDownloadRelease(slug, normalized.release);
+
+    let releasePayload = { ...normalized.release, r2_key: null };
+    if (incomingR2Key) {
+      const resolved = await resolveR2ReleasePayload(slug, incomingR2Key, releasePayload);
+      if (resolved.error) {
+        return res
+          .status(resolved.status)
+          .json({ success: false, error: resolved.error });
+      }
+      releasePayload = resolved.release;
+    }
+
+    let release;
+    try {
+      release = await db.createDownloadRelease(slug, releasePayload);
+    } catch (dbErr) {
+      if (incomingR2Key) {
+        await cleanupR2Object(incomingR2Key);
+      }
+      throw dbErr;
+    }
+
     recordAdminAudit(
       req,
       "download_release_created",
       `download_app:${slug}`,
-      { version: release.version }
+      { version: release.version, r2Key: release.r2_key || null }
     );
     res.status(201).json({ success: true, release });
   } catch (err) {
@@ -525,24 +685,80 @@ router.put("/api/downloads/releases/:id", async (req, res) => {
     return res.status(400).json({ success: false, error: "Invalid release id" });
   }
 
-  const normalized = normalizeDownloadRelease(req.body?.release || req.body);
-  if (normalized.error) {
-    return res.status(400).json({ success: false, error: normalized.error });
-  }
+  const rawInput = req.body?.release || req.body;
+  const incomingR2Key = String(rawInput?.r2_key || "").trim() || null;
 
   try {
     await db.connectDB();
-    const release = await db.updateDownloadRelease(id, normalized.release);
-    if (!release) {
+    const existing = await db.getDownloadReleaseById(id);
+    if (!existing) {
       return res.status(404).json({ success: false, error: "Release not found" });
     }
+
+    const slug = existing.app_slug;
+    const isNewR2Upload = Boolean(incomingR2Key && incomingR2Key !== existing.r2_key);
+
+    const normalized = normalizeDownloadRelease(rawInput, {
+      allowEmptyUrl: isNewR2Upload,
+    });
+    if (normalized.error) {
+      return res.status(400).json({ success: false, error: normalized.error });
+    }
+
+    let releasePayload = { ...normalized.release };
+    let oldKeyToDelete = null;
+
+    if (isNewR2Upload) {
+      const resolved = await resolveR2ReleasePayload(slug, incomingR2Key, releasePayload);
+      if (resolved.error) {
+        return res
+          .status(resolved.status)
+          .json({ success: false, error: resolved.error });
+      }
+      releasePayload = resolved.release;
+      if (existing.r2_key) oldKeyToDelete = existing.r2_key;
+    } else if (existing.r2_key && releasePayload.url === existing.url) {
+      releasePayload.r2_key = existing.r2_key;
+    } else {
+      releasePayload.r2_key = null;
+      if (existing.r2_key) oldKeyToDelete = existing.r2_key;
+    }
+
+    let release;
+    try {
+      release = await db.updateDownloadRelease(id, releasePayload);
+    } catch (dbErr) {
+      if (isNewR2Upload && incomingR2Key) {
+        await cleanupR2Object(incomingR2Key, { excludeReleaseId: id });
+      }
+      throw dbErr;
+    }
+    if (!release) {
+      if (isNewR2Upload && incomingR2Key) {
+        await cleanupR2Object(incomingR2Key, { excludeReleaseId: id });
+      }
+      return res.status(404).json({ success: false, error: "Release not found" });
+    }
+
+    const cleanup = oldKeyToDelete
+      ? await cleanupR2Object(oldKeyToDelete, { excludeReleaseId: id })
+      : { deleted: false, warning: null };
+
     recordAdminAudit(
       req,
       "download_release_updated",
       `download_app:${release.app_slug}`,
-      { version: release.version }
+      {
+        version: release.version,
+        r2Key: release.r2_key || null,
+        replacedR2Key: oldKeyToDelete || null,
+      }
     );
-    res.json({ success: true, release });
+    res.json({
+      success: true,
+      release,
+      ...(cleanup.warning ? { r2Warning: cleanup.warning } : {}),
+    });
   } catch (err) {
     if (isUniqueViolation(err)) {
       return res
@@ -562,14 +778,31 @@ router.delete("/api/downloads/releases/:id", async (req, res) => {
 
   try {
     await db.connectDB();
-    const appSlug = await db.deleteDownloadRelease(id);
-    if (!appSlug) {
+    const deleted = await db.deleteDownloadRelease(id);
+    if (!deleted) {
       return res.status(404).json({ success: false, error: "Release not found" });
     }
-    recordAdminAudit(req, "download_release_deleted", `download_app:${appSlug}`, {
-      releaseId: id,
+
+    const cleanup = deleted.r2_key
+      ? await cleanupR2Object(deleted.r2_key)
+      : { deleted: false, warning: null };
+
+    recordAdminAudit(
+      req,
+      "download_release_deleted",
+      `download_app:${deleted.app_slug}`,
+      {
+        releaseId: id,
+        version: deleted.version || null,
+        r2Key: deleted.r2_key || null,
+        r2Deleted: cleanup.deleted,
+      }
+    );
+    res.json({
+      success: true,
+      r2Deleted: cleanup.deleted,
+      ...(cleanup.warning ? { r2Warning: cleanup.warning } : {}),
     });
-    res.json({ success: true });
   } catch (err) {
     sendDbError(res, err);
   }

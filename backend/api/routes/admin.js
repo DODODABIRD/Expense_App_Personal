@@ -7,6 +7,7 @@ const admin = require("firebase-admin");
 const { validateSession } = require("./adminLogin");
 const adminDataRouter = require("./adminData");
 const db = require("../db");
+const r2 = require("../services/r2Service");
 
 const router = express.Router();
 
@@ -393,6 +394,11 @@ const HEALTH_ENV_KEYS = [
   "GROQ_NOTIFICATION_MODEL",
   "AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT",
   "AZURE_DOCUMENT_INTELLIGENCE_KEY",
+  "R2_ENDPOINT",
+  "R2_BUCKET",
+  "R2_ACCESS_KEY_ID",
+  "R2_SECRET_ACCESS_KEY",
+  "R2_PUBLIC_BASE_URL",
   "OPENROUTER_API_KEY",
   "MONGODB_URI",
 ];
@@ -489,6 +495,7 @@ router.get("/api/health", async (req, res) => {
   } catch (e) {}
 
   const backups = directoryStats(BACKUP_ROOT);
+  const r2Health = await r2.checkBucket();
   const env = HEALTH_ENV_KEYS.map((key) => ({
     key,
     configured: Boolean(String(process.env[key] || "").trim()),
@@ -500,6 +507,7 @@ router.get("/api/health", async (req, res) => {
     health: {
       database,
       firebase,
+      r2: r2Health,
       env,
       missingEnv: env.filter((item) => !item.configured).map((item) => item.key),
       backups: {

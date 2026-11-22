@@ -594,11 +594,12 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
 | GET `/dodo/api/monthly` | 12-month trend (the panel uses `overview.monthly` instead) |
 | GET `/dodo/api/devices?owner` | `device_syncs` |
 | GET `/dodo/api/portfolio`, PUT `/dodo/api/portfolio` | Portfolio CMS content |
-| GET `/dodo/api/downloads` | Download apps, including inactive ones |
+| GET `/dodo/api/downloads` | Download apps, including inactive ones, `r2_key`, and `r2Configured` flag |
 | POST `/dodo/api/downloads/apps` | Create an app; slug `^[a-z0-9]+(-[a-z0-9]+)*$`, ≤ 40 chars |
-| PUT `/dodo/api/downloads/apps/:slug`, DELETE `/dodo/api/downloads/apps/:slug` | Delete cascades to releases |
-| POST `/dodo/api/downloads/apps/:slug/releases` | `version*`, `url*` (`/` or `http(s)://`), `released_at` YYYY-MM-DD, `size_bytes`, `notes` ≤ 300 |
-| PUT `/dodo/api/downloads/releases/:id`, DELETE `/dodo/api/downloads/releases/:id` | |
+| PUT `/dodo/api/downloads/apps/:slug`, DELETE `/dodo/api/downloads/apps/:slug` | Delete cascades to releases and deletes associated R2 release objects |
+| POST `/dodo/api/downloads/apps/:slug/releases/presign` | `{version*, filename*, size_bytes*, releaseId?}` → short-lived presigned R2 `PUT` URL (503 if R2 unconfigured, 409 on duplicate version) |
+| POST `/dodo/api/downloads/apps/:slug/releases` | `version*`, (`url*` or `r2_key*`), `released_at` YYYY-MM-DD, `size_bytes`, `notes` ≤ 300; R2 releases verify via `HeadObject` |
+| PUT `/dodo/api/downloads/releases/:id`, DELETE `/dodo/api/downloads/releases/:id` | Replacing or deleting an R2-backed release automatically deletes the superseded R2 object |
 | GET `/dodo/api/rag/stats` | |
 | GET `/dodo/api/rag/events?limit&feedback&unanswered=1` | Unanswered = (not answered or down-voted) and not resolved |
 | GET `/dodo/api/rag/knowledge`, PUT `/dodo/api/rag/knowledge` | |
@@ -610,7 +611,7 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
 | DELETE `/dodo/api/assets?file=` | Delete (backup first) |
 | GET `/dodo/api/assets/backups?file=` | |
 | POST `/dodo/api/assets/restore` | `{file, backup}` |
-| GET `/dodo/api/health` | DB latency, Firebase project, env flags, backups, commit, Node, uptime, memory |
+| GET `/dodo/api/health` | DB latency, Firebase project, R2 bucket health, env flags, backups, commit, Node, uptime, memory |
 
 ### 3.3 PostgreSQL schema
 
@@ -652,9 +653,10 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
 - Columns: `slug TEXT PK`, `name`, `tagline`, `description`, `icon_url`, `accent`, `sort_order`, `active`, timestamps.
 
 **`download_releases`**
-- Columns: `id BIGSERIAL PK`, `app_slug`, `version`, `url`, `size_bytes BIGINT`, `released_at DATE`, `notes`, timestamps.
+- Columns: `id BIGSERIAL PK`, `app_slug`, `version`, `url`, `size_bytes BIGINT`, `released_at DATE`, `notes`, `r2_key TEXT` (added via `ADD COLUMN IF NOT EXISTS`), timestamps.
 - `app_slug` is an FK to `download_apps(slug)` ON DELETE CASCADE.
 - `UNIQUE(app_slug, version)`.
+- `r2_key` is returned only in `/dodo/api/downloads*`, never in public `/api/downloads*`.
 
 **Other behaviour**
 - **SSL:** used (with `rejectUnauthorized:false`) only when `DATABASE_URL` contains `sslmode=require`.
@@ -830,7 +832,9 @@ If the relevant variable is unset, that login method returns 503. It never allow
 - Asset writes need a writable filesystem (the Docker container). See §5 for persistence.
 
 **Downloads catalog**
-- Release URLs may point at any public object storage.
+- Releases can be uploaded directly from the browser to Cloudflare R2 via presigned S3 `PUT` URLs (`releases/<slug>/v<version>/<hex>-<filename>`), or linked manually via any public URL.
+- Metadata lives in PostgreSQL (`download_apps`, `download_releases`) and files in R2, so `update-backend` never resets or depends on git/container disk for releases.
+- Replacing or deleting an R2-backed release (or deleting its app) automatically deletes the orphaned object from R2 when no other release references it.
 - The highest version becomes `latest` automatically.
 
 ### 3.7 Public website
@@ -882,11 +886,18 @@ For local runs, put them in `backend/.env.local`, starting from `.env.example`. 
 | `GROQ_NOTIFICATION_MODEL` | for `/parse-notification` | — (503) | Notification model | no |
 | `AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT` | for Azure fallback | empty | Azure endpoint (trailing slash stripped) | no |
 | `AZURE_DOCUMENT_INTELLIGENCE_KEY` | for Azure fallback | — | Azure key | no |
+| `R2_ENDPOINT` | for R2 release uploads | empty → disabled (503) | Cloudflare R2 S3 endpoint (`https://<account-id>.r2.cloudflarestorage.com`) | yes |
+| `R2_BUCKET` | for R2 release uploads | empty → disabled | R2 bucket name | yes |
+| `R2_ACCESS_KEY_ID` | for R2 release uploads | empty → disabled | R2 S3 API access key ID | yes |
+| `R2_SECRET_ACCESS_KEY` | for R2 release uploads | empty → disabled | R2 S3 API secret access key | yes |
+| `R2_PUBLIC_BASE_URL` | for R2 release uploads | empty → disabled | Public base URL serving the R2 bucket (`https://...`) | yes |
 | `ADMIN_ASSET_ROOT` | no | `public/asset` | Asset manager root | no |
 | `ADMIN_BACKUP_ROOT` | no | `data/admin-backups` | Asset backup root | no |
 | `PORT` | no | 3000 | Listen port | no |
 | `NODE_ENV` | no | — (Docker sets `production`) | Secure cookie flag | no |
 | `GIT_COMMIT` / `SOURCE_COMMIT` / `VERCEL_GIT_COMMIT_SHA` / `VERCEL_GIT_COMMIT_REF` | no | falls back to `git` CLI | Commit shown in the Health tab | no |
+
+Direct browser uploads to Cloudflare R2 require a bucket CORS policy allowing `PUT` from the admin origin (`https://dododabird.us` and/or `http://localhost:3000`) with `AllowedHeaders: ["content-type", "content-disposition"]`.
 
 ### 4.2 Flutter app
 
@@ -1051,9 +1062,9 @@ flutter build apk --release        # or --split-per-abi for per-ABI APKs
 ```
 
 To publish a build:
-1. Upload the APK to public storage, or to `/dodo` Assets (`asset/appdownload/…`).
-2. Add a release in `/dodo` → Downloads.
-3. The highest version becomes the default download.
+1. Open `/dodo` → Downloads, select the app, and click **New release**.
+2. Pick the built `.apk` file to upload directly to Cloudflare R2 (or paste a public download URL).
+3. The highest version becomes the default download immediately (stored in PostgreSQL + R2, independent of git).
 
 Bump `version:` in `pubspec.yaml` and the hard-coded "Version 2.0.0" in `settings_page.dart` together.
 
@@ -1064,7 +1075,7 @@ Bump `version:` in `pubspec.yaml` and the hard-coded "Version 2.0.0" in `setting
 **Backend** (`cd backend`)
 - `npm test` runs every file; `node --test test/<file>.test.js` runs one.
 - No database is needed: tests inject a mock pool (`setPool`). `api_users.test.js` initialises a mock Firebase app and stubs `verifyIdToken`; the other suites assume Firebase is not configured.
-- `admin`, `admin_features` and `downloads` tests load `backend/.env.local`. Real `FIREBASE_SERVICE_ACCOUNT_JSON` or `GROQ_API_KEY` values there make them use real Firebase or call Groq (the RAG-chat test). Run tests with an `.env.local` that has neither.
+- `admin`, `admin_features` and `downloads` tests load `backend/.env.local`. Real `FIREBASE_SERVICE_ACCOUNT_JSON`, `GROQ_API_KEY`, or `R2_*` values there make `admin` / `admin_features` use real services unless cleared by the test (`downloads` and `admin_features` explicitly clear `R2_*`). Run tests with an `.env.local` that has no real `FIREBASE_SERVICE_ACCOUNT_JSON` or `GROQ_API_KEY`.
 
 | File | Covers |
 |---|---|
@@ -1072,8 +1083,9 @@ Bump `version:` in `pubspec.yaml` and the hard-coded "Version 2.0.0" in `setting
 | `admin_features.test.js` | Portfolio CMS, RAG admin, health, devices, admin expense edit/delete |
 | `api_users.test.js` | `/api/users` CRUD and `/api/users/bulk` with mocked `verifyIdToken`, 401/404, notification reference, delete-all |
 | `db.test.js` | Row mapping, SSL detection, `ensureSchema` SQL, CRUD, bulk `UNNEST` upsert, JSONB reference |
-| `downloads.test.js` | Version comparison, seeding, admin app/release CRUD, latest selection, public endpoints |
+| `downloads.test.js` | Version comparison, seeding, admin app/release CRUD, R2 presign/verify/cleanup lifecycle, latest selection, public endpoints |
 | `notification_context.test.js` | Reference refresh (≤ 100 items), template building |
+| `r2_service.test.js` | R2 config validation, key sanitization, presigned upload signing, `headObject`, `deleteObject`, `checkBucket` |
 
 **Flutter** (`cd frontend/expenseapp`)
 - `flutter test` runs everything; `flutter test test/<file>.dart` runs one.

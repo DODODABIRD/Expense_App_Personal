@@ -573,9 +573,24 @@ dialog label {
   letter-spacing: 0.07em;
 }
 dialog input[type="text"] { width: 100%; font-family: var(--mono); font-size: 13px; }
+dialog input[type="file"] { width: 100%; font-size: 12.5px; padding: 8px 10px; cursor: pointer; }
 dialog textarea { width: 100%; font-family: inherit; font-size: 13px; resize: vertical; }
 dialog select, dialog input[type="number"], dialog input[type="date"] { width: 100%; }
 dialog .actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+.field-hint { margin-top: 6px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.upload-progress { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.upload-progress .bar { width: 100%; }
+.upload-progress-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+.tag-group { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 
 .backups-note { margin-top: -8px; margin-bottom: 12px; font-size: 12.5px; color: var(--muted); }
 .backups-list { display: flex; flex-direction: column; gap: 8px; max-height: 320px; overflow-y: auto; }

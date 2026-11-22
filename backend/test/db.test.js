@@ -88,6 +88,7 @@ test("ensureSchema executes bootstrap query with expenses and ai_notification_re
   assert.ok(executedSql.includes("ADD COLUMN IF NOT EXISTS summary JSONB"));
   assert.ok(executedSql.includes("CREATE TABLE IF NOT EXISTS admin_audit_log"));
   assert.ok(executedSql.includes("CREATE TABLE IF NOT EXISTS ai_provider_events"));
+  assert.ok(executedSql.includes("ADD COLUMN IF NOT EXISTS r2_key TEXT"));
 });
 
 test("upsertExpense inserts or updates expense and returns json without any server id", async () => {

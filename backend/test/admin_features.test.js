@@ -13,6 +13,11 @@ process.env.ADMIN_FIREBASE_UIDS = "";
 process.env.ADMIN_ASSET_ROOT = assetRoot;
 process.env.ADMIN_BACKUP_ROOT = backupRoot;
 process.env.GROQ_API_KEY = "";
+process.env.R2_ENDPOINT = "";
+process.env.R2_BUCKET = "";
+process.env.R2_ACCESS_KEY_ID = "";
+process.env.R2_SECRET_ACCESS_KEY = "";
+process.env.R2_PUBLIC_BASE_URL = "";
 
 const portfolio = {
   profile: { name: "Orlando Test" },
@@ -268,12 +273,27 @@ test("Admin portfolio, RAG, health, device and expense support endpoints", async
   });
 
   await t.test("health reports db, env, backups and commit", async () => {
+    process.env.R2_ENDPOINT = "";
+    process.env.R2_BUCKET = "";
+    process.env.R2_ACCESS_KEY_ID = "";
+    process.env.R2_SECRET_ACCESS_KEY = "";
+    process.env.R2_PUBLIC_BASE_URL = "";
+
     const res = await admin("/dodo/api/health");
     assert.equal(res.status, 200);
     const data = await res.json();
     assert.equal(data.health.database.ok, true);
+    assert.deepEqual(data.health.r2, {
+      configured: false,
+      ok: false,
+      bucket: null,
+      latencyMs: null,
+      error: null,
+    });
     assert.ok(Array.isArray(data.health.env));
     assert.ok(data.health.env.some((item) => item.key === "DATABASE_URL"));
+    assert.ok(data.health.env.some((item) => item.key === "R2_ENDPOINT"));
+    assert.ok(data.health.env.some((item) => item.key === "R2_BUCKET"));
     assert.ok(data.health.backups.count >= 0);
     assert.ok("commit" in data.health.runtime);
   });

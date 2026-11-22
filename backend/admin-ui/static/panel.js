@@ -12,6 +12,8 @@ const state = {
   activeTab: 'assets',
   portfolio: null,
   downloads: [],
+  r2Configured: false,
+  activeUploadXhr: null,
   downloadAppSlug: null,
   downloadAppMode: 'edit',
   ragEvents: [],
@@ -912,7 +914,13 @@ function renderDownloadReleases() {
     tr.appendChild(cell(release.notes || '-'));
 
     const isLatest = app.latest && app.latest.id === release.id;
-    tr.appendChild(cell(tag(isLatest ? 'Latest' : 'Older', isLatest ? 'success' : '')));
+    const statusTags = document.createElement('span');
+    statusTags.className = 'tag-group';
+    statusTags.appendChild(tag(isLatest ? 'Latest' : 'Older', isLatest ? 'success' : ''));
+    if (release.r2_key) {
+      statusTags.appendChild(tag('R2'));
+    }
+    tr.appendChild(cell(statusTags));
 
     const actions = document.createElement('div');
     actions.className = 'row-actions';
@@ -931,6 +939,7 @@ function renderDownloadReleases() {
 async function loadDownloads() {
   const data = await api('/dodo/api/downloads');
   state.downloads = Array.isArray(data.apps) ? data.apps : [];
+  state.r2Configured = Boolean(data.r2Configured);
 
   if (state.downloadAppMode !== 'create') {
     const exists = state.downloads.some(function (app) {
@@ -983,32 +992,121 @@ async function saveDownloadApp(event) {
 async function deleteDownloadApp() {
   const app = currentDownloadApp();
   if (!app) return;
-  if (!confirm('Delete "' + app.name + '" and all of its releases?')) return;
+  const hasR2 = Array.isArray(app.releases) && app.releases.some(function (r) {
+    return Boolean(r.r2_key);
+  });
+  const promptText = hasR2
+    ? 'Delete "' + app.name + '", all of its releases, and its Cloudflare R2 files?'
+    : 'Delete "' + app.name + '" and all of its releases?';
+  if (!confirm(promptText)) return;
 
   try {
-    await api('/dodo/api/downloads/apps/' + encodeURIComponent(app.slug), {
+    const data = await api('/dodo/api/downloads/apps/' + encodeURIComponent(app.slug), {
       method: 'DELETE'
     });
     state.downloadAppSlug = null;
     state.downloadAppMode = 'edit';
     await loadDownloads();
-    showStatus('App deleted.', 'success');
+    if (Array.isArray(data.r2Warnings) && data.r2Warnings.length > 0) {
+      showStatus('App deleted, but R2 cleanup warned: ' + data.r2Warnings.join('; '), 'info');
+    } else {
+      const removedNote = data.deletedR2Files
+        ? ' Removed ' + data.deletedR2Files + ' R2 file(s).'
+        : '';
+      showStatus('App deleted.' + removedNote, 'success');
+    }
   } catch (err) {
     showStatus('Delete failed: ' + err.message, 'error');
   }
 }
 
+function setReleaseFormBusy(busy) {
+  ['releaseVersion', 'releaseUrl', 'releaseSizeMb', 'releaseDate', 'releaseNotes', 'saveReleaseBtn']
+    .forEach(function (id) {
+      $(id).disabled = busy;
+    });
+  $('releaseFile').disabled = busy || !state.r2Configured;
+}
+
+function abortActiveR2Upload() {
+  if (state.activeUploadXhr) {
+    state.activeUploadXhr.abort();
+    state.activeUploadXhr = null;
+  }
+}
+
 function openReleaseDialog(release) {
+  abortActiveR2Upload();
   $('releaseDialogTitle').textContent = release ? 'Edit release' : 'New release';
   $('releaseId').value = release ? release.id : '';
   $('releaseVersion').value = release ? release.version : '';
+  $('releaseFile').value = '';
+  $('releaseUploadProgress').classList.add('hidden');
+  $('releaseUploadBar').style.width = '0%';
+  $('releaseUploadText').textContent = '';
   $('releaseUrl').value = release ? release.url : '';
+  $('releaseUrl').required = true;
   $('releaseSizeMb').value = release ? bytesToMb(release.size_bytes) : '';
   $('releaseDate').value = release && release.released_at
     ? String(release.released_at).slice(0, 10)
-    : '';
+    : release
+      ? ''
+      : new Date().toISOString().slice(0, 10);
   $('releaseNotes').value = release ? release.notes || '' : '';
+  $('saveReleaseBtn').textContent = 'Save release';
+  setReleaseFormBusy(false);
+
+  if (!state.r2Configured) {
+    $('releaseUploadHint').textContent =
+      'Cloudflare R2 is not configured on this server. Enter a Download URL below.';
+  } else if (release && release.r2_key) {
+    $('releaseUploadHint').textContent =
+      'Optional: select a new build to upload to R2 and automatically delete the old R2 file.';
+  } else {
+    $('releaseUploadHint').textContent =
+      'Optional: uploads directly from your browser to Cloudflare R2 and fills the Download URL.';
+  }
+
   $('releaseDialog').showModal();
+}
+
+function uploadFileToR2(uploadUrl, file, headers, onProgress) {
+  return new Promise(function (resolve, reject) {
+    const xhr = new XMLHttpRequest();
+    state.activeUploadXhr = xhr;
+    xhr.open('PUT', uploadUrl, true);
+
+    Object.keys(headers || {}).forEach(function (name) {
+      if (headers[name]) xhr.setRequestHeader(name, headers[name]);
+    });
+
+    xhr.upload.addEventListener('progress', function (event) {
+      if (typeof onProgress === 'function') {
+        onProgress(event.loaded, event.lengthComputable ? event.total : file.size);
+      }
+    });
+
+    xhr.addEventListener('load', function () {
+      state.activeUploadXhr = null;
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve();
+      } else {
+        reject(new Error('R2 upload failed with HTTP ' + xhr.status));
+      }
+    });
+
+    xhr.addEventListener('error', function () {
+      state.activeUploadXhr = null;
+      reject(new Error('R2 upload failed (check network or R2 bucket CORS policy)'));
+    });
+
+    xhr.addEventListener('abort', function () {
+      state.activeUploadXhr = null;
+      reject(new Error('Upload cancelled'));
+    });
+
+    xhr.send(file);
+  });
 }
 
 async function saveRelease(event) {
@@ -1021,16 +1119,66 @@ async function saveRelease(event) {
   }
 
   const id = $('releaseId').value;
-  const payload = {
-    version: $('releaseVersion').value.trim(),
-    url: $('releaseUrl').value.trim(),
-    size_bytes: mbToBytes($('releaseSizeMb').value),
-    released_at: $('releaseDate').value,
-    notes: $('releaseNotes').value.trim()
-  };
+  const version = $('releaseVersion').value.trim();
+  const manualUrl = $('releaseUrl').value.trim();
+  const releasedAt = $('releaseDate').value;
+  const notes = $('releaseNotes').value.trim();
+  const file = $('releaseFile').files && $('releaseFile').files[0];
+
+  if (!file && !manualUrl) {
+    showStatus('Select a build file to upload or enter a Download URL.', 'error');
+    return;
+  }
+
+  setReleaseFormBusy(true);
 
   try {
-    await api(
+    let payload;
+    if (file) {
+      showStatus('Preparing R2 upload for ' + file.name + '...', 'info');
+      const presign = await api(
+        '/dodo/api/downloads/apps/' + encodeURIComponent(app.slug) + '/releases/presign',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            version: version,
+            filename: file.name,
+            size_bytes: file.size,
+            releaseId: id || null
+          })
+        }
+      );
+
+      $('releaseUploadProgress').classList.remove('hidden');
+      $('releaseUploadBar').style.width = '0%';
+      $('releaseUploadText').textContent = 'Uploading 0% (0 B / ' + formatBytes(file.size) + ')';
+
+      await uploadFileToR2(presign.uploadUrl, file, presign.headers, function (loaded, total) {
+        const pct = total > 0 ? Math.min(100, Math.round((loaded / total) * 100)) : 0;
+        $('releaseUploadBar').style.width = pct + '%';
+        $('releaseUploadText').textContent =
+          'Uploading ' + pct + '% (' + formatBytes(loaded) + ' / ' + formatBytes(total) + ')';
+      });
+
+      $('releaseUploadText').textContent = 'Saving release metadata...';
+      payload = {
+        version: version,
+        r2_key: presign.r2Key,
+        released_at: releasedAt,
+        notes: notes
+      };
+    } else {
+      payload = {
+        version: version,
+        url: manualUrl,
+        size_bytes: mbToBytes($('releaseSizeMb').value),
+        released_at: releasedAt,
+        notes: notes
+      };
+    }
+
+    const data = await api(
       id
         ? '/dodo/api/downloads/releases/' + encodeURIComponent(id)
         : '/dodo/api/downloads/apps/' + encodeURIComponent(app.slug) + '/releases',
@@ -1042,26 +1190,44 @@ async function saveRelease(event) {
     );
     $('releaseDialog').close();
     await loadDownloads();
-    showStatus(
-      id
-        ? 'Release updated.'
-        : 'Release added. The highest version is now the default download.',
-      'success'
-    );
+    if (data.r2Warning) {
+      showStatus('Release saved, but old R2 cleanup warned: ' + data.r2Warning, 'info');
+    } else {
+      showStatus(
+        id
+          ? 'Release updated.'
+          : 'Release added. The highest version is now the default download.',
+        'success'
+      );
+    }
   } catch (err) {
     showStatus('Save failed: ' + err.message, 'error');
+  } finally {
+    setReleaseFormBusy(false);
+    $('releaseUploadProgress').classList.add('hidden');
   }
 }
 
 async function deleteRelease(release) {
-  if (!confirm('Delete v' + release.version + '?')) return;
+  const promptText = release.r2_key
+    ? 'Delete v' + release.version + ' and remove its file from Cloudflare R2?'
+    : 'Delete v' + release.version + '?';
+  if (!confirm(promptText)) return;
 
   try {
-    await api('/dodo/api/downloads/releases/' + encodeURIComponent(release.id), {
+    const data = await api('/dodo/api/downloads/releases/' + encodeURIComponent(release.id), {
       method: 'DELETE'
     });
     await loadDownloads();
-    showStatus('Release deleted. The next highest version is now the default.', 'success');
+    if (data.r2Warning) {
+      showStatus('Release deleted, but R2 cleanup warned: ' + data.r2Warning, 'info');
+    } else {
+      const r2Note = data.r2Deleted ? ' R2 file removed.' : '';
+      showStatus(
+        'Release deleted.' + r2Note + ' The next highest version is now the default.',
+        'success'
+      );
+    }
   } catch (err) {
     showStatus('Delete failed: ' + err.message, 'error');
   }
@@ -1280,6 +1446,7 @@ async function loadHealth() {
   const health = data.health || {};
   const database = health.database || {};
   const firebase = health.firebase || {};
+  const r2 = health.r2 || {};
   const backups = health.backups || {};
   const runtime = health.runtime || {};
 
@@ -1297,6 +1464,17 @@ async function loadHealth() {
       'Firebase Admin',
       firebase.initialized ? 'Initialized' : 'Not initialized',
       firebase.projectId || 'Check FIREBASE_SERVICE_ACCOUNT_JSON'
+    )
+  );
+  statsEl.appendChild(
+    statCard(
+      'R2 Storage',
+      !r2.configured ? 'Not configured' : r2.ok ? 'Online' : 'Error',
+      !r2.configured
+        ? 'Set R2_* env vars'
+        : r2.ok
+          ? (r2.bucket + ' · ' + r2.latencyMs + ' ms ping')
+          : ((r2.bucket || 'Bucket') + ': ' + (r2.error || 'Unavailable'))
     )
   );
   statsEl.appendChild(
@@ -1518,10 +1696,31 @@ $('downloadAppDeleteBtn').addEventListener('click', deleteDownloadApp);
 $('downloadNewReleaseBtn').addEventListener('click', function () {
   openReleaseDialog(null);
 });
+$('releaseFile').addEventListener('change', function () {
+  const file = $('releaseFile').files && $('releaseFile').files[0];
+  if (file) {
+    $('releaseSizeMb').value = bytesToMb(file.size);
+    if (!$('releaseDate').value) {
+      $('releaseDate').value = new Date().toISOString().slice(0, 10);
+    }
+    if (!$('releaseVersion').value.trim()) {
+      const match = file.name.match(/v?(\d+\.\d+(?:\.\d+)?(?:-[0-9A-Za-z.-]+)?)/i);
+      if (match) $('releaseVersion').value = match[1];
+    }
+    $('releaseUrl').required = false;
+    $('saveReleaseBtn').textContent = 'Upload & save release';
+  } else {
+    $('releaseUrl').required = true;
+    $('saveReleaseBtn').textContent = 'Save release';
+  }
+});
+$('cancelR2UploadBtn').addEventListener('click', abortActiveR2Upload);
 $('releaseForm').addEventListener('submit', saveRelease);
 $('cancelReleaseBtn').addEventListener('click', function () {
+  abortActiveR2Upload();
   $('releaseDialog').close();
 });
+$('releaseDialog').addEventListener('close', abortActiveR2Upload);
 
 $('expenseForm').addEventListener('submit', saveExpense);
 $('cancelExpenseBtn').addEventListener('click', function () {

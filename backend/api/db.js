@@ -141,10 +141,13 @@ async function ensureSchema() {
       size_bytes BIGINT NOT NULL DEFAULT 0,
       released_at DATE,
       notes TEXT NOT NULL DEFAULT '',
+      r2_key TEXT,
       created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
       UNIQUE (app_slug, version)
     );
+    ALTER TABLE download_releases
+      ADD COLUMN IF NOT EXISTS r2_key TEXT;
     CREATE INDEX IF NOT EXISTS download_releases_app_idx
       ON download_releases (app_slug, released_at DESC, id DESC);
   `);
@@ -902,7 +905,7 @@ function toDownloadAppJson(row) {
   };
 }
 
-function toDownloadReleaseJson(row) {
+function toDownloadReleaseJson(row, { includeStorageKey = false } = {}) {
   let releasedAt = row.released_at;
   if (releasedAt instanceof Date) {
     releasedAt = releasedAt.toISOString().slice(0, 10);
@@ -912,7 +915,7 @@ function toDownloadReleaseJson(row) {
     releasedAt = null;
   }
 
-  return {
+  const release = {
     id: Number(row.id),
     app_slug: row.app_slug,
     version: row.version,
@@ -921,6 +924,10 @@ function toDownloadReleaseJson(row) {
     released_at: releasedAt,
     notes: row.notes || "",
   };
+  if (includeStorageKey) {
+    release.r2_key = row.r2_key || null;
+  }
+  return release;
 }
 
 async function ensureDownloadSeed() {
@@ -961,7 +968,7 @@ async function ensureDownloadSeed() {
   downloadsSeeded = true;
 }
 
-async function listDownloadApps({ includeInactive = false } = {}) {
+async function listDownloadApps({ includeInactive = false, includeStorageKey = false } = {}) {
   await ensureDownloadSeed();
 
   const appResult = await getPool().query(
@@ -971,7 +978,7 @@ async function listDownloadApps({ includeInactive = false } = {}) {
   );
   const releaseResult = await getPool().query(
     `SELECT id, app_slug, version, url, size_bytes,
-            released_at::text AS released_at, notes, created_at, updated_at
+            released_at::text AS released_at, notes, r2_key, created_at, updated_at
      FROM download_releases
      ORDER BY id ASC`
   );
@@ -979,7 +986,7 @@ async function listDownloadApps({ includeInactive = false } = {}) {
   const releasesByApp = new Map();
   for (const row of releaseResult.rows) {
     if (!releasesByApp.has(row.app_slug)) releasesByApp.set(row.app_slug, []);
-    releasesByApp.get(row.app_slug).push(toDownloadReleaseJson(row));
+    releasesByApp.get(row.app_slug).push(toDownloadReleaseJson(row, { includeStorageKey }));
   }
 
   return appResult.rows.map((row) => {
@@ -992,9 +999,67 @@ async function listDownloadApps({ includeInactive = false } = {}) {
   });
 }
 
-async function getDownloadApp(slug, { includeInactive = false } = {}) {
-  const apps = await listDownloadApps({ includeInactive });
+async function getDownloadApp(slug, { includeInactive = false, includeStorageKey = false } = {}) {
+  const apps = await listDownloadApps({ includeInactive, includeStorageKey });
   return apps.find((app) => app.slug === slug) || null;
+}
+
+async function getDownloadReleaseById(id) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `SELECT id, app_slug, version, url, size_bytes,
+            released_at::text AS released_at, notes, r2_key, created_at, updated_at
+     FROM download_releases
+     WHERE id = $1`,
+    [Number(id)]
+  );
+  return result.rows[0]
+    ? toDownloadReleaseJson(result.rows[0], { includeStorageKey: true })
+    : null;
+}
+
+async function hasDownloadReleaseVersion(appSlug, version, { excludeId = null } = {}) {
+  await ensureSchema();
+  const params = [appSlug, version];
+  let clause = `app_slug = $1 AND version = $2`;
+  const numericExclude = Number(excludeId);
+  if (Number.isInteger(numericExclude) && numericExclude > 0) {
+    params.push(numericExclude);
+    clause += ` AND id <> $3`;
+  }
+  const result = await getPool().query(
+    `SELECT 1 FROM download_releases WHERE ${clause} LIMIT 1`,
+    params
+  );
+  return result.rows.length > 0;
+}
+
+async function countReleasesByR2Key(r2Key, { excludeId = null } = {}) {
+  if (!r2Key) return 0;
+  await ensureSchema();
+  const params = [String(r2Key)];
+  let clause = `r2_key = $1`;
+  const numericExclude = Number(excludeId);
+  if (Number.isInteger(numericExclude) && numericExclude > 0) {
+    params.push(numericExclude);
+    clause += ` AND id <> $2`;
+  }
+  const result = await getPool().query(
+    `SELECT COUNT(*)::int AS count FROM download_releases WHERE ${clause}`,
+    params
+  );
+  return Number(result.rows[0]?.count || 0);
+}
+
+async function listAppReleaseR2Keys(appSlug) {
+  await ensureSchema();
+  const result = await getPool().query(
+    `SELECT DISTINCT r2_key
+     FROM download_releases
+     WHERE app_slug = $1 AND r2_key IS NOT NULL AND r2_key <> ''`,
+    [appSlug]
+  );
+  return result.rows.map((row) => row.r2_key).filter(Boolean);
 }
 
 async function createDownloadApp(fields) {
@@ -1059,10 +1124,10 @@ async function createDownloadRelease(appSlug, fields) {
   await ensureSchema();
   const result = await getPool().query(
     `INSERT INTO download_releases
-       (app_slug, version, url, size_bytes, released_at, notes)
-     VALUES ($1, $2, $3, $4, $5, $6)
+       (app_slug, version, url, size_bytes, released_at, notes, r2_key)
+     VALUES ($1, $2, $3, $4, $5, $6, $7)
      RETURNING id, app_slug, version, url, size_bytes,
-               released_at::text AS released_at, notes, created_at, updated_at`,
+               released_at::text AS released_at, notes, r2_key, created_at, updated_at`,
     [
       appSlug,
       fields.version,
@@ -1070,9 +1135,10 @@ async function createDownloadRelease(appSlug, fields) {
       Number(fields.size_bytes) || 0,
       fields.released_at || null,
       fields.notes || "",
+      fields.r2_key || null,
     ]
   );
-  return toDownloadReleaseJson(result.rows[0]);
+  return toDownloadReleaseJson(result.rows[0], { includeStorageKey: true });
 }
 
 async function updateDownloadRelease(id, fields) {
@@ -1084,10 +1150,11 @@ async function updateDownloadRelease(id, fields) {
          size_bytes = $4,
          released_at = $5,
          notes = $6,
+         r2_key = $7,
          updated_at = now()
      WHERE id = $1
      RETURNING id, app_slug, version, url, size_bytes,
-               released_at::text AS released_at, notes, created_at, updated_at`,
+               released_at::text AS released_at, notes, r2_key, created_at, updated_at`,
     [
       Number(id),
       fields.version,
@@ -1095,23 +1162,34 @@ async function updateDownloadRelease(id, fields) {
       Number(fields.size_bytes) || 0,
       fields.released_at || null,
       fields.notes || "",
+      fields.r2_key || null,
     ]
   );
-  return result.rows[0] ? toDownloadReleaseJson(result.rows[0]) : null;
+  return result.rows[0]
+    ? toDownloadReleaseJson(result.rows[0], { includeStorageKey: true })
+    : null;
 }
 
 async function deleteDownloadRelease(id) {
   await ensureSchema();
   const result = await getPool().query(
-    `DELETE FROM download_releases WHERE id = $1 RETURNING app_slug`,
+    `DELETE FROM download_releases WHERE id = $1 RETURNING app_slug, version, r2_key`,
     [Number(id)]
   );
-  return result.rows[0]?.app_slug || null;
+  const row = result.rows[0];
+  return row
+    ? {
+        app_slug: row.app_slug,
+        version: row.version,
+        r2_key: row.r2_key || null,
+      }
+    : null;
 }
 
 module.exports = {
   compareVersions,
   connectDB,
+  countReleasesByR2Key,
   createDownloadApp,
   createDownloadRelease,
   deleteAllExpenses,
@@ -1122,15 +1200,18 @@ module.exports = {
   getAdminOverview,
   getAiProviderStats,
   getDownloadApp,
+  getDownloadReleaseById,
   getExpenseByLocalId,
   getMonthlyTrend,
   getPool,
   getPortfolioContent,
   getRagKnowledge,
   getRagStats,
+  hasDownloadReleaseVersion,
   insertAdminAudit,
   listAdminAuditLogs,
   listAdminExpenses,
+  listAppReleaseR2Keys,
   listDeviceSyncs,
   listDownloadApps,
   listExpenseOwners,
