@@ -1,5 +1,5 @@
 import 'package:expenseapp/pages/ExpenseSumarry.dart';
-import 'package:expenseapp/pages/hp2.dart' show ExpenseModel;
+import 'package:expenseapp/models/expense_model.dart' show ExpenseModel;
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:google_fonts/google_fonts.dart';
