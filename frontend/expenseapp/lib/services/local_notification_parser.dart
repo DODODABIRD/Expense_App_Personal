@@ -510,7 +510,7 @@ class LocalNotificationParser {
 
     final keywordAlternation = _paymentActionKeywords.map(RegExp.escape).join('|');
     final actionMatch = RegExp(
-      '(?:$keywordAlternation)\\s+(?:Rp\\.?|IDR)?\\s*' + _numberPattern,
+      '(?:$keywordAlternation)\\s+(?:Rp\\.?|IDR)?\\s*$_numberPattern',
       caseSensitive: false,
     ).firstMatch(combined);
     if (actionMatch != null) {

@@ -1416,8 +1416,9 @@ class _ReceiptScanPageState extends State<ReceiptScanPage> {
                               );
                             }).toList(),
                             onChanged: (val) {
-                              if (val != null)
+                              if (val != null) {
                                 setState(() => item.category = val);
+                              }
                             },
                           ),
                         ),
