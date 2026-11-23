@@ -18,7 +18,7 @@ const String wsUrl = String.fromEnvironment(
 
 const String appVersion = String.fromEnvironment(
   'EXPENSE_APP_VERSION',
-  defaultValue: '2.0.0',
+  defaultValue: '2.4.0',
 );
 
 typedef ReceiptScanProgress =
