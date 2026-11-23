@@ -6,11 +6,9 @@ import 'package:android_intent_plus/flag.dart';
 import 'package:file_saver/file_saver.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:media_store_plus/media_store_plus.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:pdf/pdf.dart' as pdf;
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
 
 import '../main.dart';
 import '../services/auth_service.dart';
@@ -715,31 +713,26 @@ class PdfExportService {
 
   static Future<void> _saveAndOpenPdf(
       BuildContext context, Uint8List bytes) async {
-    final fileName =
-        'expense-report-${DateTime.now().millisecondsSinceEpoch}.pdf';
+    final fileName = 'expense-report-${DateTime.now().millisecondsSinceEpoch}';
     String? path;
     String? androidContentUri;
-    late final String fileToOpenPath;
+    String? fileToOpenPath;
 
     if (Platform.isAndroid) {
-      MediaStore.appFolder = 'ExpenseApp';
-      await MediaStore.ensureInitialized();
-      final temporaryDirectory = await getTemporaryDirectory();
-      final temporaryFile = File('${temporaryDirectory.path}/$fileName');
-      await temporaryFile.writeAsBytes(bytes, flush: true);
-      final savedFile = await MediaStore().saveFile(
-        tempFilePath: temporaryFile.path,
-        dirType: DirType.download,
-        dirName: DirName.download,
+      // MediaStore Downloads/ExpenseApp; returns a content:// URI.
+      path = await FileSaver.instance.saveToDownloads(
+        name: fileName,
+        bytes: bytes,
+        fileExtension: 'pdf',
+        mimeType: MimeType.pdf,
+        subfolder: 'ExpenseApp',
       );
-      path = savedFile?.uri.toString();
       androidContentUri = path;
-      fileToOpenPath = temporaryFile.path;
     } else {
       path = await FileSaver.instance.saveFile(
         name: fileName,
         bytes: bytes,
-        ext: 'pdf',
+        fileExtension: 'pdf',
         mimeType: MimeType.pdf,
       );
       fileToOpenPath = path;
@@ -756,7 +749,7 @@ class PdfExportService {
         );
         await intent.launch();
         couldOpenFile = true;
-      } else {
+      } else if (fileToOpenPath != null) {
         final openResult = await OpenFilex.open(
           fileToOpenPath,
           type: 'application/pdf',

@@ -65,7 +65,7 @@ An expense is identified across devices by `(owner_id, local_id)`, where `local_
 | `pdf` | PDF export |
 | `syncfusion_flutter_pdf` | PDF import |
 | `file_picker` | Choosing files to import |
-| `media_store_plus`, `file_saver`, `open_filex` | Saving and opening files |
+| `file_saver`, `open_filex` | Saving and opening files |
 | `share_plus` | Sharing |
 | `android_intent_plus` | Android intents |
 | `flutter_native_splash` | Splash screen (configured in pubspec only) |
@@ -411,8 +411,8 @@ The server builds a per-category template, which is shown on `AiContextPage`. Am
 - Amounts are shown in the display currency.
 - **Backup payload:** the PDF keywords hold `expenseapp-backup-v1:<base64 JSON>` with `{version:1, currency, expenses:[{name, amount, date, category, type}]}`.
 - **Saving:**
-  - Android: MediaStore, Downloads/`ExpenseApp`, then opened with a VIEW intent.
-  - Other platforms: `FileSaver` + `OpenFilex`.
+  - Android: `FileSaver.saveToDownloads` (MediaStore, Downloads/`ExpenseApp`), then the returned content URI is opened with a VIEW intent.
+  - Other platforms: `FileSaver.saveFile` + `OpenFilex`.
   - File name `expense-report-<ms>.pdf`.
 
 **Import** (`pdf_import_service.dart`, Syncfusion)
