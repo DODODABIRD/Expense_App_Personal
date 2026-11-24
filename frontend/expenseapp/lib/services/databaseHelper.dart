@@ -12,6 +12,7 @@ import 'error_log_service.dart';
 class DatabaseHelp {
   static Database? _db;
   static const _pendingNotificationsTable = 'pending_notification_expenses';
+  static const _pendingDeletesTable = 'pending_expense_deletes';
 
   DatabaseHelp._privateConstructor();
   static final DatabaseHelp instance = DatabaseHelp._privateConstructor();
@@ -26,7 +27,7 @@ class DatabaseHelp {
     ); // Basically, join itu menggabungkan dua string jadi satu. kayak naro di ujung gitu kayak print gitu
     _db = await openDatabase(
       path,
-      version: 7,
+      version: 8,
       onCreate: (db, version) async {
         await db.execute('''
               CREATE TABLE my_table (
@@ -38,9 +39,11 @@ class DatabaseHelp {
                 date TEXT NOT NULL,
                 category TEXT NOT NULL,
                 type TEXT NOT NULL,
-                synced INTEGER DEFAULT 0
+                synced INTEGER DEFAULT 0,
+                syncVersion INTEGER NOT NULL DEFAULT 0
               )
           ''');
+        await _createPendingDeletesTable(db);
         await db.execute('''
           CREATE TABLE IF NOT EXISTS app_settings (
             key TEXT PRIMARY KEY,
@@ -86,6 +89,12 @@ class DatabaseHelp {
             );
           }
           await _createPendingNotificationIndex(db);
+        }
+        if (oldVersion < 8) {
+          await db.execute(
+            'ALTER TABLE my_table ADD COLUMN syncVersion INTEGER NOT NULL DEFAULT 0',
+          );
+          await _createPendingDeletesTable(db);
         }
       },
     );
@@ -138,6 +147,18 @@ class DatabaseHelp {
     await db.execute('''
       CREATE UNIQUE INDEX IF NOT EXISTS idx_pending_notification_key
       ON $_pendingNotificationsTable (ownerId, notificationKey)
+    ''');
+  }
+
+  // Server deletes still to send. A row stays here until the server confirms,
+  // so an offline delete is retried by the next sync pass.
+  static Future<void> _createPendingDeletesTable(DatabaseExecutor db) async {
+    await db.execute('''
+      CREATE TABLE IF NOT EXISTS $_pendingDeletesTable (
+        ownerId TEXT NOT NULL,
+        localId INTEGER NOT NULL,
+        PRIMARY KEY (ownerId, localId)
+      )
     ''');
   }
 
@@ -509,28 +530,31 @@ class DatabaseHelp {
     String date,
   ) async {
     final db = await initDB();
+    final userId = AuthService.currentUser?.uid;
 
-    final Map<String, dynamic> values = {
-      'name': name,
-      'amount': amount,
-      'category': category,
-      'type': type,
-      'date': date,
-    };
-
-    await db.update(
-      'my_table',
-      values,
-      where: 'id = ? AND ownerId = ?',
-      whereArgs: [id, AuthService.currentUser?.uid],
-    );
-
-    await db.update(
-      'my_table',
-      {'synced': 0},
-      where: 'id = ? AND ownerId = ?',
-      whereArgs: [id, AuthService.currentUser?.uid],
-    );
+    // Bumping syncVersion lets an in-flight push of the old values see that
+    // this row changed, so it does not mark the newer edit as synced.
+    int? syncVersion;
+    await db.transaction((txn) async {
+      await txn.rawUpdate(
+        '''
+        UPDATE my_table SET
+          name = ?, amount = ?, category = ?, type = ?, date = ?,
+          synced = 0, syncVersion = syncVersion + 1
+        WHERE id = ? AND ownerId = ?
+        ''',
+        [name, amount, category, type, date, id, userId],
+      );
+      final rows = await txn.query(
+        'my_table',
+        columns: ['syncVersion'],
+        where: 'id = ? AND ownerId = ?',
+        whereArgs: [id, userId],
+        limit: 1,
+      );
+      if (rows.isNotEmpty) syncVersion = rows.first['syncVersion'] as int;
+    });
+    if (syncVersion == null) return;
 
     unawaited(
       Throw.updateUserByLocalId(
@@ -540,6 +564,7 @@ class DatabaseHelp {
         category,
         type,
         date,
+        syncVersion: syncVersion!,
       ).catchError((error, stackTrace) {
         captureAppError(error, stackTrace, 'Background expense update sync');
         print('Background update sync failed: $error');
@@ -548,36 +573,34 @@ class DatabaseHelp {
     );
   }
 
-  static Future<void> markSynced(int localId) async {
+  /// Marks a row synced only if it still has the [syncVersion] that was sent.
+  static Future<void> markSynced(int localId, int syncVersion) async {
     final db = await initDB();
     await db.update(
       'my_table',
       {'synced': 1},
-      where: 'id = ? AND ownerId = ?',
-      whereArgs: [localId, AuthService.currentUser?.uid],
+      where: 'id = ? AND ownerId = ? AND syncVersion = ?',
+      whereArgs: [localId, AuthService.currentUser?.uid, syncVersion],
     );
   }
 
-  static Future<void> markManySynced(Iterable<int> localIds) async {
+  /// [sentVersions] maps local id → syncVersion that was pushed. Rows edited
+  /// since then keep `synced = 0` and go out in the next pass.
+  static Future<void> markManySynced(Map<int, int> sentVersions) async {
     final userId = AuthService.currentUser?.uid;
     if (userId == null) return;
-    final ids = localIds.toSet().toList();
-    if (ids.isEmpty) return;
+    if (sentVersions.isEmpty) return;
 
     final db = await initDB();
     await db.transaction((txn) async {
-      const batchSize = 900;
-      for (var i = 0; i < ids.length; i += batchSize) {
-        final chunk = ids.sublist(
-          i,
-          i + batchSize > ids.length ? ids.length : i + batchSize,
+      final batch = txn.batch();
+      sentVersions.forEach((id, syncVersion) {
+        batch.rawUpdate(
+          'UPDATE my_table SET synced = 1 WHERE ownerId = ? AND id = ? AND syncVersion = ?',
+          [userId, id, syncVersion],
         );
-        final placeholders = List.filled(chunk.length, '?').join(', ');
-        await txn.rawUpdate(
-          'UPDATE my_table SET synced = 1 WHERE ownerId = ? AND id IN ($placeholders)',
-          [userId, ...chunk],
-        );
-      }
+      });
+      await batch.commit(noResult: true);
     });
   }
 
@@ -608,6 +631,8 @@ class DatabaseHelp {
         .map((row) => row['id']?.toString())
         .whereType<String>()
         .toSet();
+    // Deleted here but not yet on the server: do not bring them back.
+    localIds.addAll((await getPendingDeletes()).map((id) => id.toString()));
 
     var imported = 0;
     for (final onlineExpense in onlineExpenses) {
@@ -730,25 +755,50 @@ class DatabaseHelp {
     );
   }
 
+  /// Deletes the row locally and queues the server delete. The sync pass
+  /// sends it (after any push already in flight) and retries it until the
+  /// server confirms. Throws if the local delete fails.
   static Future<void> deleteTs(int? id) async {
+    if (id == null) throw ArgumentError('Expense id is missing');
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) throw StateError('You must be signed in');
+
     final db = await initDB();
-    try {
-      db.delete(
+    await db.transaction((txn) async {
+      await txn.delete(
         'my_table',
         where: 'id = ? AND ownerId = ?',
-        whereArgs: [id, AuthService.currentUser?.uid],
+        whereArgs: [id, userId],
       );
-      print("Yo, that shit was a bussin move");
-    } catch (error, stackTrace) {
-      captureAppError(error, stackTrace, 'Delete local expense');
-      print('Yo, that deletion shit wasnt a success');
-    }
-    try {
-      Throw.deleteUserByLocalId(id!);
-    } catch (error, stackTrace) {
-      captureAppError(error, stackTrace, 'Delete online expense');
-      print('No connection dawg');
-    }
+      await txn.insert(_pendingDeletesTable, {
+        'ownerId': userId,
+        'localId': id,
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
+    });
+    unawaited(Throw.syncPendingExpenses());
+  }
+
+  static Future<List<int>> getPendingDeletes() async {
+    final userId = AuthService.currentUser?.uid;
+    if (userId == null) return [];
+
+    final db = await initDB();
+    final rows = await db.query(
+      _pendingDeletesTable,
+      columns: ['localId'],
+      where: 'ownerId = ?',
+      whereArgs: [userId],
+    );
+    return rows.map((row) => row['localId'] as int).toList();
+  }
+
+  static Future<void> clearPendingDelete(int localId) async {
+    final db = await initDB();
+    await db.delete(
+      _pendingDeletesTable,
+      where: 'ownerId = ? AND localId = ?',
+      whereArgs: [AuthService.currentUser?.uid, localId],
+    );
   }
 
   static Future<void> deleteAllForCurrentUser() async {
@@ -763,6 +813,11 @@ class DatabaseHelp {
     await db.delete('my_table', where: 'ownerId = ?', whereArgs: [userId]);
     await db.delete(
       _pendingNotificationsTable,
+      where: 'ownerId = ?',
+      whereArgs: [userId],
+    );
+    await db.delete(
+      _pendingDeletesTable,
       where: 'ownerId = ?',
       whereArgs: [userId],
     );

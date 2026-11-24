@@ -292,8 +292,9 @@ class Throw {
     int amount,
     String category,
     String type,
-    String date,
-  ) async {
+    String date, {
+    required int syncVersion,
+  }) async {
     if (localId == null) return false;
 
     final url = Uri.parse('$baseUrl/users/$localId');
@@ -320,14 +321,21 @@ class Throw {
       );
     }
 
-    await DatabaseHelp.markSynced(localId);
+    await DatabaseHelp.markSynced(localId, syncVersion);
     return true;
   }
 
+  /// Throws unless the server confirms; 404 counts as already deleted.
   static Future<void> deleteUserByLocalId(int localId) async {
     final url = Uri.parse('$baseUrl/users/$localId');
 
-    await http.delete(url, headers: await _headers());
+    final response = await http
+        .delete(url, headers: await _headers())
+        .timeout(const Duration(seconds: 10));
+    if (response.statusCode == 404) return;
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('Delete failed (${response.statusCode})');
+    }
   }
 
   /// Bulk-deletes every expense owned by the current user in one request.
@@ -383,7 +391,9 @@ class Throw {
         );
       }
 
-      await DatabaseHelp.markSynced(localId);
+      // New rows start at syncVersion 0; an edit made meanwhile bumps it, so
+      // that row stays unsynced and the edit is pushed later.
+      await DatabaseHelp.markSynced(localId, 0);
       return true;
     } catch (error, stackTrace) {
       captureAppError(error, stackTrace, 'Create expense sync');
@@ -584,6 +594,12 @@ class Throw {
   }
 
   static Future<void> _runSyncPendingExpenses() async {
+    await _pushUnsyncedExpenses();
+    // After the push, so a delete never races an upsert of the same row.
+    await _pushPendingDeletes();
+  }
+
+  static Future<void> _pushUnsyncedExpenses() async {
     final pendingExpenses = await DatabaseHelp.getUnsyncedData();
     if (pendingExpenses.isEmpty) {
       await _maybeReportDeviceSync();
@@ -597,10 +613,19 @@ class Throw {
       captureAppError(error, stackTrace, 'Build device sync payload');
     }
 
+    final sentVersions = {
+      for (final expense in pendingExpenses)
+        (expense['id'] as num).toInt():
+            (expense['syncVersion'] as num?)?.toInt() ?? 0,
+    };
+
     final result = await pushExpenseBatches(
       pendingExpenses: pendingExpenses,
       getToken: AuthService.getIdToken,
-      onBatchSynced: DatabaseHelp.markManySynced,
+      onBatchSynced: (ids) => DatabaseHelp.markManySynced({
+        for (final id in ids)
+          if (sentVersions[id] != null) id: sentVersions[id]!,
+      }),
       deviceInfo: deviceInfo,
     );
 
@@ -608,6 +633,20 @@ class Throw {
       _lastHeartbeatAt = DateTime.now();
     } else if (!result.failed) {
       unawaited(_maybeReportDeviceSync(deviceInfo: deviceInfo));
+    }
+  }
+
+  static Future<void> _pushPendingDeletes() async {
+    final localIds = await DatabaseHelp.getPendingDeletes();
+    for (final localId in localIds) {
+      try {
+        await deleteUserByLocalId(localId);
+        await DatabaseHelp.clearPendingDelete(localId);
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Pending expense delete sync');
+        // Likely offline; the rest are retried on the next sync pass.
+        break;
+      }
     }
   }
 

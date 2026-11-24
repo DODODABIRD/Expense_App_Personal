@@ -874,49 +874,55 @@ class _HomePage2State extends State<HomePage2> with WidgetsBindingObserver {
   }
 
   Future<void> _deleteAccount() async {
-    final confirmed = await showDialog<bool>(
+    final password = await showDialog<String>(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-        elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
-          side: const BorderSide(color: Colors.black, width: 2),
-        ),
-        title: Text(
-          'Delete account?',
-          style: GoogleFonts.itim(fontWeight: FontWeight.bold),
-        ),
-        content: Text(
-          'This permanently deletes your account and all local expenses.',
-          style: GoogleFonts.itim(),
-        ),
-        actions: [
-          TextButton(
-            style: TextButton.styleFrom(
-              foregroundColor: Theme.of(context).colorScheme.onSurface,
-            ),
-            onPressed: () => Navigator.pop(context, false),
-            child: Text('Cancel', style: GoogleFonts.itim()),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-              side: const BorderSide(color: Colors.black, width: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('Delete account', style: GoogleFonts.itim()),
-          ),
-        ],
-      ),
+      builder: (context) => const _DeleteAccountDialog(),
     );
-    if (confirmed != true) return;
-    await DatabaseHelp.deleteAllForCurrentUser();
-    await AuthService.deleteAccount();
+    if (password == null || password.isEmpty) return;
+
+    // Re-authenticate before deleting anything: Firebase rejects
+    // user.delete() without a recent sign-in, which used to leave the
+    // account in place after its expenses were already gone.
+    try {
+      await AuthService.reauthenticate(password);
+    } on FirebaseAuthException catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Delete account re-authentication');
+      if (!mounted) return;
+      final message =
+          error.code == 'wrong-password' || error.code == 'invalid-credential'
+          ? 'Password is incorrect.'
+          : error.message ?? 'Could not verify your password.';
+      NeoSnackBar.error(context, message);
+      return;
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Delete account re-authentication');
+      if (!mounted) return;
+      NeoSnackBar.error(context, 'Could not verify your password: $error');
+      return;
+    }
+
+    try {
+      await DatabaseHelp.deleteAllForCurrentUser();
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Delete account expenses');
+      if (!mounted) return;
+      NeoSnackBar.error(
+        context,
+        'Could not delete your expenses, so the account was kept: $error',
+      );
+      return;
+    }
+
+    try {
+      await AuthService.deleteAccount();
+    } catch (error, stackTrace) {
+      captureAppError(error, stackTrace, 'Delete account');
+      if (!mounted) return;
+      NeoSnackBar.error(
+        context,
+        'Your expenses were deleted, but the account could not be: $error',
+      );
+    }
   }
 
   Future<void> _showJumpscare() async {
@@ -1012,6 +1018,78 @@ class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
             _newPasswordController.text,
           ]),
           child: Text('Update', style: GoogleFonts.itim()),
+        ),
+      ],
+    );
+  }
+}
+
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final _passwordController = TextEditingController();
+
+  @override
+  void dispose() {
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: Colors.black, width: 2),
+      ),
+      title: Text(
+        'Delete account?',
+        style: GoogleFonts.itim(fontWeight: FontWeight.bold),
+      ),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'This permanently deletes your account and all local expenses.',
+            style: GoogleFonts.itim(),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordController,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Current password',
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          style: TextButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.onSurface,
+          ),
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel', style: GoogleFonts.itim()),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            side: const BorderSide(color: Colors.black, width: 1.5),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+          onPressed: () => Navigator.pop(context, _passwordController.text),
+          child: Text('Delete account', style: GoogleFonts.itim()),
         ),
       ],
     );

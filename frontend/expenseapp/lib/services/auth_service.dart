@@ -46,6 +46,21 @@ class AuthService {
     await user.updatePassword(newPassword);
   }
 
+  /// Firebase refuses sensitive actions (delete account) without a recent
+  /// sign-in; call this right before them.
+  static Future<void> reauthenticate(String password) async {
+    final user = _auth.currentUser;
+    if (user == null) throw StateError('You must be signed in');
+    final email = user.email;
+    if (email == null) {
+      throw StateError('No email address is associated with this account');
+    }
+
+    await user.reauthenticateWithCredential(
+      EmailAuthProvider.credential(email: email, password: password),
+    );
+  }
+
   static Future<void> deleteAccount() async {
     final user = _auth.currentUser;
     if (user == null) throw StateError('You must be signed in');

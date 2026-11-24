@@ -9,14 +9,37 @@ try {
   WebSocketPkg = null;
 }
 
+// Clients only send small {type:"auth"|"ping"} frames.
+const WS_MAX_PAYLOAD_BYTES = 4096;
+const WS_AUTH_TIMEOUT_MS = 5000;
+const WS_HEARTBEAT_MS = 30000;
+
 function createServerWithWs(expressApp) {
   const http = require("http");
   const server = http.createServer(expressApp);
 
   if (WebSocketPkg) {
-    const wss = new WebSocketPkg.Server({ noServer: true });
+    const wss = new WebSocketPkg.Server({ noServer: true, maxPayload: WS_MAX_PAYLOAD_BYTES });
+
+    // Drop sockets that stop answering pings so they leave the broadcast registry.
+    const heartbeat = setInterval(() => {
+      for (const ws of wss.clients) {
+        if (ws.isAlive === false) {
+          ws.terminate();
+          continue;
+        }
+        ws.isAlive = false;
+        ws.ping();
+      }
+    }, WS_HEARTBEAT_MS);
+    heartbeat.unref();
+    wss.on("close", () => clearInterval(heartbeat));
 
     server.on("upgrade", async (request, socket, head) => {
+      // No listener is attached while the token is verified; an error then
+      // would otherwise crash the process.
+      const onEarlySocketError = () => socket.destroy();
+      socket.on("error", onEarlySocketError);
       try {
         const urlObj = new URL(request.url, `http://${request.headers.host || "localhost"}`);
         if (urlObj.pathname === "/ws" || urlObj.pathname === "/api/ws") {
@@ -28,6 +51,7 @@ function createServerWithWs(expressApp) {
               if (decoded) ownerId = decoded.uid;
             } catch (e) {}
           }
+          socket.removeListener("error", onEarlySocketError);
           wss.handleUpgrade(request, socket, head, (ws) => {
             ws.ownerId = ownerId;
             wss.emit("connection", ws, request);
@@ -41,9 +65,24 @@ function createServerWithWs(expressApp) {
     });
 
     wss.on("connection", (ws) => {
+      ws.isAlive = true;
+      ws.on("pong", () => {
+        ws.isAlive = true;
+      });
+      // Without this listener a malformed or oversized frame crashes Node.
+      ws.on("error", (err) => {
+        console.warn("WebSocket error:", err.message);
+        ws.terminate();
+      });
+
       if (ws.ownerId) {
         addWsClient(ws.ownerId, ws);
         ws.send(JSON.stringify({ type: "connected", transport: "websocket", ownerId: ws.ownerId }));
+      } else {
+        const authTimer = setTimeout(() => {
+          if (!ws.ownerId) ws.close(1008, "Authentication required");
+        }, WS_AUTH_TIMEOUT_MS);
+        ws.once("close", () => clearTimeout(authTimer));
       }
 
       ws.on("message", async (msg) => {

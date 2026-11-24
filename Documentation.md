@@ -180,11 +180,12 @@ On app resume it reloads the pending count and restarts the parser.
 
 ### 2.4 Local database (SQLite)
 
-File `my_db.db`, **version 7** (`lib/services/databaseHelper.dart`, class `DatabaseHelp`). `_ensureSettingsTable` runs on every open.
+File `my_db.db`, **version 8** (`lib/services/databaseHelper.dart`, class `DatabaseHelp`). `_ensureSettingsTable` runs on every open.
 
 | Table | Columns |
 |---|---|
-| `my_table` (expenses) | `id INTEGER PK AUTOINCREMENT`, `mongoId TEXT`, `ownerId TEXT NOT NULL`, `name TEXT NOT NULL`, `amount INTEGER NOT NULL`, `date TEXT NOT NULL`, `category TEXT NOT NULL`, `type TEXT NOT NULL`, `synced INTEGER DEFAULT 0` |
+| `my_table` (expenses) | `id INTEGER PK AUTOINCREMENT`, `mongoId TEXT`, `ownerId TEXT NOT NULL`, `name TEXT NOT NULL`, `amount INTEGER NOT NULL`, `date TEXT NOT NULL`, `category TEXT NOT NULL`, `type TEXT NOT NULL`, `synced INTEGER DEFAULT 0`, `syncVersion INTEGER NOT NULL DEFAULT 0` (v8; bumped on every edit) |
+| `pending_expense_deletes` | `ownerId TEXT NOT NULL`, `localId INTEGER NOT NULL`, PK `(ownerId, localId)` (v8). Server deletes not yet confirmed |
 | `app_settings` | `key TEXT PK`, `value TEXT NOT NULL` |
 | `pending_notification_expenses` | `id INTEGER PK AUTOINCREMENT`, `ownerId`, `name`, `amount INTEGER`, `date`, `category`, `type`, `sourceApp`, `receivedAt` (all NOT NULL); since v7 also `rawTitle TEXT`, `rawText TEXT`, `notificationKey TEXT` (unique with `ownerId`), `status TEXT` (`ready` / `needs_input`, default `ready`), `aiStatus TEXT` (`pending` / `done` / `failed`, default `done`), `aiAttempts INTEGER`, `aiNextRetryAt INTEGER` (ms), `userEdited INTEGER` |
 
@@ -197,6 +198,7 @@ File `my_db.db`, **version 7** (`lib/services/databaseHelper.dart`, class `Datab
 | < 5 | Create `app_settings` |
 | < 6 | Create `pending_notification_expenses` |
 | < 7 | Add the raw-text, key, `status`, AI-retry and `userEdited` columns to `pending_notification_expenses`, plus the unique index on `(ownerId, notificationKey)` |
+| < 8 | Add `my_table.syncVersion`; create `pending_expense_deletes` |
 
 **Legacy rows.** `assignLegacyExpensesToCurrentUser` adopts rows with `ownerId IS NULL` on every list load.
 
@@ -234,9 +236,9 @@ All calls send `Authorization: Bearer <Firebase ID token>`, except `getPublicCon
 | `parseNotification` | POST `/parse-notification` `{title, message, packageName}` | 30s | |
 | `getAiNotificationReference` | GET `/ai-notification-reference` | 15s | |
 | `saveAiNotificationReference` | PUT `/ai-notification-reference` `{items}` | 30s | |
-| `createExpense` | POST `/users` `{localId, name, amount, category, type, date}` | 10s | On 200/201 → `markSynced`; errors swallowed |
-| `updateUserByLocalId` | PUT `/users/{localId}` | 10s | 2xx → `markSynced`; 404 → false |
-| `deleteUserByLocalId` | DELETE `/users/{localId}` | none | Fire-and-forget |
+| `createExpense` | POST `/users` `{localId, name, amount, category, type, date}` | 10s | On 200/201 → `markSynced(localId, 0)`; errors swallowed |
+| `updateUserByLocalId` | PUT `/users/{localId}` | 10s | 2xx → `markSynced(localId, syncVersion)`; 404 → false |
+| `deleteUserByLocalId` | DELETE `/users/{localId}` | 10s | Throws unless 2xx or 404 (404 = already gone). Called only from the sync pass |
 | `deleteAllExpenses` | POST `/users/delete-all` | 15s | |
 | `syncPendingExpenses` | POST `/users/bulk` | 30s | Single-flight serialized; pushes in chunks of 500 with a shared `http.Client`, single token fetch, embedded `device` heartbeat on the final chunk, and 404 fallback to `POST /users` |
 | `reportDeviceSync` | POST `/sync/beat` `{deviceId, deviceName, platform, appVersion, expenseCount}` | 10s | Throttled to a 30s cooldown after a successful heartbeat |
@@ -250,8 +252,8 @@ All calls send `Authorization: Bearer <Firebase ID token>`, except `getPublicCon
 | Action | What happens |
 |---|---|
 | Insert | Row written locally (`synced` defaults to 0), then `createExpense` runs in the background |
-| Edit | Row updated with `synced = 0`, then `updateUserByLocalId` (not awaited) |
-| Delete | Local delete and server delete are both fire-and-forget. A failed server delete is **not retried**. |
+| Edit | Row updated with `synced = 0` and `syncVersion + 1`, then `updateUserByLocalId` (not awaited) |
+| Delete | One transaction deletes the row and adds it to `pending_expense_deletes`; then a sync pass runs. A local failure is shown to the user. |
 | Approve a notification draft | Transaction moves the draft into `my_table`, then sync |
 
 **Pushes to the server.** `syncPendingExpenses` runs:
@@ -259,16 +261,18 @@ All calls send `Authorization: Bearer <Firebase ID token>`, except `getPublicCon
 - from Settings "Retry sync";
 - from "Re-sync all", which marks every row unsynced, shows a loading overlay, and reloads the list without triggering a second sync pass.
 
-Concurrent sync calls are serialized into at most one queued follow-up pass. Rows are pushed in chunks of 500 via `POST /api/users/bulk` (falling back to `POST /api/users` on 404) using a single HTTP client and token, and each confirmed chunk is marked `synced = 1` in one SQLite transaction (`markManySynced`). The server upserts on `(owner_id, local_id)`, so re-sending is safe.
+Concurrent sync calls are serialized into at most one queued follow-up pass. Rows are pushed in chunks of 500 via `POST /api/users/bulk` (falling back to `POST /api/users` on 404) using a single HTTP client and token, and each confirmed chunk is marked `synced = 1` in one SQLite transaction (`markManySynced`). A row is marked only if its `syncVersion` still equals the one that was sent, so an edit made during the push stays unsynced and goes out in the next pass. The server upserts on `(owner_id, local_id)`, so re-sending is safe.
+
+After the push, each pass sends the queued `pending_expense_deletes` one by one and removes each entry once the server confirms; on the first failure it stops and the rest wait for the next pass. Because deletes run inside the serialized sync pass, they always follow any push already in flight.
 
 **Pulls from the server.** Manual only, through "Load online expenses":
 - `GET /users` → `importMissingExpenses`;
-- inserts rows whose `localId` is missing locally, keeping the same id;
+- inserts rows whose `localId` is missing locally and not in `pending_expense_deletes`, keeping the same id;
 - sets `synced = 1`.
 
-**Delete all.** The server bulk delete runs first. Local tables are wiped only if it succeeds.
+**Delete all.** The server bulk delete runs first. Local tables (including `pending_expense_deletes`) are wiped only if it succeeds.
 
-**Delete account.** Deletes the user's expenses (server first, then local `my_table`) and pending drafts, then the Firebase account. The server's `ai_notification_references` / `device_syncs` rows and local `app_settings` are **not** deleted. There is no re-authentication; only password change re-authenticates.
+**Delete account.** The dialog asks for the current password and re-authenticates first (`AuthService.reauthenticate`); nothing is deleted if that fails. Then it deletes the user's expenses (server first, then local tables) and pending drafts, then the Firebase account. Each step's failure is logged and shown in a snackbar; if the expense delete fails, the account is kept. The server's `ai_notification_references` / `device_syncs` rows and local `app_settings` are **not** deleted.
 
 **Live updates.** None in the app, because the WebSocket client is never connected.
 
@@ -499,7 +503,7 @@ The Home counter goes up when Home is tapped while already on Home, and also whe
 **`server.js`**
 - Creates the app with `createApp()` from `api/index.js`.
 - Wraps it in `http.createServer` and listens on `PORT` (default 3000).
-- Handles WebSocket upgrades on `/ws` and `/api/ws`; other upgrade paths are destroyed.
+- Handles WebSocket upgrades on `/ws` and `/api/ws`; other upgrade paths are destroyed. Frames are capped at 4 KB (`maxPayload`), socket errors are logged and terminate that socket, unauthenticated sockets are closed after 5 s, and a 30 s ping heartbeat terminates sockets that stop answering.
 - Requiring `server.js` starts listening.
 
 **`api/index.js`**
@@ -668,7 +672,8 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
 
 **WebSocket** (`/ws`, `/api/ws`)
 - Authentication: `?token=` at upgrade time, or a later `{type:"auth", token}` message.
-- An invalid token still upgrades, but the socket is unauthenticated and receives nothing.
+- An invalid or missing token still upgrades, but the socket receives nothing and is closed with code 1008 unless a valid `auth` message arrives within 5 s.
+- Frames over 4 KB close the socket (`maxPayload`).
 - Server messages:
 
   | Message | When |
@@ -677,7 +682,7 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
   | `{type:"authenticated", transport:"websocket", ownerId}` | After a successful `auth` message |
   | `{type:"pong"}` | In reply to `{type:"ping"}` |
 
-- There is no server heartbeat.
+- The server pings every socket every 30 s and terminates any that did not answer the previous ping.
 
 **SSE** (`/api/events`)
 - On connect it sends `{"type":"connected","transport":"sse","ownerId"}`.
@@ -1114,7 +1119,6 @@ Recorded so nobody mistakes them for intended behaviour. Fix only when asked.
 
 **App**
 - `ExpenseEdit` loads its row with `getDataById`, which has no `ownerId` filter.
-- Server deletes are fire-and-forget and never retried.
 - Delete account leaves the server's AI reference and device-sync rows and the local `app_settings` behind.
 - Amounts typed while the display currency is USD/EUR are saved without converting to IDR.
 - The WebSocket client and `getPublicConfig` are never called.

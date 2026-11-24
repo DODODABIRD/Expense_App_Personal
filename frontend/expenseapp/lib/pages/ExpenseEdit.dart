@@ -999,7 +999,14 @@ class _ExpenseEditState extends State<ExpenseEdit> {
     );
 
     if (shouldDelete == true) {
-      await DatabaseHelp.deleteTs(widget.expenseId);
+      try {
+        await DatabaseHelp.deleteTs(widget.expenseId);
+      } catch (error, stackTrace) {
+        captureAppError(error, stackTrace, 'Delete expense');
+        if (!mounted) return;
+        NeoSnackBar.error(context, 'Could not delete expense: $error');
+        return;
+      }
       if (!mounted) return;
       NeoSnackBar.success(context, 'Expense deleted successfully!');
       Navigator.pop(context);
