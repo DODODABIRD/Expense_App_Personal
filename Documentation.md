@@ -82,6 +82,7 @@ An expense is identified across devices by `(owner_id, local_id)`, where `local_
 - Java 17.
 - Permissions: `INTERNET`, `CAMERA` (optional feature).
 - `NotificationListener` service.
+- Backups disabled: `allowBackup="false"`, `fullBackupContent="false"`, and `res/xml/data_extraction_rules.xml` excludes every domain from Android 12+ cloud backup and device transfer. Expenses come back from the server via "Load online expenses"; drafts, settings and logs are not restored.
 - Release signing reads `android/key.properties`, else falls back to the debug key.
 - `android/app/google-services.json` is committed. There is no iOS `GoogleService-Info.plist`.
 
@@ -226,7 +227,7 @@ File `my_db.db`, **version 8** (`lib/services/databaseHelper.dart`, class `Datab
 | `EXPENSE_WS_URL` | `wss://dododabird.us/ws` |
 | `EXPENSE_APP_VERSION` | `2.0.0` |
 
-All calls send `Authorization: Bearer <Firebase ID token>`, except `getPublicConfig`. There is no HTTP retry.
+All calls send `Authorization: Bearer <Firebase ID token>`, except `getPublicConfig`. There is no HTTP retry. Error messages that include a server response body keep only its first 200 characters, since they end up in the shareable error log.
 
 | Method | HTTP | Timeout | Notes |
 |---|---|---|---|
@@ -242,7 +243,7 @@ All calls send `Authorization: Bearer <Firebase ID token>`, except `getPublicCon
 | `deleteAllExpenses` | POST `/users/delete-all` | 15s | |
 | `syncPendingExpenses` | POST `/users/bulk` | 30s | Single-flight serialized; pushes in chunks of 500 with a shared `http.Client`, single token fetch, embedded `device` heartbeat on the final chunk, and 404 fallback to `POST /users` |
 | `reportDeviceSync` | POST `/sync/beat` `{deviceId, deviceName, platform, appVersion, expenseCount}` | 10s | Throttled to a 30s cooldown after a successful heartbeat |
-| `connectLiveWebSocket` etc. | WS `wsUrl?token=` | — | Sends `{type:'auth'}` and pings every 25s. **Not called anywhere.** |
+| `connectLiveWebSocket` etc. | WS `wsUrl` (no token in the URL) | — | Sends `{type:'auth', token}` and pings every 25s. **Not called anywhere.** |
 | `getPublicConfig` | GET `/public-config` | 10s | **Not called anywhere.** |
 
 ### 2.6 Sync (offline-first)
@@ -433,6 +434,7 @@ The server builds a per-category template, which is shown on `AiContextPage`. Am
 
 **Error logging**
 - `captureAppError(error, stack, context)` appends JSONL to `<ApplicationSupportDirectory>/developer_error_logs.jsonl` (serialised writes).
+- Message and stack trace are each cut to 4000 characters. When the file passes 1 MB, only the newest entries totalling at most 512 KB are kept.
 - `readLogs` returns newest first.
 - Export writes `error-logs-<ts>.txt`.
 
@@ -510,14 +512,26 @@ The Home counter goes up when Home is tapped while already on Home, and also whe
 1. Loads env from `backend/.env.local`, then `.env`.
 2. Initialises Firebase Admin from `FIREBASE_SERVICE_ACCOUNT_JSON`. If it is unset, it only warns, and authenticated routes return 503.
 3. Middleware, in order:
-   1. JSON / urlencoded parsers (8 MB limit);
-   2. `cors()` with defaults, so all origins are allowed;
-   3. a cookie parser;
-   4. `express.static(public/)`.
+   1. security headers: `X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `Referrer-Policy: strict-origin-when-cross-origin`, and `Strict-Transport-Security` on HTTPS requests. `x-powered-by` is disabled. There is no CSP (the pages use inline scripts);
+   2. JSON parser: 8 MB for `/api/parse-receipt`, 1 MB everywhere else; urlencoded parser 1 MB. Too-large bodies get 413;
+   3. `cors({origin: CORS_ORIGINS})`: only listed origins get CORS headers. The website and `/expenses` are same-origin and the app sends no `Origin`, so the default empty list only blocks third-party pages;
+   4. a cookie parser;
+   5. `express.static(public/)`.
 4. Page routes, then API routes.
 5. `/dodo` login router, then the `/dodo` admin router (in that order).
+6. A final error handler answers JSON (e.g. malformed JSON → 400, too large → 413). Details of 5xx errors are logged, and the client gets `Internal server error`.
 
-There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the proxy's address.
+`trust proxy` is `loopback, uniquelocal`: Caddy reaches the container from a loopback or private Docker address, so `req.ip` is the real client from `X-Forwarded-For` and `req.secure` follows `X-Forwarded-Proto`.
+
+**Rate limits** (`api/lib/rateLimit.js`, in-memory fixed windows, reset on restart; over the limit → 429 `{error}` with `Retry-After`)
+
+| Route | Limit | Keyed by |
+|---|---|---|
+| POST `/api/rag-chat`, POST `/api/rag-feedback` (shared bucket) | 30 per 15 min | client IP |
+| POST `/api/parse-notification` | 120 per 15 min | Firebase UID |
+| POST `/api/parse-receipt` | 20 per 15 min | Firebase UID |
+
+**Error responses.** User routes return `{error}` with a fixed message for server-side failures and log the details; only validation messages (e.g. invalid amount) are passed through.
 
 **Auth types**
 
@@ -554,23 +568,29 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
 | POST `/api/rag-feedback` | `{eventId, vote:"up"\|"down"}` → `{success, id, feedback}` |
 | GET `/api/exchange-rates` | → `{base:"IDR", rates:{IDR:1, USD, EUR}}`; 502 on provider failure |
 
+**Expense validation** (`normalizeExpenseFields` in `api/db.js`, also used by the admin expense edit):
+- `amount` must be a number or numeric string from 0 to 2147483647 (Postgres `INTEGER`, whole IDR); decimals are rounded.
+- `name` is at most 200 characters.
+- `date` is at most 32 characters. Its format is not checked, because older and PDF-restored rows may not be `YYYY-MM-DD` and rejecting them would block their sync forever.
+
 #### User API (FB)
 
 | Method & path | Request → response |
 |---|---|
-| GET `/api/events` | SSE stream (§3.4). Firebase ID token in the Bearer header or `?token=`; 401 if missing/invalid, also 401 (not 503) when Firebase is not configured |
-| POST `/api/users` | `{localId*, name, amount, category, type, date}` → the expense. Upserts on `(owner_id, local_id)`. Broadcasts `expense_created`. |
-| POST `/api/users/bulk` | `{expenses* (≤ 1000), device?}` → `{count, syncedLocalIds}`. Single-statement `UNNEST` upsert on `(owner_id, local_id)`; optionally updates `device_syncs`. Broadcasts `bulk_upserted`. |
+| POST `/api/events/ticket` | → `{ticket, expiresInMs}`: a single-use SSE ticket valid for 60 s |
+| GET `/api/events` | SSE stream (§3.4). Firebase ID token in the Bearer header, or `?ticket=` from `/api/events/ticket` (the token is no longer accepted in the URL); 401 if missing/invalid/expired/reused, also 401 (not 503) when Firebase is not configured |
+| POST `/api/users` | `{localId*, name, amount*, category, type, date}` → the expense. Upserts on `(owner_id, local_id)`. Broadcasts `expense_created`. 400 if invalid (see Expense validation below). |
+| POST `/api/users/bulk` | `{expenses* (≤ 1000), device?}` → `{count, syncedLocalIds, rejected?}`. Single-statement `UNNEST` upsert on `(owner_id, local_id)`; optionally updates `device_syncs`. Broadcasts `bulk_upserted`. Invalid rows are skipped and listed in `rejected: [{localId, error}]` instead of failing the request. |
 | GET `/api/users` | → array ordered by `date DESC, created_at DESC` |
 | GET `/api/users/:localId` | → the expense, or 404 |
-| PUT `/api/users/:localId` | partial fields → the updated expense, or 404. Broadcasts `expense_updated`. |
+| PUT `/api/users/:localId` | partial fields → the updated expense, or 404; 400 if a given field is invalid. Broadcasts `expense_updated`. |
 | DELETE `/api/users/:localId` | → `{message:"Deleted"}` (even if the row did not exist). Broadcasts `expense_deleted`. |
 | POST `/api/users/delete-all` | → `{message, deletedCount}`. Broadcasts `bulk_deleted`. |
 | POST `/api/sync/beat` | `{deviceId*, deviceName, platform, appVersion, expenseCount}` → `{success, lastSyncAt}` (upserts `device_syncs`) |
 | GET `/api/ai-notification-reference` | → `{updated, itemCount, updatedAt, template}` |
 | PUT `/api/ai-notification-reference` | `{items:[{expenseitem, expenseprice>0, category?, type?, date?}]}` (items beyond 100 are truncated; 400 if a kept item has an empty name or a non-positive/non-integer price) → `{updated, itemCount}` |
 | POST `/api/ai-notification-reference/refresh` | → rebuilds from the latest 100 expenses |
-| POST `/api/parse-notification` | `{message*, title?, packageName?}` → `{name, amount, category, type}` |
+| POST `/api/parse-notification` | `{message*, title?, packageName?}` → `{name, amount, category, type}`. Inputs are cut to 1000 / 200 / 200 characters before prompting. |
 | POST `/api/parse-receipt` | `{image* (base64), mimeType?}` → NDJSON stream (§3.5) |
 
 #### Admin login (public)
@@ -671,7 +691,7 @@ There is no `trust proxy` setting, so behind a reverse proxy `req.ip` is the pro
 ### 3.4 Real-time
 
 **WebSocket** (`/ws`, `/api/ws`)
-- Authentication: `?token=` at upgrade time, or a later `{type:"auth", token}` message.
+- Authentication: `?token=` at upgrade time (still accepted, but clients no longer use it), or a `{type:"auth", token}` message, which both the web app and the app send right after connecting.
 - An invalid or missing token still upgrades, but the socket receives nothing and is closed with code 1008 unless a valid `auth` message arrives within 5 s.
 - Frames over 4 KB close the socket (`maxPayload`).
 - Server messages:
@@ -756,7 +776,7 @@ Otherwise the response is `application/x-ndjson`, one JSON object per line:
 - The prompt includes the user's template from `ai_notification_references` and treats it as untrusted data.
 - Temperature 0.
 - Output: category one of `EXPENSE_CATEGORIES` (else `lainnya`); type `expected`/`unexpected` (else `unexpected`).
-- Provider errors → 502.
+- Provider errors → 502 `{error:"Could not parse notification"}` (details are logged).
 
 **Notification template** (`api/services/notificationContext.js`)
 
@@ -797,7 +817,7 @@ If the relevant variable is unset, that login method returns 503. It never allow
 - The cookie is `secure` when `NODE_ENV=production`, so production admin login needs HTTPS.
 
 **Throttling**
-- Failed attempts are counted per `req.ip`: 10 per rolling 15 minutes.
+- Failed attempts are counted per `req.ip` (the real client IP, via `trust proxy`): 10 per rolling 15 minutes. Expired counters are pruned hourly.
 - A successful login clears the count.
 
 **Audit actions**
@@ -898,6 +918,7 @@ For local runs, put them in `backend/.env.local`, starting from `.env.example`. 
 | `R2_PUBLIC_BASE_URL` | for R2 release uploads | empty → disabled | Public base URL serving the R2 bucket (`https://...`) | yes |
 | `ADMIN_ASSET_ROOT` | no | `public/asset` | Asset manager root | no |
 | `ADMIN_BACKUP_ROOT` | no | `data/admin-backups` | Asset backup root | no |
+| `CORS_ORIGINS` | no | empty → no cross-origin browser access | Comma-separated origins allowed to call the API from another site | no |
 | `PORT` | no | 3000 | Listen port | no |
 | `NODE_ENV` | no | — (Docker sets `production`) | Secure cookie flag | no |
 | `GIT_COMMIT` / `SOURCE_COMMIT` / `VERCEL_GIT_COMMIT_SHA` / `VERCEL_GIT_COMMIT_REF` | no | falls back to `git` CLI | Commit shown in the Health tab | no |
@@ -1090,6 +1111,7 @@ Bump `version:` in `pubspec.yaml` and the hard-coded "Version 2.0.0" in `setting
 | `api_users.test.js` | `/api/users` CRUD and `/api/users/bulk` with mocked `verifyIdToken`, 401/404, notification reference, delete-all |
 | `db.test.js` | Row mapping, SSL detection, `ensureSchema` SQL, CRUD, bulk `UNNEST` upsert, JSONB reference |
 | `downloads.test.js` | Version comparison, seeding, admin app/release CRUD, R2 presign/verify/cleanup lifecycle, latest selection, public endpoints |
+| `security.test.js` | Expense amount/name validation, bulk rejection of invalid rows, body limits, JSON error handler, security headers, CORS allow-list, RAG rate limit per forwarded IP, SSE tickets |
 | `notification_context.test.js` | Reference refresh (≤ 100 items), template building |
 | `r2_service.test.js` | R2 config validation, key sanitization, presigned upload signing, `headObject`, `deleteObject`, `checkBucket` |
 
@@ -1102,7 +1124,7 @@ Bump `version:` in `pubspec.yaml` and the hard-coded "Version 2.0.0" in `setting
 | `ai_context_page_test.dart` | Category ranges, empty state, retry |
 | `api_sync_test.dart` | Chunked bulk push, single token fetch, embedded device heartbeat on final chunk, 404 fallback, mid-sync failure handling |
 | `developer_logs_page_test.dart` | Empty state, expandable stack trace |
-| `error_log_service_test.dart` | Persist/read order, export |
+| `error_log_service_test.dart` | Persist/read order, export, field truncation and size cap |
 | `expense_edit_page_test.dart` | Null expense id |
 | `expense_summary_page_test.dart` | Outlier rules, type segments, empty state |
 | `local_notification_parser_test.dart` | Noise, income, ambiguity, Tier-1 apps except BSI and CIMB, amount formats, universal fallback |
@@ -1128,7 +1150,7 @@ Recorded so nobody mistakes them for intended behaviour. Fix only when asked.
 - Naming is inconsistent: Android label "UNMURCE" vs. MaterialApp title / About "Expense App".
 
 **Backend**
-- CRUD does not validate category or type and accepts negative amounts. The parsers do clamp to ≥ 0.
+- CRUD does not validate category or type.
 - `amount INTEGER` caps at about 2.1 billion IDR.
 - There is no index on `expenses.date`.
 - `GET /api/exchange-rates` has no cache or timeout.

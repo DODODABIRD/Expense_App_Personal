@@ -57,6 +57,10 @@ class Throw {
   static Future<void>? _inFlightSync;
   static Future<void>? _queuedSync;
   static DateTime? _lastHeartbeatAt;
+  /// Server bodies end up in the shareable error log; keep only the start.
+  static String _shortBody(String body) =>
+      body.length <= 200 ? body : '${body.substring(0, 200)}…';
+
   static Future<Map<String, String>> _headers() async {
     return {
       'Content-Type': 'application/json',
@@ -317,7 +321,7 @@ class Throw {
 
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw Exception(
-        'Update failed (${response.statusCode}): ${response.body}',
+        'Update failed (${response.statusCode}): ${_shortBody(response.body)}',
       );
     }
 
@@ -387,7 +391,7 @@ class Throw {
 
       if (response.statusCode != 201 && response.statusCode != 200) {
         throw Exception(
-          'Create failed (${response.statusCode}): ${response.body}',
+          'Create failed (${response.statusCode}): ${_shortBody(response.body)}',
         );
       }
 
@@ -488,7 +492,7 @@ class Throw {
               continue;
             } else {
               throw Exception(
-                'Bulk sync failed (${response.statusCode}): ${response.body}',
+                'Bulk sync failed (${response.statusCode}): ${_shortBody(response.body)}',
               );
             }
           } catch (error, stackTrace) {
@@ -520,7 +524,7 @@ class Throw {
 
             if (response.statusCode != 200 && response.statusCode != 201) {
               throw Exception(
-                'Create failed (${response.statusCode}): ${response.body}',
+                'Create failed (${response.statusCode}): ${_shortBody(response.body)}',
               );
             }
             succeededIds.add(localId);
@@ -717,11 +721,9 @@ class Throw {
 
     try {
       final token = await AuthService.getIdToken();
-      final uri = Uri.parse(wsUrl).replace(
-        queryParameters: {'token': token},
-      );
 
-      final socket = await WebSocket.connect(uri.toString());
+      // The token goes only in the auth frame below: proxies log URLs.
+      final socket = await WebSocket.connect(wsUrl);
       _liveWs = socket;
 
       socket.add(jsonEncode({'type': 'auth', 'token': token}));

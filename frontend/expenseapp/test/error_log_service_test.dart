@@ -60,6 +60,33 @@ void main() {
     expect(content, contains('sync.dart:42'));
   });
 
+  test('truncates long messages and keeps the log bounded', () async {
+    final longMessage = 'x' * (ErrorLogService.maxFieldLength * 2);
+    // ~4 KB per entry, so this crosses the 1 MB cap once.
+    const total = 400;
+    for (var i = 0; i < total; i++) {
+      await errorLogService.recordError(
+        Exception('$i $longMessage'),
+        context: 'Entry $i',
+      );
+    }
+
+    final entries = await errorLogService.readLogs();
+    final file = File(
+      '${temporaryDirectory.path}${Platform.pathSeparator}'
+      'developer_error_logs.jsonl',
+    );
+
+    expect(await file.length(), lessThanOrEqualTo(ErrorLogService.maxLogBytes));
+    expect(entries.length, lessThan(total));
+    expect(entries.first.context, 'Entry ${total - 1}');
+    expect(entries.first.message, endsWith('[truncated]'));
+    expect(
+      entries.first.message.length,
+      lessThan(ErrorLogService.maxFieldLength + 20),
+    );
+  });
+
   test('exports an empty log clearly', () async {
     final file = await errorLogService.exportToTextFile();
 

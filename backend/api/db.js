@@ -174,16 +174,66 @@ function toExpenseJson(row) {
   };
 }
 
+// expenses.amount is a Postgres INTEGER holding whole IDR.
+const MAX_EXPENSE_AMOUNT = 2147483647;
+const MAX_EXPENSE_NAME_LENGTH = 200;
+// The format is not enforced: older and PDF-restored rows may not be
+// YYYY-MM-DD, and rejecting them would block their sync forever.
+const MAX_EXPENSE_DATE_LENGTH = 32;
+
+class ExpenseValidationError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "ExpenseValidationError";
+    this.status = 400;
+  }
+}
+
+function parseExpenseAmount(value) {
+  const amount =
+    typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  if (
+    typeof amount !== "number" ||
+    !Number.isFinite(amount) ||
+    amount < 0 ||
+    amount > MAX_EXPENSE_AMOUNT
+  ) {
+    throw new ExpenseValidationError(
+      `amount must be a number from 0 to ${MAX_EXPENSE_AMOUNT} (IDR)`
+    );
+  }
+  return Math.round(amount);
+}
+
+function parseExpenseName(value) {
+  const name = String(value ?? "");
+  if (name.length > MAX_EXPENSE_NAME_LENGTH) {
+    throw new ExpenseValidationError(
+      `name must be at most ${MAX_EXPENSE_NAME_LENGTH} characters`
+    );
+  }
+  return name;
+}
+
+function parseExpenseDate(value) {
+  const date = String(value ?? "");
+  if (date.length > MAX_EXPENSE_DATE_LENGTH) {
+    throw new ExpenseValidationError(
+      `date must be at most ${MAX_EXPENSE_DATE_LENGTH} characters`
+    );
+  }
+  return date;
+}
+
+/** Throws ExpenseValidationError (status 400) for invalid input. */
 function normalizeExpenseFields(fields) {
   return {
     localId: String(fields.localId),
-    name: String(fields.name ?? ""),
-    amount: Number.isFinite(Number(fields.amount))
-      ? Math.round(Number(fields.amount))
-      : 0,
+    name: parseExpenseName(fields.name),
+    amount: parseExpenseAmount(fields.amount),
     category: String(fields.category ?? "lainnya"),
     type: String(fields.type ?? "unexpected"),
-    date: String(fields.date ?? ""),
+    date: parseExpenseDate(fields.date),
   };
 }
 
@@ -284,15 +334,17 @@ async function updateExpenseByLocalId(ownerId, localId, fields) {
   const existing = await getExpenseByLocalId(ownerId, localId);
   if (!existing) return null;
 
-  const name = fields.name !== undefined ? String(fields.name) : existing.name;
+  const name =
+    fields.name !== undefined ? parseExpenseName(fields.name) : existing.name;
   const amount =
-    fields.amount !== undefined && Number.isFinite(Number(fields.amount))
-      ? Math.round(Number(fields.amount))
+    fields.amount !== undefined
+      ? parseExpenseAmount(fields.amount)
       : existing.amount;
   const category =
     fields.category !== undefined ? String(fields.category) : existing.category;
   const type = fields.type !== undefined ? String(fields.type) : existing.type;
-  const date = fields.date !== undefined ? String(fields.date) : existing.date;
+  const date =
+    fields.date !== undefined ? parseExpenseDate(fields.date) : existing.date;
 
   const result = await getPool().query(
     `UPDATE expenses
@@ -1187,6 +1239,8 @@ async function deleteDownloadRelease(id) {
 }
 
 module.exports = {
+  ExpenseValidationError,
+  normalizeExpenseFields,
   compareVersions,
   connectDB,
   countReleasesByR2Key,

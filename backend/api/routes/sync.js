@@ -21,7 +21,8 @@ async function deviceSyncBeat(req, res) {
     });
     res.json({ success: true, lastSyncAt: row?.last_sync_at || new Date() });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Device sync beat failed:", err);
+    res.status(500).json({ error: "Could not record device sync" });
   }
 }
 

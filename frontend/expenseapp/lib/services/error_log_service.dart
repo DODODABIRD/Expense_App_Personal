@@ -50,6 +50,11 @@ class ErrorLogService {
   static final instance = ErrorLogService();
   static const _logFileName = 'developer_error_logs.jsonl';
 
+  // The log is never cleared automatically, so keep it bounded: past
+  // maxLogBytes, only the newest half is kept.
+  static const maxLogBytes = 1024 * 1024;
+  static const maxFieldLength = 4000;
+
   final Future<Directory> Function() _directoryProvider;
   Future<void> _writeQueue = Future<void>.value();
 
@@ -61,8 +66,8 @@ class ErrorLogService {
     final entry = ErrorLogEntry(
       timestamp: DateTime.now(),
       context: context,
-      message: error.toString(),
-      stackTrace: stackTrace?.toString() ?? '',
+      message: _truncate(error.toString()),
+      stackTrace: _truncate(stackTrace?.toString() ?? ''),
     );
     final write = _writeQueue.then((_) => _append(entry));
     _writeQueue = write;
@@ -137,10 +142,28 @@ class ErrorLogService {
         mode: FileMode.append,
         flush: true,
       );
+      if (await file.length() > maxLogBytes) {
+        final lines = await file.readAsLines();
+        final kept = <String>[];
+        var size = 0;
+        for (final line in lines.reversed) {
+          size += utf8.encode(line).length + 1;
+          if (size > maxLogBytes ~/ 2) break;
+          kept.add(line);
+        }
+        await file.writeAsString(
+          '${kept.reversed.join('\n')}\n',
+          flush: true,
+        );
+      }
     } catch (_) {
       // Logging must never make the original app error worse.
     }
   }
+
+  static String _truncate(String value) => value.length <= maxFieldLength
+      ? value
+      : '${value.substring(0, maxFieldLength)}… [truncated]';
 }
 
 void captureAppError(Object error, StackTrace stackTrace, String context) {

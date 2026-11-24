@@ -53,6 +53,9 @@ function pruneExpiredSessions() {
   for (const [id, session] of sessions) {
     if (now > session.expiresAt) sessions.delete(id);
   }
+  for (const [ip, entry] of loginAttempts) {
+    if (now > entry.resetAt) loginAttempts.delete(ip);
+  }
 }
 
 const sessionPruner = setInterval(pruneExpiredSessions, 60 * 60 * 1000);

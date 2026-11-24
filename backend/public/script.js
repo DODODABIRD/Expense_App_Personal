@@ -306,8 +306,8 @@ class LiveSyncManager {
             // On Vercel and vercel dev, serverless lambdas do not support WebSockets,
             // and sending an Upgrade: websocket header causes vercel dev to crash with ECONNRESET.
             if (window.EXPENSE_WS_URL) {
-                const wsUrl = `${window.EXPENSE_WS_URL}?token=${encodeURIComponent(token)}`;
-                this.ws = new WebSocket(wsUrl);
+                // The token goes in the first message, not the URL.
+                this.ws = new WebSocket(window.EXPENSE_WS_URL);
 
                 const wsTimeout = setTimeout(() => {
                     if (this.ws && this.ws.readyState !== WebSocket.OPEN) {
@@ -320,6 +320,7 @@ class LiveSyncManager {
 
                 this.ws.onopen = () => {
                     clearTimeout(wsTimeout);
+                    this.ws.send(JSON.stringify({ type: 'auth', token }));
                     this.updateStatus('live', 'Live');
                     this.retryCount = 0;
                     console.log('[LiveSync] WebSocket connected successfully');
@@ -370,7 +371,16 @@ class LiveSyncManager {
             }
             if (!token) return;
 
-            const sseUrl = `${API_BASE_URL}/events?token=${encodeURIComponent(token)}`;
+            // EventSource cannot send headers; trade the ID token for a
+            // single-use ticket so the token never appears in a URL.
+            const ticketResponse = await fetch(`${API_BASE_URL}/events/ticket`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!ticketResponse.ok) throw new Error(`SSE ticket failed (${ticketResponse.status})`);
+            const { ticket } = await ticketResponse.json();
+
+            const sseUrl = `${API_BASE_URL}/events?ticket=${encodeURIComponent(ticket)}`;
             this.sse = new EventSource(sseUrl);
 
             this.sse.onopen = () => {

@@ -30,7 +30,8 @@ async function getNotificationReference(req, res) {
       template,
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error("Could not load the notification reference:", err);
+    return res.status(500).json({ error: "Could not load the notification reference" });
   }
 }
 
@@ -70,7 +71,8 @@ async function putNotificationReference(req, res) {
     );
     return res.json({ updated: true, itemCount: savedItems.length });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error("Could not save the notification reference:", err);
+    return res.status(500).json({ error: "Could not save the notification reference" });
   }
 }
 
@@ -86,7 +88,8 @@ async function refreshNotificationRef(req, res) {
     });
     return res.json({ updated: true, itemCount });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    console.error("Could not refresh the notification reference:", err);
+    return res.status(500).json({ error: "Could not refresh the notification reference" });
   }
 }
 

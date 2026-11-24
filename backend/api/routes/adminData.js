@@ -14,7 +14,8 @@ const DOWNLOAD_URL_PATTERN = /^(https?:\/\/|\/(?!\/))/i;
 const APP_SLUG_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 function sendDbError(res, err) {
-  res.status(500).json({ success: false, error: err.message });
+  // ExpenseValidationError carries status 400.
+  res.status(err.status || 500).json({ success: false, error: err.message });
 }
 
 function isUniqueViolation(err) {

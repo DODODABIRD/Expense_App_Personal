@@ -315,9 +315,11 @@ async function parseReceipt(imageBase64) {
   );
 
   if (response.status !== 202) {
+    // The raw body is logged only; the error message reaches app users.
     const body = await response.text();
+    console.warn(`Azure analyze failed (${response.status}):`, body.slice(0, 500));
     throw new ReceiptProviderError(
-      body || "Azure Document Intelligence request failed",
+      `Azure Document Intelligence request failed (${response.status})`,
       response.status
     );
   }

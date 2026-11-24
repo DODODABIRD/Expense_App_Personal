@@ -9,10 +9,22 @@ const {
   deleteExpenseByLocalId,
   deleteAllExpenses,
   connectDB,
+  normalizeExpenseFields,
+  ExpenseValidationError,
 } = require("../db");
 const { broadcastLiveChange } = require("../lib/broadcast");
 
 const MAX_BULK_EXPENSES = 1000;
+
+// Validation errors are the caller's fault and safe to show; anything else is
+// logged and answered with a generic message.
+function sendExpenseError(res, err, context) {
+  if (err instanceof ExpenseValidationError) {
+    return res.status(400).json({ error: err.message });
+  }
+  console.error(`${context} failed:`, err);
+  return res.status(500).json({ error: `Could not ${context}` });
+}
 
 /**
  * CREATE
@@ -35,7 +47,7 @@ async function createExpense(req, res) {
     broadcastLiveChange(req.user.uid, { type: "expense_created", item: user });
     res.status(200).json(user);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    sendExpenseError(res, err, "save expense");
   }
 }
 
@@ -49,7 +61,7 @@ async function listAllExpenses(req, res) {
     const users = await listExpenses(req.user.uid);
     res.json(users);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendExpenseError(res, err, "load expenses");
   }
 }
 
@@ -64,7 +76,7 @@ async function getExpense(req, res) {
     if (!user) return res.status(404).json({ message: "Not found" });
     res.json(user);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendExpenseError(res, err, "load expense");
   }
 }
 
@@ -91,7 +103,7 @@ async function updateExpense(req, res) {
     broadcastLiveChange(req.user.uid, { type: "expense_updated", item: user });
     res.json(user);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    sendExpenseError(res, err, "update expense");
   }
 }
 
@@ -109,7 +121,7 @@ async function removeExpense(req, res) {
     });
     res.json({ message: "Deleted" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendExpenseError(res, err, "delete expense");
   }
 }
 
@@ -124,7 +136,7 @@ async function deleteAllUserExpenses(req, res) {
     broadcastLiveChange(req.user.uid, { type: "bulk_deleted", deletedCount });
     res.status(200).json({ message: "Deleted", deletedCount });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendExpenseError(res, err, "delete expenses");
   }
 }
 
@@ -155,11 +167,25 @@ async function bulkUpsertExpenses(req, res) {
     }
   }
 
+  // Invalid rows are skipped, not fatal: one bad row must not block the
+  // rest of a device's sync. They stay unsynced on the device.
+  const validExpenses = [];
+  const rejected = [];
+  for (const item of expenses) {
+    try {
+      normalizeExpenseFields(item);
+      validExpenses.push(item);
+    } catch (err) {
+      if (!(err instanceof ExpenseValidationError)) throw err;
+      rejected.push({ localId: String(item.localId), error: err.message });
+    }
+  }
+
   try {
     await connectDB();
     const syncedLocalIds =
-      expenses.length > 0
-        ? await upsertExpensesBulk(req.user.uid, expenses)
+      validExpenses.length > 0
+        ? await upsertExpensesBulk(req.user.uid, validExpenses)
         : [];
 
     const device = req.body?.device;
@@ -187,9 +213,10 @@ async function bulkUpsertExpenses(req, res) {
     res.status(200).json({
       count: syncedLocalIds.length,
       syncedLocalIds,
+      ...(rejected.length > 0 ? { rejected } : {}),
     });
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    sendExpenseError(res, err, "sync expenses");
   }
 }
 
